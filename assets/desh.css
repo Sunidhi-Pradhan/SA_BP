@@ -1,0 +1,243 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", sans-serif;
+}
+
+/* LIGHT */
+:root {
+    --bg: #f4f6f9;
+    --card: #ffffff;
+    --text: #111827;
+    --sidebar: #0f172a;
+}
+
+/* DARK */
+body.dark {
+    --bg: #0b1120;
+    --card: #111827;
+    --text: #e5e7eb;
+    --sidebar: #020617;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    transition: 0.3s;
+}
+
+.dashboard {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 240px;
+    background: #0f766e;
+    color: #ffffff;
+    padding: 20px 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ===== LOGO - IMPROVED ===== */
+.sidebar .logo {
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 15px;
+    padding: 15px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+
+.sidebar .logo img {
+    max-height: 100px;
+    max-width: 100px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 50%;
+    background: #ffffff;
+    padding: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Menu */
+nav {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.menu {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 15px;
+    border-radius: 10px;
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 15px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+/* Icon */
+.menu .icon {
+    font-size: 18px;
+}
+
+/* Hover */
+.menu:hover {
+    background: rgba(255,255,255,0.08);
+    transform: translateX(4px);
+}
+
+/* Active */
+.menu.active {
+    background: rgba(59,130,246,0.15);
+    color: #ffffff;
+}
+
+.menu.active::before {
+    content: "";
+    position: absolute;
+    left: -15px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 70%;
+    background: #3b82f6;
+    border-radius: 4px;
+}
+
+
+/* MAIN */
+.main {
+    flex: 1;
+    padding: 25px;
+}
+
+/* HEADER */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    
+}
+
+/* 🌗 TOGGLE SWITCH */
+.theme-toggle {
+    position: relative;
+    width: 52px;
+    height: 26px;
+}
+
+.theme-toggle input {
+    display: none;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    background: #ccc;
+    border-radius: 20px;
+    inset: 0;
+    transition: 0.3s;
+}
+
+.slider::before {
+    content: "🌞";
+    position: absolute;
+    height: 22px;
+    width: 22px;
+    left: 2px;
+    bottom: 2px;
+    background: white;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    transition: 0.3s;
+}
+
+input:checked + .slider {
+    background: #2563eb;
+}
+
+input:checked + .slider::before {
+    transform: translateX(26px);
+    content: "🌙";
+}
+
+/* STATS */
+.stats {
+    margin-top: 25px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.stat-card {
+    background: var(--card);
+    padding: 18px;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+.stat-card p {
+    font-size: 14px;
+    color: gray;
+}
+
+.stat-card h2 {
+    margin-top: 8px;
+    font-size: 26px;
+}
+
+.warning { color: #ef4444; }
+
+/* GRAPH + SUMMARY */
+.graph-section {
+    margin-top: 30px;
+    display: grid;
+    grid-template-columns: 2.5fr 1fr;
+    gap: 20px;
+}
+
+.chart-box,
+.summary-box {
+    background: var(--card);
+    padding: 20px;
+    border-radius: 14px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+.chart-wrapper {
+    height: 260px;
+}
+
+/* SUMMARY */
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.green { color: #16a34a; }
+.red { color: #dc2626; }
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .graph-section { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+    .dashboard { flex-direction: column; }
+    .sidebar { width: 100%; }
+    .stats { grid-template-columns: 1fr; }
+}

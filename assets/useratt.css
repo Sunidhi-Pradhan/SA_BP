@@ -1,0 +1,460 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", sans-serif;
+}
+
+body {
+    background: #f4f6f8;
+}
+
+.container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* ===== Sidebar ===== */
+.sidebar {
+    width: 240px;
+    background: linear-gradient(180deg, #0f766e, #0f766e);
+    color: #fff;
+    padding: 25px 20px;
+    min-height: 100vh;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+}
+
+.logo {
+    text-align: center;
+    margin-bottom: 40px;
+    font-size: 26px;
+    font-weight: bold;
+}
+
+.sidebar ul {
+    list-style: none;
+}
+
+.sidebar ul li {
+    padding: 14px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+}
+
+.sidebar ul li a {
+    text-decoration: none;
+    color: #fff;
+    display: block;
+}
+
+.sidebar ul li:hover,
+.sidebar ul li.active {
+    background: rgba(255,255,255,0.15);
+}
+
+/* ===== Main ===== */
+.main {
+    flex: 1;
+    padding: 25px;
+    overflow-y: auto;
+}
+
+/* ===== Topbar ===== */
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    padding: 18px 22px;
+    border-radius: 10px;
+    margin-bottom: 25px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
+
+.logout {
+    background: #0f766e;
+    color: #fff;
+    border: none;
+    padding: 9px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.logout:hover {
+    background: #0d9488;
+}
+
+/* ===== Upload Card ===== */
+.upload-card {
+    max-width: 100%;
+    background: #fff;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    margin-bottom: 25px;
+}
+
+/* ===== Preview Card ===== */
+.preview-card {
+    max-width: 100%;
+    background: #fff;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    margin-bottom: 25px;
+}
+
+.upload-title {
+    text-align: center;
+    margin-bottom: 25px;
+    color: #0f766e;
+}
+
+.upload-title span {
+    display: block;
+    font-size: 14px;
+    color: #777;
+    margin-top: 5px;
+}
+
+/* ===== Upload Box ===== */
+.upload-box {
+    width: 100%;
+    max-width: 500px;
+    height: 280px;
+    margin: 0 auto;
+    
+    border: 2px dashed #cbd5e1;
+    border-radius: 14px;
+    background: #f9fafb;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.upload-box:hover {
+    background: #f0fdfa;
+    border-color: #0f766e;
+}
+
+.upload-box input {
+    display: none;
+}
+
+.upload-box label {
+    cursor: pointer;
+    padding: 20px;
+}
+
+.upload-box label strong {
+    display: block;
+    font-size: 18px;
+    color: #0f766e;
+    margin-bottom: 8px;
+}
+
+.upload-box label span {
+    font-size: 14px;
+    color: #555;
+}
+
+.upload-filename {
+    margin-top: 10px;
+    color: #0f766e;
+    font-weight: 600;
+}
+
+/* ===== Buttons ===== */
+.upload-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.btn {
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #fff;
+    font-size: 15px;
+    transition: all 0.3s ease;
+}
+
+.btn.green {
+    background: linear-gradient(135deg, #0f766e, #0d9488);
+}
+
+.btn.green:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(15, 118, 110, 0.3);
+}
+
+.btn.yellow {
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+}
+
+.btn.yellow:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.excel-link {
+    color: #fff;
+    text-decoration: none;
+}
+
+.btn:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* ===== Preview Section ===== */
+.preview-section {
+    padding: 0;
+    background: transparent;
+    border-radius: 10px;
+    border: none;
+}
+
+.preview-title {
+    color: #0f766e;
+    margin-bottom: 20px;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.preview-table-wrapper {
+    overflow-x: auto;
+    max-height: 400px;
+    overflow-y: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.preview-table thead {
+    background: linear-gradient(135deg, #0f766e, #0d9488);
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.preview-table th {
+    padding: 14px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+    border-bottom: 2px solid #0d9488;
+}
+
+.preview-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 14px;
+    color: #334155;
+}
+
+.preview-table tbody tr:hover {
+    background: #f0fdfa;
+}
+
+.preview-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ===== Upload Button Container ===== */
+#uploadButtonContainer {
+    margin-top: 30px;
+    text-align: center;
+}
+
+.submit-btn {
+    background: linear-gradient(135deg, #059669, #10b981);
+    padding: 14px 40px;
+    font-size: 16px;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+}
+
+.submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(5, 150, 105, 0.4);
+}
+
+/* ===== MODAL STYLES - FIXED ===== */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 99999;
+}
+
+.modal.show {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background-color: #ffffff;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 450px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.3s ease-out;
+    overflow: hidden;
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: translateY(-100px) scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    padding: 25px 30px;
+    border-bottom: 1px solid #e2e8f0;
+    background: linear-gradient(135deg, #0f766e, #0d9488);
+}
+
+.modal-header h3 {
+    color: #ffffff;
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.modal-body {
+    padding: 35px 30px;
+}
+
+.modal-body p {
+    color: #1e293b;
+    font-size: 17px;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.modal-footer {
+    padding: 20px 30px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    background: #f8fafc;
+}
+
+.modal-btn {
+    padding: 12px 30px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.cancel-btn {
+    background: #64748b;
+    color: white;
+}
+
+.cancel-btn:hover {
+    background: #475569;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(100, 116, 139, 0.4);
+}
+
+.confirm-btn {
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: white;
+}
+
+.confirm-btn:hover {
+    background: linear-gradient(135deg, #047857, #059669);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
+}
+
+/* ===== Footer ===== */
+footer {
+    text-align: center;
+    margin-top: 40px;
+    padding: 20px;
+    color: #666;
+    font-size: 14px;
+}
+
+/* ===== Responsive Design ===== */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+    }
+
+    .upload-box {
+        max-width: 100%;
+        height: 200px;
+    }
+
+    .upload-buttons {
+        flex-direction: column;
+    }
+
+    .preview-table-wrapper {
+        max-height: 300px;
+    }
+
+    .modal-content {
+        width: 95%;
+    }
+    
+    .modal-header {
+        padding: 20px 20px;
+    }
+    
+    .modal-body {
+        padding: 25px 20px;
+    }
+    
+    .modal-footer {
+        padding: 15px 20px;
+        flex-direction: column;
+    }
+    
+    .modal-btn {
+        width: 100%;
+    }
+}

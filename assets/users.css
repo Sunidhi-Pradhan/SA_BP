@@ -1,0 +1,237 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", sans-serif;
+}
+
+body {
+    background: #f4f6f8;
+}
+
+.container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* ================= SIDEBAR ================= */
+.sidebar {
+    width: 240px;
+    background: #0f766e;
+    color: #fff;
+    padding: 20px;
+}
+
+.logo {
+    text-align: center;
+    padding: 15px;
+    font-size: 18px;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+    margin-bottom: 20px;
+}
+
+nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.menu {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 8px;
+    color: #fff;
+    text-decoration: none;
+}
+
+.menu:hover,
+.menu.active {
+    background: rgba(255,255,255,0.15);
+}
+
+/* ================= MAIN ================= */
+.main {
+    flex: 1;
+    padding: 20px;
+}
+
+.page-title {
+    width: auto;
+    margin-bottom: 16px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    padding: 10px 0;
+    background-color: #ffffff;
+}
+
+/* TWO CARD LAYOUT */
+.content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;   /* SAME WIDTH */
+    gap: 24px;
+    align-items: stretch;
+}
+
+/* ================= CARD ================= */
+.card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    width: 100%;
+}
+
+.card h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+/* ================= TABLE ================= */
+.users-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 10px;
+}
+
+.users-table thead th {
+    background: #f1fdfa;
+    padding: 12px;
+    font-weight: 600;
+    text-align: left;
+    border-radius: 6px;
+}
+
+.users-table tbody tr {
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.users-table td {
+    padding: 10px;
+}
+
+.status.active {
+    color: green;
+    font-weight: 600;
+}
+
+/* ACTION BUTTONS */
+.action-btns {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+.edit-btn,
+.delete-btn {
+    border: none;
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    color: #fff;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.edit-btn {
+    background: #0f766e;
+}
+
+.edit-btn:hover {
+    background: #0d6b63;
+}
+
+.delete-btn {
+    background: #dc2626;
+}
+
+.delete-btn:hover {
+    background: #b91c1c;
+}
+
+
+.icon-btn {
+    border: none;
+    padding: 3px 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #fff;
+}
+
+.icon-btn.edit {
+    background: #2563eb;
+}
+
+.icon-btn.delete {
+    background: #dc2626;
+}
+
+/* ================= ADD USER FORM ================= */
+.add-user-form label {
+    font-size: 14px;
+    margin-bottom: 4px;
+    display: block;
+}
+
+/* TWO COLUMN FORM */
+.add-user-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.add-user-form .form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.add-user-form input,
+.add-user-form select {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+.add-user-form button {
+    width: 100%;
+    padding: 12px;
+    background: #0f766e;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 900px) {
+    .content {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .add-user-form .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        display: none;
+    }
+}
+.logo img {
+            max-width: 140px;   /* adjust as needed */
+            height: auto;
+            display: block;
+            margin: 0 auto;
+            border-radius: 5px;
+            }
