@@ -11,7 +11,7 @@ if (!isset($_SESSION['user'])) {
 }
 
 /* ---------------------------
-   GET USER ROLE + SITE
+   GET USER ROLE
 ----------------------------*/
 $stmtUser = $pdo->prepare("SELECT role, site_code, name FROM user WHERE id = ?");
 $stmtUser->execute([$_SESSION['user']]);
@@ -21,7 +21,8 @@ if (!$user || $user['role'] !== 'SDHOD') {
     die("Access denied");
 }
 
-$approvedBy = $user['name']; // SDHOD name
+$userId     = $_SESSION['user'];
+$approvedBy = $user['name'];
 
 /* ---------------------------
    FILTER PARAMS (from POST or GET)
@@ -34,17 +35,20 @@ $reportLoaded = !empty($siteCode);
 /* ---------------------------
    FETCH ALL SITES (for dropdown)
 ----------------------------*/
-$stmtSites = $pdo->query("
-    SELECT SiteCode, SiteName 
-    FROM site_master 
-    ORDER BY SiteName ASC
-");
-$sites = $stmtSites->fetchAll(PDO::FETCH_ASSOC);
+$stmtSites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteName ASC");
+$sites     = $stmtSites->fetchAll(PDO::FETCH_ASSOC);
 
-$attendanceRows = [];
-$comments       = [];
+$attendanceRows  = [];
+$comments        = [];
+$approvalSuccess = false;
+$alreadyApproved = false;
+$currentStep     = 'ASO';
+$stepStatuses    = ['ASO' => 'pending', 'APM' => 'pending', 'GM' => 'pending', 'HQSO' => 'pending', 'SDHOD' => 'pending'];
+$workflowRow     = null;
+$workflow        = null;
 
 if ($reportLoaded) {
+
     /* ---------------------------
        FETCH ATTENDANCE DATA
     ----------------------------*/
@@ -65,35 +69,137 @@ if ($reportLoaded) {
     $attendanceRows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?? [];
 
     /* ---------------------------
-       SAVE SDHOD FINAL APPROVAL
+       FETCH CURRENT WORKFLOW STATUS
     ----------------------------*/
-    $approvalSuccess = false;
-    if (isset($_POST['approve_report']) && !empty($_POST['comment'])) {
-        $comment = $_POST['comment'];
-        $stmtInsert = $pdo->prepare("
-            INSERT INTO approval_comments
-            (site_code, attendance_year, attendance_month, comment, approved_by, role)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ");
-        $stmtInsert->execute([$siteCode, $year, $month, $comment, $approvedBy, 'SDHOD']);
-        $approvalSuccess = true;
+    $stmtWorkflow = $pdo->prepare("
+        SELECT * FROM attendance_approval
+        WHERE area_code        = ?
+          AND attendance_month = ?
+          AND attendance_year  = ?
+    ");
+    $stmtWorkflow->execute([$siteCode, $month, $year]);
+    $workflowRow = $stmtWorkflow->fetch(PDO::FETCH_ASSOC);
+
+    $workflow    = $workflowRow ? json_decode($workflowRow['attendance_workflow'], true) : null;
+    $currentStep = $workflow['current_step'] ?? 'ASO';
+
+    // Check if SDHOD has already approved (step index 4)
+    if ($workflow) {
+        foreach ($workflow['steps'] as $step) {
+            if ($step['Code'] === 'SDHOD' && $step['status'] === 'approved') {
+                $alreadyApproved = true;
+                break;
+            }
+        }
     }
 
     /* ---------------------------
-       FETCH APPROVAL COMMENTS
+       SAVE SDHOD FINAL APPROVAL
     ----------------------------*/
-    $stmtComments = $pdo->prepare("
-        SELECT * FROM approval_comments 
-        WHERE site_code        = ? 
-          AND attendance_year  = ? 
-          AND attendance_month = ?
-        ORDER BY id ASC
-    ");
-    $stmtComments->execute([$siteCode, $year, $month]);
-    $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
+    if (isset($_POST['approve_report']) && !$alreadyApproved) {
+
+        $comment = trim($_POST['comment']);
+        $actedAt = date('Y-m-d H:i:s');
+
+        if ($workflowRow) {
+            /* UPDATE existing row — mark SDHOD approved (steps[4]), workflow complete */
+            $pdo->prepare("
+                UPDATE attendance_approval
+                SET attendance_workflow = JSON_SET(
+                    attendance_workflow,
+                    '$.current_step',           'COMPLETE',
+                    '$.current_step_id',        6,
+                    '$.steps[4].status',        'approved',
+                    '$.steps[4].comment',       ?,
+                    '$.steps[4].acted_by',      ?,
+                    '$.steps[4].acted_at',      ?,
+                    '$.steps[4].auto_approved', false
+                )
+                WHERE area_code        = ?
+                  AND attendance_month = ?
+                  AND attendance_year  = ?
+            ")->execute([$comment, $userId, $actedAt, $siteCode, $month, $year]);
+
+        } else {
+            /* INSERT full workflow row with SDHOD approved (fallback) */
+            $reportId     = 'ATT-' . date('dmy') . rand(100, 999);
+            $workflowJson = json_encode([
+                "current_step"    => "COMPLETE",
+                "current_step_id" => 6,
+                "steps" => [
+                    ["id"=>1,"Code"=>"ASO",  "status"=>"approved","comment"=>null,
+                     "acted_by"=>null,"acted_at"=>null,"auto_approved"=>true],
+                    ["id"=>2,"Code"=>"APM",  "status"=>"approved","comment"=>null,
+                     "acted_by"=>null,"acted_at"=>null,"auto_approved"=>true],
+                    ["id"=>3,"Code"=>"GM",   "status"=>"approved","comment"=>null,
+                     "acted_by"=>null,"acted_at"=>null,"auto_approved"=>true],
+                    ["id"=>4,"Code"=>"HQSO", "status"=>"approved","comment"=>null,
+                     "acted_by"=>null,"acted_at"=>null,"auto_approved"=>true],
+                    ["id"=>5,"Code"=>"SDHOD","status"=>"approved","comment"=>$comment,
+                     "acted_by"=>$userId,"acted_at"=>$actedAt,"auto_approved"=>false],
+                ]
+            ]);
+
+            $pdo->prepare("
+                INSERT INTO attendance_approval
+                (report_id, area_code, attendance_month, attendance_year,
+                 created_attendance_date, attendance_workflow)
+                VALUES (?, ?, ?, ?, NOW(), ?)
+            ")->execute([$reportId, $siteCode, $month, $year, $workflowJson]);
+        }
+
+        $approvalSuccess = true;
+        $alreadyApproved = true;
+        $currentStep     = 'COMPLETE';
+
+        // Refresh workflow
+        $stmtWorkflow->execute([$siteCode, $month, $year]);
+        $workflowRow = $stmtWorkflow->fetch(PDO::FETCH_ASSOC);
+        $workflow    = $workflowRow ? json_decode($workflowRow['attendance_workflow'], true) : null;
+    }
+
+    /* ---------------------------
+       BUILD STEP STATUSES FOR FLOWCHART
+    ----------------------------*/
+    if ($workflow) {
+        foreach ($workflow['steps'] as $step) {
+            if ($step['status'] === 'approved') {
+                $stepStatuses[$step['Code']] = 'approved';
+            }
+        }
+        $liveCurrentStep = $workflow['current_step'] ?? 'ASO';
+        if (isset($stepStatuses[$liveCurrentStep]) && $stepStatuses[$liveCurrentStep] !== 'approved') {
+            $stepStatuses[$liveCurrentStep] = 'current';
+        }
+    }
+
+    /* ---------------------------
+       FETCH APPROVAL COMMENTS FROM WORKFLOW
+    ----------------------------*/
+    if ($workflow) {
+        foreach ($workflow['steps'] as $step) {
+            if (!empty($step['comment']) && $step['status'] === 'approved') {
+                $actorName = 'Unknown';
+                if (!empty($step['acted_by'])) {
+                    $stmtActor = $pdo->prepare("SELECT name FROM user WHERE id = ?");
+                    $stmtActor->execute([$step['acted_by']]);
+                    $actor     = $stmtActor->fetch(PDO::FETCH_ASSOC);
+                    $actorName = $actor['name'] ?? 'Unknown';
+                }
+                $comments[] = [
+                    'role'        => $step['Code'],
+                    'approved_by' => $actorName,
+                    'comment'     => $step['comment'],
+                    'created_at'  => $step['acted_at'] ?? '',
+                ];
+            }
+        }
+    }
 }
 
-// Month names
+/* ---------------------------
+   HELPER FUNCTIONS
+----------------------------*/
 $monthNames = [
     1=>'January',2=>'February',3=>'March',4=>'April',
     5=>'May',6=>'June',7=>'July',8=>'August',
@@ -101,7 +207,6 @@ $monthNames = [
 ];
 $monthName = $monthNames[$month] ?? '';
 
-// Weekday helpers
 function countWeekdays($year, $month) {
     $count = 0;
     $days  = cal_days_in_month(CAL_GREGORIAN, $month, $year);
@@ -110,6 +215,7 @@ function countWeekdays($year, $month) {
     }
     return $count;
 }
+
 function getWeekdays($year, $month) {
     $days  = [];
     $total = cal_days_in_month(CAL_GREGORIAN, $month, $year);
@@ -121,6 +227,31 @@ function getWeekdays($year, $month) {
 
 $workingDays = $reportLoaded ? countWeekdays($year, $month) : 22;
 $dayColumns  = $reportLoaded ? getWeekdays($year, $month) : [];
+
+/* ---------------------------
+   STAT TOTALS
+----------------------------*/
+$totalWorking = 0;
+$totalExtra   = 0;
+foreach ($attendanceRows as $r) {
+    $ad = json_decode($r['attendance_json'], true) ?? [];
+    foreach ($ad as $entry) {
+        if (($entry['status'] ?? '') === 'P')  $totalWorking++;
+        if (($entry['status'] ?? '') === 'PP') $totalExtra++;
+    }
+}
+$totalDuty = $totalWorking + $totalExtra;
+
+// Last approved step label
+$lastApprovedCode = '—';
+if ($workflow) {
+    foreach (array_reverse($workflow['steps']) as $s) {
+        if ($s['status'] === 'approved') {
+            $lastApprovedCode = $s['Code'];
+            break;
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -134,7 +265,7 @@ $dayColumns  = $reportLoaded ? getWeekdays($year, $month) : [];
         :root {
             --primary: #0f766e;
             --primary-dark: #0d5f58;
-            --role: #dc2626;          /* SDHOD accent – red */
+            --role: #dc2626;
             --role-light: #fef2f2;
             --role-border: #fca5a5;
             --sidebar-width: 270px;
@@ -171,6 +302,12 @@ $dayColumns  = $reportLoaded ? getWeekdays($year, $month) : [];
         /* ── ROLE BADGE ── */
         .role-badge { display:inline-flex; align-items:center; gap:0.4rem; background:var(--role-light); color:var(--role); border:1.5px solid var(--role-border); border-radius:20px; padding:0.3rem 0.9rem; font-size:0.82rem; font-weight:700; letter-spacing:0.5px; }
 
+        /* ── ALREADY APPROVED BANNER ── */
+        .already-approved-banner { background:linear-gradient(135deg,#fef3c7,#fde68a); border:2px solid #f59e0b; border-radius:14px; padding:1.25rem 1.75rem; display:flex; align-items:center; gap:1rem; box-shadow:0 2px 12px rgba(245,158,11,0.2); }
+        .already-approved-banner i { font-size:1.5rem; color:#d97706; }
+        .already-approved-banner .msg-title { font-weight:700; color:#92400e; font-size:1rem; }
+        .already-approved-banner .msg-sub   { font-size:0.85rem; color:#b45309; margin-top:0.2rem; }
+
         /* ── FILTER PANEL ── */
         .filter-panel { background:white; border-radius:18px; border:1px solid #e5e7eb; box-shadow:0 4px 24px rgba(0,0,0,0.08); padding:2.5rem 2.5rem 2rem; max-width:820px; width:100%; margin:0 auto; }
         .filter-grid { display:grid; grid-template-columns:1fr 1fr auto; gap:1.25rem; align-items:end; }
@@ -201,24 +338,18 @@ $dayColumns  = $reportLoaded ? getWeekdays($year, $month) : [];
         .step-label { font-size:0.75rem; font-weight:700; color:#6b7280; text-transform:uppercase; }
         .step-sub   { font-size:0.62rem; color:#9ca3af; margin-top:-0.2rem; }
         .step-check { position:absolute; top:-11px; left:50%; transform:translateX(-50%); width:22px; height:22px; border-radius:50%; background:#16a34a; color:white; display:flex; align-items:center; justify-content:center; font-size:0.65rem; font-weight:700; border:2px solid white; box-shadow:0 1px 4px rgba(0,0,0,0.15); }
-        /* Approved */
         .workflow-step.approved .step-card { border-color:#86efac; background:#f0fdf4; }
         .workflow-step.approved .step-avatar { background:#16a34a; }
         .workflow-step.approved .step-label { color:#15803d; }
-        /* SDHOD current – red */
         .workflow-step.current .step-card { border-color:var(--role-border); background:var(--role-light); box-shadow:0 0 0 3px rgba(220,38,38,0.15); }
         .workflow-step.current .step-avatar { background:var(--role); }
         .workflow-step.current .step-label { color:#b91c1c; }
-        /* Pending */
         .workflow-step.pending .step-card { border-color:#e5e7eb; background:#f9fafb; }
         .workflow-step.pending .step-avatar { background:#9ca3af; }
         .workflow-step.pending .step-label { color:#9ca3af; }
-
         .workflow-arrow { display:flex; align-items:center; padding:0 0.6rem; color:#9ca3af; font-size:1rem; margin-bottom:1.6rem; }
-
         .btn-approval { display:inline-flex; align-items:center; gap:0.5rem; padding:0.5rem 1.4rem; border-radius:8px; background:var(--role-light); color:#b91c1c; border:1.5px solid var(--role-border); font-size:0.84rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
         .btn-approval:hover { background:#fee2e2; border-color:#f87171; }
-
         .approval-comments { display:none; width:100%; margin-top:0.5rem; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; }
         .approval-comments.open { display:block; animation:fadeUp 0.3s ease; }
         .comment-item { padding:0.9rem 1.25rem; border-bottom:1px solid #f0f0f0; background:white; }
@@ -229,8 +360,8 @@ $dayColumns  = $reportLoaded ? getWeekdays($year, $month) : [];
         .comment-time { display:flex; align-items:center; gap:0.3rem; font-size:0.75rem; color:#9ca3af; }
         .comment-text { font-size:0.84rem; color:#4b5563; background:#f9fafb; border-radius:8px; padding:0.5rem 0.85rem; border-left:3px solid var(--role-border); font-style:italic; }
 
-        /* ── FINAL APPROVAL BADGE ── */
-        .final-badge { display:inline-flex; align-items:center; gap:0.5rem; background:#fef2f2; color:#b91c1c; border:1.5px solid #fca5a5; border-radius:10px; padding:0.5rem 1.2rem; font-size:0.85rem; font-weight:700; }
+        /* ── FINAL BADGE ── */
+        .final-badge { display:inline-flex; align-items:center; gap:0.5rem; background:var(--role-light); color:#b91c1c; border:1.5px solid var(--role-border); border-radius:10px; padding:0.5rem 1.2rem; font-size:0.85rem; font-weight:700; }
         .final-badge i { font-size:1rem; }
 
         /* ── STAT CARDS ── */
@@ -267,7 +398,6 @@ $dayColumns  = $reportLoaded ? getWeekdays($year, $month) : [];
         .attendance-table thead th.summary-col { background:linear-gradient(135deg,#0ea5e9,#0284c7); font-weight:800; font-size:0.8rem; }
         .attendance-table thead th.extra-col { background:linear-gradient(135deg,#f59e0b,#d97706); }
         .attendance-table thead th.total-col { background:linear-gradient(135deg,#10b981,#059669); }
-
         /* Sticky left */
         .attendance-table thead th:nth-child(1),.attendance-table tbody td:nth-child(1) { position:sticky; left:0; z-index:11; min-width:48px; width:48px; }
         .attendance-table thead th:nth-child(2),.attendance-table tbody td:nth-child(2) { position:sticky; left:48px; z-index:11; min-width:90px; width:90px; }
@@ -278,7 +408,6 @@ $dayColumns  = $reportLoaded ? getWeekdays($year, $month) : [];
         .attendance-table tbody tr:nth-child(even) td:nth-child(1),.attendance-table tbody tr:nth-child(even) td:nth-child(2),.attendance-table tbody tr:nth-child(even) td:nth-child(3),.attendance-table tbody tr:nth-child(even) td:nth-child(4) { background:#fafafa; }
         .attendance-table tbody tr:hover td:nth-child(1),.attendance-table tbody tr:hover td:nth-child(2),.attendance-table tbody tr:hover td:nth-child(3),.attendance-table tbody tr:hover td:nth-child(4) { background:#f9fafb; }
         .attendance-table tbody td:nth-child(4) { border-right:2px solid #e5e7eb !important; }
-
         /* Sticky right */
         .attendance-table thead th.col-working,.attendance-table tbody td.col-working { position:sticky; right:104px; z-index:11; min-width:72px; width:72px; }
         .attendance-table thead th.col-extra,.attendance-table tbody td.col-extra { position:sticky; right:52px; z-index:11; min-width:52px; width:52px; }
@@ -292,7 +421,6 @@ $dayColumns  = $reportLoaded ? getWeekdays($year, $month) : [];
         .attendance-table tbody tr:nth-child(even) td.col-working { background:#bfdbfe; }
         .attendance-table tbody tr:nth-child(even) td.col-extra   { background:#fde68a; }
         .attendance-table tbody tr:nth-child(even) td.col-total   { background:#a7f3d0; }
-
         .attendance-table thead th.day-col,.attendance-table tbody td.day-col { min-width:36px; width:36px; }
         .attendance-table tbody tr { transition:background 0.2s; }
         .attendance-table tbody tr:hover { background:#f9fafb; }
@@ -390,7 +518,7 @@ $dayColumns  = $reportLoaded ? getWeekdays($year, $month) : [];
         </div>
         <ul class="sidebar-nav">
             <li><a href="dashboard.php" class="nav-link"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a></li>
-            <li><a href="sdhod-monthly-attendance.php" class="nav-link active"><i class="fa-solid fa-calendar-days"></i><span>Monthly Attendance</span></a></li>
+            <li><a href="sdhod_monthly.php" class="nav-link active"><i class="fa-solid fa-calendar-days"></i><span>Monthly Attendance</span></a></li>
             <li><a href="../logout.php" class="nav-link logout-link"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></a></li>
         </ul>
     </aside>
@@ -411,34 +539,29 @@ $dayColumns  = $reportLoaded ? getWeekdays($year, $month) : [];
         </header>
 
         <?php if (!$reportLoaded): ?>
-        <!-- ═══════════════════════════════════════
+        <!-- ═══════════════════════════════════
              FILTER SCREEN
-             ═══════════════════════════════════════ -->
+             ═══════════════════════════════════ -->
         <div class="attendance-header">
             <h1>MONTHLY ATTENDANCE REPORT</h1>
-            <p>Attendance Period: <?= $monthName ?> <?= $year ?></p>
+            <p>Select a site and period to load the report</p>
         </div>
 
         <div class="filter-panel">
             <form method="POST" action="">
                 <div class="filter-grid">
-                    <!-- Site Code -->
                     <div class="filter-field">
                         <label class="filter-label"><i class="fa-solid fa-location-dot"></i> Select Site Code</label>
                         <select name="site_code" class="filter-select" required>
-                        <option value="" disabled selected>-- Select Site --</option>
-
-                        <?php foreach ($sites as $s): ?>
-                            <option value="<?= htmlspecialchars($s['SiteCode']) ?>">
-                                <?= htmlspecialchars($s['SiteCode']) ?> - 
-                                <?= htmlspecialchars($s['SiteName']) ?>
-                            </option>
-                        <?php endforeach; ?>
-
-                    </select>
+                            <option value="" disabled selected>-- Select Site --</option>
+                            <?php foreach ($sites as $s): ?>
+                                <option value="<?= htmlspecialchars($s['SiteCode']) ?>">
+                                    <?= htmlspecialchars($s['SiteCode']) ?> – <?= htmlspecialchars($s['SiteName']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
 
-                    <!-- Month & Year -->
                     <div class="filter-field">
                         <label class="filter-label"><i class="fa-regular fa-calendar"></i> Select Month &amp; Year</label>
                         <div style="display:flex;gap:0.6rem;">
@@ -455,7 +578,6 @@ $dayColumns  = $reportLoaded ? getWeekdays($year, $month) : [];
                         </div>
                     </div>
 
-                    <!-- Load Button -->
                     <div class="filter-field">
                         <label class="filter-label" style="visibility:hidden;">Load</label>
                         <button type="submit" name="load_report" class="btn-load-report">
@@ -467,273 +589,253 @@ $dayColumns  = $reportLoaded ? getWeekdays($year, $month) : [];
         </div>
 
         <?php else: ?>
-        <!-- ═══════════════════════════════════════
+        <!-- ═══════════════════════════════════
              REPORT VIEW
-             ═══════════════════════════════════════ -->
+             ═══════════════════════════════════ -->
 
-        <!-- ATTENDANCE TITLE -->
-        <div class="attendance-header" id="attnHeader">
-            <h1>MONTHLY ATTENDANCE REPORT</h1>
-            <p>
-                Attendance Period: <?= $monthName ?> <?= $year ?>
-                &nbsp;|&nbsp; Site: <strong><?= htmlspecialchars($siteCode) ?></strong>
-                &nbsp;|&nbsp; Working Days: <?= $workingDays ?> (Weekends Excluded)
-                &nbsp;|&nbsp;
-                <a href="monthlyatt.php" style="color:#0f766e;text-decoration:none;font-weight:600;">
-                    <i class="fa-solid fa-filter"></i> Change Filter
-                </a>
-            </p>
-        </div>
+        <div id="attendanceContent" <?= $approvalSuccess ? 'style="display:none"' : '' ?>>
 
-        <!-- APPROVAL WORKFLOW -->
-        <div class="workflow-section" id="workflowSection">
-            <div class="workflow-title">
-                <i class="fa-solid fa-sitemap"></i>
-                Monthly Attendance Report Approval Workflow
-            </div>
-            <div class="workflow-meta">
-                Current: <strong>SDHOD</strong> &nbsp;|&nbsp; Last Approved By: <strong>HQSO</strong>
-                &nbsp;&nbsp;
-                <span class="final-badge"><i class="fa-solid fa-flag-checkered"></i> Final Approval Stage</span>
+            <div class="attendance-header">
+                <h1>MONTHLY ATTENDANCE REPORT</h1>
+                <p>
+                    Attendance Period: <?= $monthName ?> <?= $year ?>
+                    &nbsp;|&nbsp; Site: <strong><?= htmlspecialchars($siteCode) ?></strong>
+                    &nbsp;|&nbsp; Working Days: <?= $workingDays ?> (Weekends Excluded)
+                    &nbsp;|&nbsp;
+                    <a href="sdhod_monthly.php" style="color:#0f766e;text-decoration:none;font-weight:600;">
+                        <i class="fa-solid fa-filter"></i> Change Filter
+                    </a>
+                </p>
             </div>
 
-            <div class="workflow-steps">
-                <!-- ASO – approved -->
-                <div class="workflow-step approved">
-                    <div class="step-card">
-                        <span class="step-check"><i class="fa-solid fa-check"></i></span>
-                        <div class="step-avatar"><i class="fa-solid fa-user"></i></div>
-                        <span class="step-label">ASO</span>
-                        <span class="step-sub">Officer</span>
-                    </div>
-                </div>
-                <div class="workflow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
-
-                <!-- APM – approved -->
-                <div class="workflow-step approved">
-                    <div class="step-card">
-                        <span class="step-check"><i class="fa-solid fa-check"></i></span>
-                        <div class="step-avatar"><i class="fa-solid fa-user"></i></div>
-                        <span class="step-label">APM</span>
-                        <span class="step-sub">Officer</span>
-                    </div>
-                </div>
-                <div class="workflow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
-
-                <!-- GM – approved -->
-                <div class="workflow-step approved">
-                    <div class="step-card">
-                        <span class="step-check"><i class="fa-solid fa-check"></i></span>
-                        <div class="step-avatar"><i class="fa-solid fa-user"></i></div>
-                        <span class="step-label">GM</span>
-                        <span class="step-sub">Officer</span>
-                    </div>
-                </div>
-                <div class="workflow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
-
-                <!-- HQSO – approved -->
-                <div class="workflow-step approved">
-                    <div class="step-card">
-                        <span class="step-check"><i class="fa-solid fa-check"></i></span>
-                        <div class="step-avatar"><i class="fa-solid fa-user"></i></div>
-                        <span class="step-label">HQSO</span>
-                        <span class="step-sub">Officer</span>
-                    </div>
-                </div>
-                <div class="workflow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
-
-                <!-- SDHOD – current (red) -->
-                <div class="workflow-step current">
-                    <div class="step-card">
-                        <div class="step-avatar"><i class="fa-solid fa-user-tie"></i></div>
-                        <span class="step-label">SDHOD</span>
-                        <span class="step-sub">Final</span>
-                    </div>
+            <?php if ($alreadyApproved): ?>
+            <div class="already-approved-banner">
+                <i class="fa-solid fa-circle-check"></i>
+                <div>
+                    <div class="msg-title">You have already given the final approval for this report.</div>
+                    <div class="msg-sub">The workflow is now <strong>COMPLETE</strong>. No further action required.</div>
                 </div>
             </div>
+            <?php endif; ?>
 
-            <button class="btn-approval" id="toggleCommentsBtn" onclick="toggleComments()">
-                <i class="fa-solid fa-comments"></i> View Approval Comments
-            </button>
-
-            <!-- Approval Comments Panel -->
-            <div id="approvalComments" class="approval-comments">
-                <?php if (!empty($comments)): ?>
-                    <?php foreach ($comments as $c): ?>
-                        <div class="comment-item">
-                            <div class="comment-header">
-                                <div class="comment-role">
-                                    <?= htmlspecialchars($c['role'] ?? 'Unknown') ?> :
-                                    <span><?= htmlspecialchars($c['approved_by']) ?></span>
-                                </div>
-                                <div class="comment-time">
-                                    <i class="fa-regular fa-clock" style="font-size:0.7rem;"></i>
-                                    <?= htmlspecialchars($c['created_at'] ?? '') ?>
-                                </div>
-                            </div>
-                            <div class="comment-text">
-                                "<?= htmlspecialchars($c['comment']) ?>"
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <p style="text-align:center;color:#999;padding:1rem;">No comments yet</p>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <!-- STAT CARDS -->
-        <?php
-        $totalWorking = 0;
-        $totalExtra   = 0;
-        foreach ($attendanceRows as $r) {
-            $ad = json_decode($r['attendance_json'], true) ?? [];
-            foreach ($ad as $entry) {
-                if (($entry['status'] ?? '') === 'P')  $totalWorking++;
-                if (($entry['status'] ?? '') === 'PP') $totalExtra++;
-            }
-        }
-        $totalDuty = $totalWorking + $totalExtra;
-        ?>
-        <div class="attendance-stats" id="attnStats">
-            <div class="attendance-stat-card blue">
-                <div class="stat-card-content"><div class="stat-card-label">Working Days</div><div class="stat-card-value"><?= $totalWorking ?></div></div>
-                <div class="stat-card-icon"><i class="fa-solid fa-briefcase"></i></div>
-            </div>
-            <div class="attendance-stat-card amber">
-                <div class="stat-card-content"><div class="stat-card-label">Extra Duty</div><div class="stat-card-value"><?= $totalExtra ?></div></div>
-                <div class="stat-card-icon"><i class="fa-solid fa-clock"></i></div>
-            </div>
-            <div class="attendance-stat-card green">
-                <div class="stat-card-content"><div class="stat-card-label">Total Duty Days</div><div class="stat-card-value"><?= $totalDuty ?></div></div>
-                <div class="stat-card-icon"><i class="fa-solid fa-calendar-check"></i></div>
-            </div>
-        </div>
-
-        <!-- TABLE CARD -->
-        <div class="card" id="mainCard">
-            <div class="table-controls">
-                <div class="table-controls-left">
-                    <label>Show</label>
-                    <select><option>10</option><option>25</option><option>50</option><option>100</option></select>
-                    <label>entries</label>
+            <!-- ── APPROVAL WORKFLOW FLOWCHART ── -->
+            <div class="workflow-section">
+                <div class="workflow-title">
+                    <i class="fa-solid fa-sitemap"></i>
+                    Monthly Attendance Report Approval Workflow
                 </div>
-                <div class="export-buttons">
-                    <button class="btn-export btn-excel"><i class="fa-solid fa-file-excel"></i> Excel</button>
-                    <button class="btn-export btn-pdf"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+                <div class="workflow-meta">
+                    Current: <strong><?= $alreadyApproved ? 'COMPLETE' : htmlspecialchars($workflow['current_step'] ?? $currentStep) ?></strong>
+                    &nbsp;|&nbsp;
+                    Last Approved By: <strong><?= htmlspecialchars($lastApprovedCode) ?></strong>
+                    &nbsp;&nbsp;
+                    <span class="final-badge"><i class="fa-solid fa-flag-checkered"></i> Final Approval Stage</span>
                 </div>
-                <input type="text" class="search-input" placeholder="Search">
-            </div>
 
-            <div class="attendance-table-wrapper">
-                <table class="attendance-table">
-                    <thead>
-                        <tr>
-                            <th>S.N.</th><th>EMP CODE</th><th>NAME</th><th>RANK</th>
-                            <?php foreach ($dayColumns as $d): ?>
-                                <th class="day-col"><?= $d ?></th>
-                            <?php endforeach; ?>
-                            <th class="summary-col col-working">WORKING</th>
-                            <th class="summary-col extra-col col-extra">EXTRA</th>
-                            <th class="summary-col total-col col-total">TOTAL</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <div class="workflow-steps">
                     <?php
-                    $sn = 1;
-                    foreach ($attendanceRows as $row):
-                        $attendanceData = json_decode($row['attendance_json'], true) ?? [];
-                        $working = 0;
-                        $extra   = 0;
-
-                        echo "<tr>";
-                        echo "<td>" . $sn++ . "</td>";
-                        echo "<td>" . htmlspecialchars($row['esic_no']) . "</td>";
-                        echo "<td>" . htmlspecialchars($row['employee_name']) . "</td>";
-                        echo "<td>" . htmlspecialchars($row['rank']) . "</td>";
-
-                        foreach ($dayColumns as $day) {
-                            $dateKey = $year . "-" . str_pad($month,2,'0',STR_PAD_LEFT) . "-" . str_pad($day,2,'0',STR_PAD_LEFT);
-                            if (isset($attendanceData[$dateKey])) {
-                                $status = $attendanceData[$dateKey]['status'];
-                                if ($status === 'P')  $working++;
-                                if ($status === 'PP') $extra++;
-                                $class = match($status) {
-                                    'P'  => 'status-present',
-                                    'PP' => 'status-pp',
-                                    'L'  => 'status-leave',
-                                    'A'  => 'status-absent',
-                                    default => ''
-                                };
-                                echo "<td class='day-col'><span class='status-indicator $class'>$status</span></td>";
-                            } else {
-                                echo "<td class='day-col'>-</td>";
-                            }
-                        }
-
-                        $total = $working + $extra;
-                        echo "<td class='total-cell working-cell col-working'>$working</td>";
-                        echo "<td class='total-cell extra-cell col-extra'>$extra</td>";
-                        echo "<td class='total-cell total-value col-total'>$total</td>";
-                        echo "</tr>";
-                    endforeach;
+                    $flowSteps = [
+                        ['code' => 'ASO',   'sub' => 'Officer'],
+                        ['code' => 'APM',   'sub' => 'Officer'],
+                        ['code' => 'GM',    'sub' => 'Officer'],
+                        ['code' => 'HQSO',  'sub' => 'Officer'],
+                        ['code' => 'SDHOD', 'sub' => 'Final'],
+                    ];
+                    foreach ($flowSteps as $i => $fs):
+                        $status = $stepStatuses[$fs['code']] ?? 'pending';
+                        $icon   = ($fs['code'] === 'SDHOD') ? 'fa-user-tie' : 'fa-user';
                     ?>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Legend -->
-            <div class="legend">
-                <div class="legend-item"><div class="legend-box status-present">P</div><span>Present</span></div>
-                <div class="legend-item"><div class="legend-box status-pp">PP</div><span>Double Duty</span></div>
-                <div class="legend-item"><div class="legend-box status-leave">L</div><span>Leave</span></div>
-                <div class="legend-item"><div class="legend-box status-absent">A</div><span>Absent</span></div>
-            </div>
-
-            <div class="pagination">
-                <button class="page-btn"><i class="fa-solid fa-chevron-left"></i></button>
-                <button class="page-btn active">1</button>
-                <button class="page-btn">2</button>
-                <button class="page-btn">3</button>
-                <button class="page-btn">4</button>
-                <button class="page-btn">5</button>
-                <button class="page-btn"><i class="fa-solid fa-chevron-right"></i></button>
-            </div>
-
-            <!-- Final Approve Section -->
-            <form method="POST" action="" id="approveForm">
-                <input type="hidden" name="site_code" value="<?= htmlspecialchars($siteCode) ?>">
-                <input type="hidden" name="year"      value="<?= $year ?>">
-                <input type="hidden" name="month"     value="<?= $month ?>">
-                <div class="forward-section">
-                    <div class="forward-section-header">
-                        <div class="forward-section-title">
-                            <i class="fa-solid fa-flag-checkered"></i>
-                            Final SDHOD Approval
+                        <div class="workflow-step <?= $status ?>">
+                            <div class="step-card">
+                                <?php if ($status === 'approved'): ?>
+                                    <span class="step-check"><i class="fa-solid fa-check"></i></span>
+                                <?php endif; ?>
+                                <div class="step-avatar"><i class="fa-solid <?= $icon ?>"></i></div>
+                                <span class="step-label"><?= $fs['code'] ?></span>
+                                <span class="step-sub"><?= $fs['sub'] ?></span>
+                            </div>
                         </div>
-                        <span class="final-badge"><i class="fa-solid fa-shield-halved"></i> This is the last approval stage</span>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Add your remark <span class="required">*</span></label>
-                        <textarea class="form-control" id="commentBox" name="comment" rows="5" placeholder="Add your final SDHOD approval remark (required)..." required></textarea>
-                    </div>
-                    <div class="forward-btn-group">
-                        <button type="button" class="btn btn-approve-final" id="forwardBtn">
-                            <i class="fa-solid fa-circle-check"></i> FINAL APPROVE REPORT
-                        </button>
-                    </div>
+                        <?php if ($i < count($flowSteps) - 1): ?>
+                        <div class="workflow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
                 </div>
-            </form>
-        </div>
+
+                <button class="btn-approval" id="toggleCommentsBtn" onclick="toggleComments()">
+                    <i class="fa-solid fa-comments"></i> View Approval Comments
+                </button>
+
+                <div id="approvalComments" class="approval-comments">
+                    <?php if (!empty($comments)): ?>
+                        <?php foreach ($comments as $c): ?>
+                            <div class="comment-item">
+                                <div class="comment-header">
+                                    <div class="comment-role">
+                                        <?= htmlspecialchars($c['role']) ?> :
+                                        <span><?= htmlspecialchars($c['approved_by']) ?></span>
+                                    </div>
+                                    <div class="comment-time">
+                                        <i class="fa-regular fa-clock" style="font-size:0.7rem;"></i>
+                                        <?= htmlspecialchars($c['created_at']) ?>
+                                    </div>
+                                </div>
+                                <div class="comment-text">
+                                    "<?= htmlspecialchars($c['comment']) ?>"
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <p style="text-align:center;color:#999;padding:1rem;">No comments yet</p>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- STAT CARDS -->
+            <div class="attendance-stats">
+                <div class="attendance-stat-card blue">
+                    <div class="stat-card-content"><div class="stat-card-label">Working Days</div><div class="stat-card-value"><?= $totalWorking ?></div></div>
+                    <div class="stat-card-icon"><i class="fa-solid fa-briefcase"></i></div>
+                </div>
+                <div class="attendance-stat-card amber">
+                    <div class="stat-card-content"><div class="stat-card-label">Extra Duty</div><div class="stat-card-value"><?= $totalExtra ?></div></div>
+                    <div class="stat-card-icon"><i class="fa-solid fa-clock"></i></div>
+                </div>
+                <div class="attendance-stat-card green">
+                    <div class="stat-card-content"><div class="stat-card-label">Total Duty Days</div><div class="stat-card-value"><?= $totalDuty ?></div></div>
+                    <div class="stat-card-icon"><i class="fa-solid fa-calendar-check"></i></div>
+                </div>
+            </div>
+
+            <!-- TABLE CARD -->
+            <div class="card">
+                <div class="table-controls">
+                    <div class="table-controls-left">
+                        <label>Show</label>
+                        <select><option>10</option><option>25</option><option>50</option><option>100</option></select>
+                        <label>entries</label>
+                    </div>
+                    <div class="export-buttons">
+                        <button class="btn-export btn-excel"><i class="fa-solid fa-file-excel"></i> Excel</button>
+                        <button class="btn-export btn-pdf"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+                    </div>
+                    <input type="text" class="search-input" placeholder="Search">
+                </div>
+
+                <div class="attendance-table-wrapper">
+                    <table class="attendance-table">
+                        <thead>
+                            <tr>
+                                <th>S.N.</th><th>EMP CODE</th><th>NAME</th><th>RANK</th>
+                                <?php foreach ($dayColumns as $d): ?>
+                                    <th class="day-col"><?= $d ?></th>
+                                <?php endforeach; ?>
+                                <th class="summary-col col-working">WORKING</th>
+                                <th class="summary-col extra-col col-extra">EXTRA</th>
+                                <th class="summary-col total-col col-total">TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php
+                        $sn = 1;
+                        foreach ($attendanceRows as $row):
+                            $attendanceData = json_decode($row['attendance_json'], true) ?? [];
+                            $working = 0; $extra = 0;
+                            echo "<tr>";
+                            echo "<td>" . $sn++ . "</td>";
+                            echo "<td>" . htmlspecialchars($row['esic_no']) . "</td>";
+                            echo "<td>" . htmlspecialchars($row['employee_name']) . "</td>";
+                            echo "<td>" . htmlspecialchars($row['rank']) . "</td>";
+                            foreach ($dayColumns as $day) {
+                                $dateKey = $year . "-" . str_pad($month,2,'0',STR_PAD_LEFT) . "-" . str_pad($day,2,'0',STR_PAD_LEFT);
+                                if (isset($attendanceData[$dateKey])) {
+                                    $status = $attendanceData[$dateKey]['status'];
+                                    if ($status === 'P')  $working++;
+                                    if ($status === 'PP') $extra++;
+                                    $class = match($status) {
+                                        'P'  => 'status-present',
+                                        'PP' => 'status-pp',
+                                        'L'  => 'status-leave',
+                                        'A'  => 'status-absent',
+                                        default => ''
+                                    };
+                                    echo "<td class='day-col'><span class='status-indicator $class'>$status</span></td>";
+                                } else {
+                                    echo "<td class='day-col'>-</td>";
+                                }
+                            }
+                            $total = $working + $extra;
+                            echo "<td class='total-cell working-cell col-working'>$working</td>";
+                            echo "<td class='total-cell extra-cell col-extra'>$extra</td>";
+                            echo "<td class='total-cell total-value col-total'>$total</td>";
+                            echo "</tr>";
+                        endforeach;
+                        ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="legend">
+                    <div class="legend-item"><div class="legend-box status-present">P</div><span>Present</span></div>
+                    <div class="legend-item"><div class="legend-box status-pp">PP</div><span>Double Duty</span></div>
+                    <div class="legend-item"><div class="legend-box status-leave">L</div><span>Leave</span></div>
+                    <div class="legend-item"><div class="legend-box status-absent">A</div><span>Absent</span></div>
+                </div>
+
+                <div class="pagination">
+                    <button class="page-btn"><i class="fa-solid fa-chevron-left"></i></button>
+                    <button class="page-btn active">1</button>
+                    <button class="page-btn">2</button>
+                    <button class="page-btn">3</button>
+                    <button class="page-btn">4</button>
+                    <button class="page-btn">5</button>
+                    <button class="page-btn"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+
+                <?php if (!$alreadyApproved): ?>
+                <form method="POST" action="" id="approveForm">
+                    <input type="hidden" name="site_code" value="<?= htmlspecialchars($siteCode) ?>">
+                    <input type="hidden" name="year"      value="<?= $year ?>">
+                    <input type="hidden" name="month"     value="<?= $month ?>">
+                    <div class="forward-section">
+                        <div class="forward-section-header">
+                            <div class="forward-section-title">
+                                <i class="fa-solid fa-flag-checkered"></i>
+                                Final SDHOD Approval
+                            </div>
+                            <span class="final-badge"><i class="fa-solid fa-shield-halved"></i> This is the last approval stage</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Add your remark <span class="required">*</span></label>
+                            <textarea class="form-control" id="commentBox" name="comment" rows="5"
+                                placeholder="Add your final SDHOD approval remark (required)..." required></textarea>
+                        </div>
+                        <div class="forward-btn-group">
+                            <button type="submit" name="approve_report" class="btn btn-approve-final">
+                                <i class="fa-solid fa-circle-check"></i> FINAL APPROVE REPORT
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                <?php else: ?>
+                <div class="forward-section" style="text-align:center;color:#6b7280;font-size:0.9rem;padding:1rem 0;">
+                    <i class="fa-solid fa-flag-checkered" style="margin-right:0.4rem;color:#dc2626;"></i>
+                    This report has received <strong>final approval</strong>. The workflow is complete.
+                </div>
+                <?php endif; ?>
+
+            </div><!-- /.card -->
+        </div><!-- /#attendanceContent -->
 
         <!-- SUCCESS PAGE -->
-        <div class="success-page" id="successPage">
+        <div class="success-page <?= $approvalSuccess ? 'visible' : '' ?>" id="successPage">
             <div class="success-banner">
                 <div class="success-check"><i class="fa-solid fa-flag-checkered"></i></div>
                 <div class="success-title">Report Finally Approved!</div>
                 <div class="success-card">
                     <div class="success-card-title"><i class="fa-solid fa-circle-check"></i> SDHOD FINAL APPROVAL COMPLETE</div>
-                    <div class="success-card-desc">The attendance report has been finally approved by SDHOD. The workflow is now complete.</div>
+                    <div class="success-card-desc">
+                        The attendance report has been finally approved by SDHOD. The workflow is now complete.
+                    </div>
                     <div class="success-steps">
                         <span class="success-step-chip">ASO ✓</span>
                         <span class="success-step-chip">APM ✓</span>
@@ -741,53 +843,24 @@ $dayColumns  = $reportLoaded ? getWeekdays($year, $month) : [];
                         <span class="success-step-chip">HQSO ✓</span>
                         <span class="success-step-chip final">SDHOD ✓</span>
                     </div>
-                    <div class="success-card-date" style="margin-top:0.85rem;">Approved On: <span id="processedDate"></span></div>
+                    <div class="success-card-date" style="margin-top:0.85rem;">
+                        Approved On: <span><?= $approvalSuccess ? date('Y-m-d H:i:s') : '' ?></span>
+                    </div>
                 </div>
             </div>
         </div>
 
         <?php endif; ?>
+
     </main>
 </div>
 
 <script>
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
-    document.getElementById('hamburgerBtn').addEventListener('click', () => { sidebar.classList.add('open'); overlay.classList.add('active'); });
+    document.getElementById('hamburgerBtn').addEventListener('click', () => { sidebar.classList.add('open');    overlay.classList.add('active'); });
     document.getElementById('sidebarClose').addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
     overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
-
-    <?php if ($reportLoaded): ?>
-    document.getElementById('forwardBtn').addEventListener('click', () => {
-        const comment = document.getElementById('commentBox').value.trim();
-        if (!comment) {
-            document.getElementById('commentBox').style.borderColor = '#ef4444';
-            document.getElementById('commentBox').style.boxShadow  = '0 0 0 3px rgba(239,68,68,0.15)';
-            document.getElementById('commentBox').focus();
-            return;
-        }
-
-        const form   = document.getElementById('approveForm');
-        const hidden = document.createElement('input');
-        hidden.type  = 'hidden';
-        hidden.name  = 'approve_report';
-        hidden.value = '1';
-        form.appendChild(hidden);
-
-        const now = new Date();
-        const pad = n => String(n).padStart(2, '0');
-        document.getElementById('processedDate').textContent =
-            `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-
-        ['attnHeader','workflowSection','attnStats','mainCard'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = 'none';
-        });
-        document.getElementById('successPage').classList.add('visible');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-
-        setTimeout(() => form.submit(), 400);
-    });
 
     function toggleComments() {
         const panel  = document.getElementById('approvalComments');
@@ -799,11 +872,13 @@ $dayColumns  = $reportLoaded ? getWeekdays($year, $month) : [];
             : '<i class="fa-solid fa-comments"></i> Hide Approval Comments';
     }
 
-    document.getElementById('commentBox').addEventListener('input', function() {
-        this.style.borderColor = '';
-        this.style.boxShadow   = '';
-    });
-    <?php endif; ?>
+    const commentBox = document.getElementById('commentBox');
+    if (commentBox) {
+        commentBox.addEventListener('input', function () {
+            this.style.borderColor = '';
+            this.style.boxShadow   = '';
+        });
+    }
 </script>
 </body>
 </html>

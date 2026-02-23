@@ -11,7 +11,7 @@ if (!isset($_SESSION['user'])) {
 }
 
 /* ---------------------------
-   GET USER ROLE + SITE
+   GET USER ROLE
 ----------------------------*/
 $stmtUser = $pdo->prepare("SELECT role, site_code, name FROM user WHERE id = ?");
 $stmtUser->execute([$_SESSION['user']]);
@@ -21,30 +21,34 @@ if (!$user || $user['role'] !== 'HQSO') {
     die("Access denied");
 }
 
-$approvedBy = $user['name']; // HQSO name
+$userId     = $_SESSION['user'];
+$approvedBy = $user['name'];
 
 /* ---------------------------
    FILTER PARAMS (from POST or GET)
 ----------------------------*/
-$siteCode  = $_POST['site_code']  ?? $_GET['site_code']  ?? null;
-$year      = (int)($_POST['year']  ?? $_GET['year']  ?? date('Y'));
-$month     = (int)($_POST['month'] ?? $_GET['month'] ?? date('n'));
+$siteCode    = $_POST['site_code']  ?? $_GET['site_code']  ?? null;
+$year        = (int)($_POST['year']  ?? $_GET['year']  ?? date('Y'));
+$month       = (int)($_POST['month'] ?? $_GET['month'] ?? date('n'));
 $reportLoaded = !empty($siteCode);
 
 /* ---------------------------
    FETCH ALL SITES (for dropdown)
 ----------------------------*/
-$stmtSites = $pdo->query("
-    SELECT SiteCode, SiteName 
-    FROM site_master 
-    ORDER BY SiteName ASC
-");
-$sites = $stmtSites->fetchAll(PDO::FETCH_ASSOC);
+$stmtSites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteName ASC");
+$sites     = $stmtSites->fetchAll(PDO::FETCH_ASSOC);
 
-$attendanceRows = [];
-$comments       = [];
+$attendanceRows  = [];
+$comments        = [];
+$approvalSuccess = false;
+$alreadyApproved = false;
+$currentStep     = 'ASO';
+$stepStatuses    = ['ASO' => 'pending', 'APM' => 'pending', 'GM' => 'pending', 'HQSO' => 'pending', 'SDHOD' => 'pending'];
+$workflowRow     = null;
+$workflow        = null;
 
 if ($reportLoaded) {
+
     /* ---------------------------
        FETCH ATTENDANCE DATA
     ----------------------------*/
@@ -65,43 +69,144 @@ if ($reportLoaded) {
     $attendanceRows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?? [];
 
     /* ---------------------------
-       SAVE HQSO APPROVAL
+       FETCH CURRENT WORKFLOW STATUS
     ----------------------------*/
-    $approvalSuccess = false;
-    if (isset($_POST['approve_report']) && !empty($_POST['comment'])) {
-        $comment = $_POST['comment'];
-        $stmtInsert = $pdo->prepare("
-            INSERT INTO approval_comments
-            (site_code, attendance_year, attendance_month, comment, approved_by, role)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ");
-        $stmtInsert->execute([$siteCode, $year, $month, $comment, $approvedBy, 'HQSO']);
-        $approvalSuccess = true;
+    $stmtWorkflow = $pdo->prepare("
+        SELECT * FROM attendance_approval
+        WHERE area_code        = ?
+          AND attendance_month = ?
+          AND attendance_year  = ?
+    ");
+    $stmtWorkflow->execute([$siteCode, $month, $year]);
+    $workflowRow = $stmtWorkflow->fetch(PDO::FETCH_ASSOC);
+
+    $workflow    = $workflowRow ? json_decode($workflowRow['attendance_workflow'], true) : null;
+    $currentStep = $workflow['current_step'] ?? 'ASO';
+
+    // Check if HQSO has already approved
+    if ($workflow) {
+        foreach ($workflow['steps'] as $step) {
+            if ($step['Code'] === 'HQSO' && $step['status'] === 'approved') {
+                $alreadyApproved = true;
+                break;
+            }
+        }
     }
 
     /* ---------------------------
-       FETCH APPROVAL COMMENTS
+       SAVE HQSO APPROVAL
     ----------------------------*/
-    $stmtComments = $pdo->prepare("
-        SELECT * FROM approval_comments 
-        WHERE site_code        = ? 
-          AND attendance_year  = ? 
-          AND attendance_month = ?
-        ORDER BY id ASC
-    ");
-    $stmtComments->execute([$siteCode, $year, $month]);
-    $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
+    if (isset($_POST['approve_report']) && !$alreadyApproved) {
+
+        $comment = trim($_POST['comment']);
+        $actedAt = date('Y-m-d H:i:s');
+
+        if ($workflowRow) {
+            /* UPDATE existing row — mark HQSO approved (steps[3]), advance to SDHOD */
+            $pdo->prepare("
+                UPDATE attendance_approval
+                SET attendance_workflow = JSON_SET(
+                    attendance_workflow,
+                    '$.current_step',           'SDHOD',
+                    '$.current_step_id',        5,
+                    '$.steps[3].status',        'approved',
+                    '$.steps[3].comment',       ?,
+                    '$.steps[3].acted_by',      ?,
+                    '$.steps[3].acted_at',      ?,
+                    '$.steps[3].auto_approved', false
+                )
+                WHERE area_code        = ?
+                  AND attendance_month = ?
+                  AND attendance_year  = ?
+            ")->execute([$comment, $userId, $actedAt, $siteCode, $month, $year]);
+
+        } else {
+            /* INSERT full workflow row with HQSO approved (fallback) */
+            $reportId     = 'ATT-' . date('dmy') . rand(100, 999);
+            $workflowJson = json_encode([
+                "current_step"    => "SDHOD",
+                "current_step_id" => 5,
+                "steps" => [
+                    ["id"=>1,"Code"=>"ASO",  "status"=>"approved","comment"=>null,
+                     "acted_by"=>null,"acted_at"=>null,"auto_approved"=>true],
+                    ["id"=>2,"Code"=>"APM",  "status"=>"approved","comment"=>null,
+                     "acted_by"=>null,"acted_at"=>null,"auto_approved"=>true],
+                    ["id"=>3,"Code"=>"GM",   "status"=>"approved","comment"=>null,
+                     "acted_by"=>null,"acted_at"=>null,"auto_approved"=>true],
+                    ["id"=>4,"Code"=>"HQSO", "status"=>"approved","comment"=>$comment,
+                     "acted_by"=>$userId,"acted_at"=>$actedAt,"auto_approved"=>false],
+                    ["id"=>5,"Code"=>"SDHOD","status"=>"pending","comment"=>null,
+                     "acted_by"=>null,"acted_at"=>null,"auto_approved"=>false],
+                ]
+            ]);
+
+            $pdo->prepare("
+                INSERT INTO attendance_approval
+                (report_id, area_code, attendance_month, attendance_year,
+                 created_attendance_date, attendance_workflow)
+                VALUES (?, ?, ?, ?, NOW(), ?)
+            ")->execute([$reportId, $siteCode, $month, $year, $workflowJson]);
+        }
+
+        $approvalSuccess = true;
+        $alreadyApproved = true;
+        $currentStep     = 'SDHOD';
+
+        // Refresh workflow
+        $stmtWorkflow->execute([$siteCode, $month, $year]);
+        $workflowRow = $stmtWorkflow->fetch(PDO::FETCH_ASSOC);
+        $workflow    = $workflowRow ? json_decode($workflowRow['attendance_workflow'], true) : null;
+    }
+
+    /* ---------------------------
+       BUILD STEP STATUSES FOR FLOWCHART
+    ----------------------------*/
+    if ($workflow) {
+        foreach ($workflow['steps'] as $step) {
+            if ($step['status'] === 'approved') {
+                $stepStatuses[$step['Code']] = 'approved';
+            }
+        }
+        $liveCurrentStep = $workflow['current_step'] ?? 'ASO';
+        if (isset($stepStatuses[$liveCurrentStep]) && $stepStatuses[$liveCurrentStep] !== 'approved') {
+            $stepStatuses[$liveCurrentStep] = 'current';
+        }
+    }
+
+    /* ---------------------------
+       FETCH APPROVAL COMMENTS FROM WORKFLOW
+    ----------------------------*/
+    if ($workflow) {
+        foreach ($workflow['steps'] as $step) {
+            if (!empty($step['comment']) && $step['status'] === 'approved') {
+                $actorName = 'Unknown';
+                if (!empty($step['acted_by'])) {
+                    $stmtActor = $pdo->prepare("SELECT name FROM user WHERE id = ?");
+                    $stmtActor->execute([$step['acted_by']]);
+                    $actor     = $stmtActor->fetch(PDO::FETCH_ASSOC);
+                    $actorName = $actor['name'] ?? 'Unknown';
+                }
+                $comments[] = [
+                    'role'        => $step['Code'],
+                    'approved_by' => $actorName,
+                    'comment'     => $step['comment'],
+                    'created_at'  => $step['acted_at'] ?? '',
+                ];
+            }
+        }
+    }
 }
 
-// Month names for display
+/* ---------------------------
+   HELPER FUNCTIONS
+----------------------------*/
 $monthNames = [
     1=>'January',2=>'February',3=>'March',4=>'April',
     5=>'May',6=>'June',7=>'July',8=>'August',
     9=>'September',10=>'October',11=>'November',12=>'December'
 ];
-$monthName  = $monthNames[$month] ?? '';
+$monthName = $monthNames[$month] ?? '';
 
-// Working days for the selected month (Mon–Fri count) — simple calculation
 function countWeekdays($year, $month) {
     $count = 0;
     $days  = cal_days_in_month(CAL_GREGORIAN, $month, $year);
@@ -111,11 +216,9 @@ function countWeekdays($year, $month) {
     }
     return $count;
 }
-$workingDays = $reportLoaded ? countWeekdays($year, $month) : 22;
 
-// Collect working day numbers (Mon–Fri)
 function getWeekdays($year, $month) {
-    $days = [];
+    $days  = [];
     $total = cal_days_in_month(CAL_GREGORIAN, $month, $year);
     for ($d = 1; $d <= $total; $d++) {
         $dow = date('N', mktime(0,0,0,$month,$d,$year));
@@ -123,7 +226,34 @@ function getWeekdays($year, $month) {
     }
     return $days;
 }
-$dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
+
+$workingDays = $reportLoaded ? countWeekdays($year, $month) : 22;
+$dayColumns  = $reportLoaded ? getWeekdays($year, $month) : [];
+
+/* ---------------------------
+   STAT TOTALS
+----------------------------*/
+$totalWorking = 0;
+$totalExtra   = 0;
+foreach ($attendanceRows as $r) {
+    $ad = json_decode($r['attendance_json'], true) ?? [];
+    foreach ($ad as $entry) {
+        if (($entry['status'] ?? '') === 'P')  $totalWorking++;
+        if (($entry['status'] ?? '') === 'PP') $totalExtra++;
+    }
+}
+$totalDuty = $totalWorking + $totalExtra;
+
+// Last approved step label
+$lastApprovedCode = '—';
+if ($workflow) {
+    foreach (array_reverse($workflow['steps']) as $s) {
+        if ($s['status'] === 'approved') {
+            $lastApprovedCode = $s['Code'];
+            break;
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -137,7 +267,7 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
         :root {
             --primary: #0f766e;
             --primary-dark: #0d5f58;
-            --hqso: #7c3aed;        /* HQSO accent – indigo/violet */
+            --hqso: #7c3aed;
             --hqso-light: #ede9fe;
             --hqso-border: #c4b5fd;
             --sidebar-width: 270px;
@@ -147,14 +277,7 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
         .dashboard-layout { display: grid; grid-template-columns: var(--sidebar-width) 1fr; min-height: 100vh; }
 
         /* ── SIDEBAR ── */
-        .sidebar {
-            background: linear-gradient(180deg,#0f766e 0%,#0a5c55 100%);
-            color:white; padding:0;
-            box-shadow: 4px 0 24px rgba(13,95,88,0.35);
-            position:sticky; top:0; height:100vh; overflow-y:auto;
-            z-index:100; transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);
-            display:flex; flex-direction:column;
-        }
+        .sidebar { background: linear-gradient(180deg,#0f766e 0%,#0a5c55 100%); color:white; padding:0; box-shadow:4px 0 24px rgba(13,95,88,0.35); position:sticky; top:0; height:100vh; overflow-y:auto; z-index:100; transition:transform 0.3s cubic-bezier(0.4,0,0.2,1); display:flex; flex-direction:column; }
         .sidebar-close { display:none; position:absolute; top:1rem; right:1rem; background:rgba(255,255,255,0.12); border:none; color:white; width:32px; height:32px; border-radius:8px; cursor:pointer; font-size:1rem; align-items:center; justify-content:center; z-index:2; }
         .sidebar-logo { padding:1.4rem 1.5rem 1.2rem; border-bottom:1px solid rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; }
         .mcl-logo-img { max-width:155px; height:auto; display:block; background:white; padding:10px 14px; border-radius:10px; }
@@ -178,97 +301,25 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
         .user-icon { width:40px; height:40px; border-radius:50%; background:#0f766e; display:flex; align-items:center; justify-content:center; cursor:pointer; }
         .user-icon svg { width:20px; height:20px; stroke:white; }
 
-        /* ══════════════════════════════════
-           FILTER PANEL (Reference image style)
-           ══════════════════════════════════ */
-        .filter-panel {
-            background: white;
-            border-radius: 18px;
-            border: 1px solid #e5e7eb;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-            padding: 2.5rem 2.5rem 2rem;
-            max-width: 820px;
-            width: 100%;
-            margin: 0 auto;
-        }
-        .filter-panel-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        .filter-panel-header h1 {
-            font-size: 1.85rem;
-            font-weight: 800;
-            color: #1f2937;
-            margin-bottom: 0.3rem;
-            letter-spacing: -0.5px;
-        }
-        .filter-panel-header p {
-            font-size: 0.92rem;
-            color: #6b7280;
-        }
-        .filter-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr auto;
-            gap: 1.25rem;
-            align-items: end;
-        }
+        /* ── ROLE BADGE ── */
+        .role-badge { display:inline-flex; align-items:center; gap:0.4rem; background:var(--hqso-light); color:#5b21b6; border:1.5px solid var(--hqso-border); border-radius:20px; padding:0.3rem 0.9rem; font-size:0.82rem; font-weight:700; letter-spacing:0.5px; }
+
+        /* ── ALREADY APPROVED BANNER ── */
+        .already-approved-banner { background:linear-gradient(135deg,#fef3c7,#fde68a); border:2px solid #f59e0b; border-radius:14px; padding:1.25rem 1.75rem; display:flex; align-items:center; gap:1rem; box-shadow:0 2px 12px rgba(245,158,11,0.2); }
+        .already-approved-banner i { font-size:1.5rem; color:#d97706; }
+        .already-approved-banner .msg-title { font-weight:700; color:#92400e; font-size:1rem; }
+        .already-approved-banner .msg-sub   { font-size:0.85rem; color:#b45309; margin-top:0.2rem; }
+
+        /* ── FILTER PANEL ── */
+        .filter-panel { background:white; border-radius:18px; border:1px solid #e5e7eb; box-shadow:0 4px 24px rgba(0,0,0,0.08); padding:2.5rem 2.5rem 2rem; max-width:820px; width:100%; margin:0 auto; }
+        .filter-grid { display:grid; grid-template-columns:1fr 1fr auto; gap:1.25rem; align-items:end; }
         .filter-field { display:flex; flex-direction:column; gap:0.45rem; }
-        .filter-label {
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: #374151;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .filter-label i { color: #0f766e; font-size: 0.85rem; }
-        .filter-select, .filter-monthpicker {
-            width: 100%;
-            padding: 0.8rem 1rem;
-            border: 1.5px solid #e5e7eb;
-            border-radius: 10px;
-            font-size: 0.95rem;
-            color: #1f2937;
-            background: #f9fafb;
-            outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-            appearance: none;
-            -webkit-appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 1rem center;
-            padding-right: 2.5rem;
-        }
-        .filter-monthpicker {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z'/%3E%3C/svg%3E");
-        }
-        .filter-select:focus, .filter-monthpicker:focus {
-            border-color: #0f766e;
-            box-shadow: 0 0 0 3px rgba(15,118,110,0.12);
-            background-color: white;
-        }
-        .btn-load-report {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.6rem;
-            padding: 0.85rem 2rem;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #0f766e, #0d5f58);
-            color: white;
-            border: none;
-            font-size: 0.95rem;
-            font-weight: 700;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: all 0.2s;
-            box-shadow: 0 4px 14px rgba(15,118,110,0.3);
-            letter-spacing: 0.3px;
-            text-transform: uppercase;
-        }
-        .btn-load-report:hover { background: linear-gradient(135deg, #0d5f58, #0a4f49); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(15,118,110,0.35); }
-        .btn-load-report i { font-size: 1rem; }
+        .filter-label { display:flex; align-items:center; gap:0.4rem; font-size:0.8rem; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:0.5px; }
+        .filter-label i { color:#0f766e; font-size:0.85rem; }
+        .filter-select { width:100%; padding:0.8rem 1rem; border:1.5px solid #e5e7eb; border-radius:10px; font-size:0.95rem; color:#1f2937; background:#f9fafb; outline:none; transition:border-color 0.2s,box-shadow 0.2s,background 0.2s; appearance:none; -webkit-appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 1rem center; padding-right:2.5rem; }
+        .filter-select:focus { border-color:#0f766e; box-shadow:0 0 0 3px rgba(15,118,110,0.12); background-color:white; }
+        .btn-load-report { display:inline-flex; align-items:center; gap:0.6rem; padding:0.85rem 2rem; border-radius:10px; background:linear-gradient(135deg,#0f766e,#0d5f58); color:white; border:none; font-size:0.95rem; font-weight:700; cursor:pointer; white-space:nowrap; transition:all 0.2s; box-shadow:0 4px 14px rgba(15,118,110,0.3); letter-spacing:0.3px; text-transform:uppercase; }
+        .btn-load-report:hover { background:linear-gradient(135deg,#0d5f58,#0a4f49); transform:translateY(-1px); box-shadow:0 6px 18px rgba(15,118,110,0.35); }
 
         /* ── ATTENDANCE HEADER ── */
         .attendance-header { text-align:center; }
@@ -276,22 +327,14 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
         .attendance-header p { font-size:0.95rem; color:#6b7280; }
 
         /* ── APPROVAL WORKFLOW ── */
-        .workflow-section {
-            background:white; border-radius:14px; padding:1.5rem 2rem;
-            box-shadow:0 2px 12px rgba(0,0,0,0.08); border:1px solid #e5e7eb;
-            display:flex; flex-direction:column; align-items:center; gap:1.2rem;
-        }
+        .workflow-section { background:white; border-radius:14px; padding:1.5rem 2rem; box-shadow:0 2px 12px rgba(0,0,0,0.08); border:1px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; gap:1.2rem; }
         .workflow-title { display:flex; align-items:center; gap:0.5rem; font-size:0.9rem; font-weight:600; color:#374151; }
         .workflow-title i { color:#0f766e; }
         .workflow-meta { font-size:0.82rem; color:#9ca3af; text-align:center; }
         .workflow-meta strong { color:#1f2937; font-weight:700; }
         .workflow-steps { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:0; }
         .workflow-step { display:flex; flex-direction:column; align-items:center; gap:0.5rem; }
-        .step-card {
-            width:95px; height:115px; border-radius:14px; border:2px solid #e5e7eb; background:#f9fafb;
-            display:flex; flex-direction:column; align-items:center; justify-content:center;
-            gap:0.35rem; position:relative; padding-top:20px; transition:all 0.2s;
-        }
+        .step-card { width:95px; height:115px; border-radius:14px; border:2px solid #e5e7eb; background:#f9fafb; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.35rem; position:relative; padding-top:20px; transition:all 0.2s; }
         .step-avatar { width:56px; height:56px; border-radius:50%; background:#d1d5db; display:flex; align-items:center; justify-content:center; }
         .step-avatar i { font-size:1.6rem; color:white; }
         .step-label { font-size:0.75rem; font-weight:700; color:#6b7280; text-transform:uppercase; }
@@ -300,7 +343,6 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
         .workflow-step.approved .step-card { border-color:#86efac; background:#f0fdf4; }
         .workflow-step.approved .step-avatar { background:#16a34a; }
         .workflow-step.approved .step-label { color:#15803d; }
-        /* HQSO current step uses violet */
         .workflow-step.current .step-card { border-color:var(--hqso-border); background:var(--hqso-light); box-shadow:0 0 0 3px rgba(124,58,237,0.18); }
         .workflow-step.current .step-avatar { background:var(--hqso); }
         .workflow-step.current .step-label { color:#5b21b6; }
@@ -320,16 +362,6 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
         .comment-time { display:flex; align-items:center; gap:0.3rem; font-size:0.75rem; color:#9ca3af; }
         .comment-text { font-size:0.84rem; color:#4b5563; background:#f9fafb; border-radius:8px; padding:0.5rem 0.85rem; border-left:3px solid var(--hqso-border); font-style:italic; }
 
-        /* ── ROLE BADGE ── */
-        .role-badge {
-            display: inline-flex; align-items: center; gap: 0.4rem;
-            background: var(--hqso-light); color: #5b21b6;
-            border: 1.5px solid var(--hqso-border);
-            border-radius: 20px; padding: 0.3rem 0.9rem;
-            font-size: 0.82rem; font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-
         /* ── STAT CARDS ── */
         .attendance-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; }
         .attendance-stat-card { background:linear-gradient(135deg,var(--card-start),var(--card-end)); border:1px solid var(--card-border); border-radius:14px; padding:1.75rem; display:flex; align-items:center; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.1); transition:transform 0.2s; }
@@ -347,10 +379,6 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
         .table-controls { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; flex-wrap:wrap; gap:1rem; }
         .table-controls-left { display:flex; align-items:center; gap:0.5rem; font-size:0.9rem; color:#6b7280; }
         .table-controls-left select { padding:0.5rem 0.75rem; border:1.5px solid #e5e7eb; border-radius:8px; font-size:0.9rem; outline:none; }
-        /* .export-buttons { display:flex; gap:0.5rem; }
-        .btn-export { display:inline-flex; align-items:center; gap:0.4rem; padding:0.5rem 1rem; border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer; border:none; transition:all 0.2s; }
-        .btn-excel { background:#10b981; color:white; } .btn-excel:hover { background:#059669; }
-        .btn-pdf   { background:#ef4444; color:white; } .btn-pdf:hover   { background:#dc2626; } */
         .search-input { padding:0.6rem 1rem 0.6rem 2.75rem; border:1.5px solid #e5e7eb; border-radius:8px; font-size:0.9rem; outline:none; width:240px; background:white url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%236b7280" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>') no-repeat 1rem center; background-size:16px; }
 
         /* ── TABLE ── */
@@ -364,7 +392,6 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
         .attendance-table thead th.summary-col { background:linear-gradient(135deg,#0ea5e9,#0284c7); font-weight:800; font-size:0.8rem; }
         .attendance-table thead th.extra-col { background:linear-gradient(135deg,#f59e0b,#d97706); }
         .attendance-table thead th.total-col { background:linear-gradient(135deg,#10b981,#059669); }
-
         /* Sticky left */
         .attendance-table thead th:nth-child(1),.attendance-table tbody td:nth-child(1) { position:sticky; left:0; z-index:11; min-width:48px; width:48px; }
         .attendance-table thead th:nth-child(2),.attendance-table tbody td:nth-child(2) { position:sticky; left:48px; z-index:11; min-width:90px; width:90px; }
@@ -375,8 +402,7 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
         .attendance-table tbody tr:nth-child(even) td:nth-child(1),.attendance-table tbody tr:nth-child(even) td:nth-child(2),.attendance-table tbody tr:nth-child(even) td:nth-child(3),.attendance-table tbody tr:nth-child(even) td:nth-child(4) { background:#fafafa; }
         .attendance-table tbody tr:hover td:nth-child(1),.attendance-table tbody tr:hover td:nth-child(2),.attendance-table tbody tr:hover td:nth-child(3),.attendance-table tbody tr:hover td:nth-child(4) { background:#f9fafb; }
         .attendance-table tbody td:nth-child(4) { border-right:2px solid #e5e7eb !important; }
-
-        /* Sticky right cols (4 fixed + dynamic days = last 3) */
+        /* Sticky right */
         .attendance-table thead th.col-working,.attendance-table tbody td.col-working { position:sticky; right:104px; z-index:11; min-width:72px; width:72px; }
         .attendance-table thead th.col-extra,.attendance-table tbody td.col-extra { position:sticky; right:52px; z-index:11; min-width:52px; width:52px; }
         .attendance-table thead th.col-total,.attendance-table tbody td.col-total { position:sticky; right:0; z-index:11; min-width:52px; width:52px; }
@@ -389,10 +415,7 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
         .attendance-table tbody tr:nth-child(even) td.col-working { background:#bfdbfe; }
         .attendance-table tbody tr:nth-child(even) td.col-extra   { background:#fde68a; }
         .attendance-table tbody tr:nth-child(even) td.col-total   { background:#a7f3d0; }
-
-        /* Day columns compact */
         .attendance-table thead th.day-col,.attendance-table tbody td.day-col { min-width:36px; width:36px; }
-
         .attendance-table tbody tr { transition:background 0.2s; }
         .attendance-table tbody tr:hover { background:#f9fafb; }
         .attendance-table tbody tr:nth-child(even) { background:#fafafa; }
@@ -466,8 +489,6 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
             .filter-grid { grid-template-columns:1fr; }
             .btn-load-report { width:100%; justify-content:center; }
             .search-input { width:100%; }
-            .export-buttons { width:100%; flex-wrap:wrap; }
-            .btn-export { flex:1; }
         }
     </style>
 </head>
@@ -483,7 +504,7 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
         </div>
         <ul class="sidebar-nav">
             <li><a href="dashboard.php" class="nav-link"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a></li>
-            <li><a href="hqso-monthly-attendance.php" class="nav-link active"><i class="fa-solid fa-calendar-days"></i><span>Monthly Attendance</span></a></li>
+            <li><a href="hqso_monthly.php" class="nav-link active"><i class="fa-solid fa-calendar-days"></i><span>Monthly Attendance</span></a></li>
             <li><a href="../logout.php" class="nav-link logout-link"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></a></li>
         </ul>
     </aside>
@@ -504,34 +525,29 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
         </header>
 
         <?php if (!$reportLoaded): ?>
-        <!-- ═══════════════════════════════════════
-             FILTER SCREEN (shown before load)
-             ═══════════════════════════════════════ -->
+        <!-- ═══════════════════════════════════
+             FILTER SCREEN
+             ═══════════════════════════════════ -->
         <div class="attendance-header">
             <h1>MONTHLY ATTENDANCE REPORT</h1>
-            <p>Attendance Period: <?= $monthName ?> <?= $year ?></p>
+            <p>Select a site and period to load the report</p>
         </div>
 
         <div class="filter-panel">
             <form method="POST" action="">
                 <div class="filter-grid">
-                    <!-- Site Code -->
                     <div class="filter-field">
                         <label class="filter-label"><i class="fa-solid fa-location-dot"></i> Select Site Code</label>
                         <select name="site_code" class="filter-select" required>
-    <option value="" disabled selected>-- Select Site --</option>
-
-    <?php foreach ($sites as $s): ?>
-        <option value="<?= htmlspecialchars($s['SiteCode']) ?>">
-            <?= htmlspecialchars($s['SiteCode']) ?> - 
-            <?= htmlspecialchars($s['SiteName']) ?>
-        </option>
-    <?php endforeach; ?>
-
-</select>
+                            <option value="" disabled selected>-- Select Site --</option>
+                            <?php foreach ($sites as $s): ?>
+                                <option value="<?= htmlspecialchars($s['SiteCode']) ?>">
+                                    <?= htmlspecialchars($s['SiteCode']) ?> – <?= htmlspecialchars($s['SiteName']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
 
-                    <!-- Month & Year -->
                     <div class="filter-field">
                         <label class="filter-label"><i class="fa-regular fa-calendar"></i> Select Month &amp; Year</label>
                         <div style="display:flex;gap:0.6rem;">
@@ -548,7 +564,6 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
                         </div>
                     </div>
 
-                    <!-- Load Button -->
                     <div class="filter-field">
                         <label class="filter-label" style="visibility:hidden;">Load</label>
                         <button type="submit" name="load_report" class="btn-load-report">
@@ -560,264 +575,242 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
         </div>
 
         <?php else: ?>
-        <!-- ═══════════════════════════════════════
-             REPORT VIEW (after load)
-             ═══════════════════════════════════════ -->
+        <!-- ═══════════════════════════════════
+             REPORT VIEW
+             ═══════════════════════════════════ -->
 
-        <!-- ATTENDANCE TITLE -->
-        <div class="attendance-header" id="attnHeader">
-            <h1>MONTHLY ATTENDANCE REPORT</h1>
-            <p>
-                Attendance Period: <?= $monthName ?> <?= $year ?>
-                &nbsp;|&nbsp; Site: <strong><?= htmlspecialchars($siteCode) ?></strong>
-                &nbsp;|&nbsp; Working Days: <?= $workingDays ?> (Weekends Excluded)
-                &nbsp;|&nbsp;
-                <a href="monthly.php" style="color:#0f766e;text-decoration:none;font-weight:600;">
-                    <i class="fa-solid fa-filter"></i> Change Filter
-                </a>
-            </p>
-        </div>
+        <div id="attendanceContent" <?= $approvalSuccess ? 'style="display:none"' : '' ?>>
 
-        <!-- ── APPROVAL WORKFLOW ── -->
-        <div class="workflow-section" id="workflowSection">
-            <div class="workflow-title">
-                <i class="fa-solid fa-sitemap"></i>
-                Monthly Attendance Report Approval Workflow
-            </div>
-            <div class="workflow-meta">
-                Current: <strong>HQSO</strong> &nbsp;|&nbsp; Last Approved By: <strong>GM</strong>
+            <div class="attendance-header">
+                <h1>MONTHLY ATTENDANCE REPORT</h1>
+                <p>
+                    Attendance Period: <?= $monthName ?> <?= $year ?>
+                    &nbsp;|&nbsp; Site: <strong><?= htmlspecialchars($siteCode) ?></strong>
+                    &nbsp;|&nbsp; Working Days: <?= $workingDays ?> (Weekends Excluded)
+                    &nbsp;|&nbsp;
+                    <a href="hqso_monthly.php" style="color:#0f766e;text-decoration:none;font-weight:600;">
+                        <i class="fa-solid fa-filter"></i> Change Filter
+                    </a>
+                </p>
             </div>
 
-            <div class="workflow-steps">
-                <!-- ASO – approved -->
-                <div class="workflow-step approved">
-                    <div class="step-card">
-                        <span class="step-check"><i class="fa-solid fa-check"></i></span>
-                        <div class="step-avatar"><i class="fa-solid fa-user"></i></div>
-                        <span class="step-label">ASO</span>
-                        <span class="step-sub">Officer</span>
-                    </div>
-                </div>
-                <div class="workflow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
-
-                <!-- APM – approved -->
-                <div class="workflow-step approved">
-                    <div class="step-card">
-                        <span class="step-check"><i class="fa-solid fa-check"></i></span>
-                        <div class="step-avatar"><i class="fa-solid fa-user"></i></div>
-                        <span class="step-label">APM</span>
-                        <span class="step-sub">Officer</span>
-                    </div>
-                </div>
-                <div class="workflow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
-
-                <!-- GM – approved -->
-                <div class="workflow-step approved">
-                    <div class="step-card">
-                        <span class="step-check"><i class="fa-solid fa-check"></i></span>
-                        <div class="step-avatar"><i class="fa-solid fa-user"></i></div>
-                        <span class="step-label">GM</span>
-                        <span class="step-sub">Officer</span>
-                    </div>
-                </div>
-                <div class="workflow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
-
-                <!-- HQSO – current (violet) -->
-                <div class="workflow-step current">
-                    <div class="step-card">
-                        <div class="step-avatar"><i class="fa-solid fa-user"></i></div>
-                        <span class="step-label">HQSO</span>
-                        <span class="step-sub">Officer</span>
-                    </div>
-                </div>
-                <div class="workflow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
-
-                <!-- SDHOD – pending -->
-                <div class="workflow-step pending">
-                    <div class="step-card">
-                        <div class="step-avatar"><i class="fa-solid fa-user"></i></div>
-                        <span class="step-label">SDHOD</span>
-                        <span class="step-sub">Officer</span>
-                    </div>
+            <?php if ($alreadyApproved): ?>
+            <div class="already-approved-banner">
+                <i class="fa-solid fa-circle-check"></i>
+                <div>
+                    <div class="msg-title">You have already approved this report.</div>
+                    <div class="msg-sub">Current workflow step: <strong><?= htmlspecialchars($workflow['current_step'] ?? 'SDHOD') ?></strong>. Waiting for next officer to act.</div>
                 </div>
             </div>
+            <?php endif; ?>
 
-            <button class="btn-approval" id="toggleCommentsBtn" onclick="toggleComments()">
-                <i class="fa-solid fa-comments"></i> View Approval Comments
-            </button>
+            <!-- ── APPROVAL WORKFLOW FLOWCHART ── -->
+            <div class="workflow-section">
+                <div class="workflow-title">
+                    <i class="fa-solid fa-sitemap"></i>
+                    Monthly Attendance Report Approval Workflow
+                </div>
+                <div class="workflow-meta">
+                    Current: <strong><?= htmlspecialchars($workflow['current_step'] ?? $currentStep) ?></strong>
+                    &nbsp;|&nbsp;
+                    Last Approved By: <strong><?= htmlspecialchars($lastApprovedCode) ?></strong>
+                </div>
 
-            <!-- Approval Comments Panel -->
-            <div id="approvalComments" class="approval-comments">
-                <?php if (!empty($comments)): ?>
-                    <?php foreach ($comments as $c): ?>
-                        <div class="comment-item">
-                            <div class="comment-header">
-                                <div class="comment-role">
-                                    <?= htmlspecialchars($c['role'] ?? 'Unknown') ?> :
-                                    <span><?= htmlspecialchars($c['approved_by']) ?></span>
-                                </div>
-                                <div class="comment-time">
-                                    <i class="fa-regular fa-clock" style="font-size:0.7rem;"></i>
-                                    <?= htmlspecialchars($c['created_at'] ?? '') ?>
-                                </div>
-                            </div>
-                            <div class="comment-text">
-                                "<?= htmlspecialchars($c['comment']) ?>"
+                <div class="workflow-steps">
+                    <?php
+                    $flowSteps = [
+                        ['code' => 'ASO',   'sub' => 'Officer'],
+                        ['code' => 'APM',   'sub' => 'Officer'],
+                        ['code' => 'GM',    'sub' => 'Officer'],
+                        ['code' => 'HQSO',  'sub' => 'Officer'],
+                        ['code' => 'SDHOD', 'sub' => 'Officer'],
+                    ];
+                    foreach ($flowSteps as $i => $fs):
+                        $status = $stepStatuses[$fs['code']] ?? 'pending';
+                    ?>
+                        <div class="workflow-step <?= $status ?>">
+                            <div class="step-card">
+                                <?php if ($status === 'approved'): ?>
+                                    <span class="step-check"><i class="fa-solid fa-check"></i></span>
+                                <?php endif; ?>
+                                <div class="step-avatar"><i class="fa-solid fa-user"></i></div>
+                                <span class="step-label"><?= $fs['code'] ?></span>
+                                <span class="step-sub"><?= $fs['sub'] ?></span>
                             </div>
                         </div>
+                        <?php if ($i < count($flowSteps) - 1): ?>
+                        <div class="workflow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+                        <?php endif; ?>
                     <?php endforeach; ?>
-                <?php else: ?>
-                    <p style="text-align:center;color:#999;padding:1rem;">No comments yet</p>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <!-- STAT CARDS -->
-        <?php
-        $totalWorking = 0;
-        $totalExtra   = 0;
-        foreach ($attendanceRows as $r) {
-            $ad = json_decode($r['attendance_json'], true) ?? [];
-            foreach ($ad as $entry) {
-                if (($entry['status'] ?? '') === 'P')  $totalWorking++;
-                if (($entry['status'] ?? '') === 'PP') $totalExtra++;
-            }
-        }
-        $totalDuty = $totalWorking + $totalExtra;
-        ?>
-        <div class="attendance-stats" id="attnStats">
-            <div class="attendance-stat-card blue">
-                <div class="stat-card-content"><div class="stat-card-label">Working Days</div><div class="stat-card-value"><?= $totalWorking ?></div></div>
-                <div class="stat-card-icon"><i class="fa-solid fa-briefcase"></i></div>
-            </div>
-            <div class="attendance-stat-card amber">
-                <div class="stat-card-content"><div class="stat-card-label">Extra Duty</div><div class="stat-card-value"><?= $totalExtra ?></div></div>
-                <div class="stat-card-icon"><i class="fa-solid fa-clock"></i></div>
-            </div>
-            <div class="attendance-stat-card green">
-                <div class="stat-card-content"><div class="stat-card-label">Total Duty Days</div><div class="stat-card-value"><?= $totalDuty ?></div></div>
-                <div class="stat-card-icon"><i class="fa-solid fa-calendar-check"></i></div>
-            </div>
-        </div>
-
-        <!-- TABLE CARD -->
-        <div class="card" id="mainCard">
-            <div class="table-controls">
-                <div class="table-controls-left">
-                    <label>Show</label>
-                    <select><option>10</option><option>25</option><option>50</option><option>100</option></select>
-                    <label>entries</label>
                 </div>
-                <!-- <div class="export-buttons">
-                    <button class="btn-export btn-excel"><i class="fa-solid fa-file-excel"></i> Excel</button>
-                    <button class="btn-export btn-pdf"><i class="fa-solid fa-file-pdf"></i> PDF</button>
-                </div> -->
-                <input type="text" class="search-input" placeholder="Search">
+
+                <button class="btn-approval" id="toggleCommentsBtn" onclick="toggleComments()">
+                    <i class="fa-solid fa-comments"></i> View Approval Comments
+                </button>
+
+                <div id="approvalComments" class="approval-comments">
+                    <?php if (!empty($comments)): ?>
+                        <?php foreach ($comments as $c): ?>
+                            <div class="comment-item">
+                                <div class="comment-header">
+                                    <div class="comment-role">
+                                        <?= htmlspecialchars($c['role']) ?> :
+                                        <span><?= htmlspecialchars($c['approved_by']) ?></span>
+                                    </div>
+                                    <div class="comment-time">
+                                        <i class="fa-regular fa-clock" style="font-size:0.7rem;"></i>
+                                        <?= htmlspecialchars($c['created_at']) ?>
+                                    </div>
+                                </div>
+                                <div class="comment-text">
+                                    "<?= htmlspecialchars($c['comment']) ?>"
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <p style="text-align:center;color:#999;padding:1rem;">No comments yet</p>
+                    <?php endif; ?>
+                </div>
             </div>
 
-            <div class="attendance-table-wrapper">
-                <table class="attendance-table">
-                    <thead>
-                        <tr>
-                            <th>S.N.</th><th>EMP CODE</th><th>NAME</th><th>RANK</th>
-                            <?php foreach ($dayColumns as $d): ?>
-                                <th class="day-col"><?= $d ?></th>
-                            <?php endforeach; ?>
-                            <th class="summary-col col-working">WORKING</th>
-                            <th class="summary-col extra-col col-extra">EXTRA</th>
-                            <th class="summary-col total-col col-total">TOTAL</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    <?php
-                    $sn = 1;
-                    foreach ($attendanceRows as $row):
-                        $attendanceData = json_decode($row['attendance_json'], true) ?? [];
-                        $working = 0;
-                        $extra   = 0;
+            <!-- STAT CARDS -->
+            <div class="attendance-stats">
+                <div class="attendance-stat-card blue">
+                    <div class="stat-card-content"><div class="stat-card-label">Working Days</div><div class="stat-card-value"><?= $totalWorking ?></div></div>
+                    <div class="stat-card-icon"><i class="fa-solid fa-briefcase"></i></div>
+                </div>
+                <div class="attendance-stat-card amber">
+                    <div class="stat-card-content"><div class="stat-card-label">Extra Duty</div><div class="stat-card-value"><?= $totalExtra ?></div></div>
+                    <div class="stat-card-icon"><i class="fa-solid fa-clock"></i></div>
+                </div>
+                <div class="attendance-stat-card green">
+                    <div class="stat-card-content"><div class="stat-card-label">Total Duty Days</div><div class="stat-card-value"><?= $totalDuty ?></div></div>
+                    <div class="stat-card-icon"><i class="fa-solid fa-calendar-check"></i></div>
+                </div>
+            </div>
 
-                        echo "<tr>";
-                        echo "<td>" . $sn++ . "</td>";
-                        echo "<td>" . htmlspecialchars($row['esic_no']) . "</td>";
-                        echo "<td>" . htmlspecialchars($row['employee_name']) . "</td>";
-                        echo "<td>" . htmlspecialchars($row['rank']) . "</td>";
+            <!-- TABLE CARD -->
+            <div class="card">
+                <div class="table-controls">
+                    <div class="table-controls-left">
+                        <label>Show</label>
+                        <select><option>10</option><option>25</option><option>50</option><option>100</option></select>
+                        <label>entries</label>
+                    </div>
+                    <input type="text" class="search-input" placeholder="Search">
+                </div>
 
-                        foreach ($dayColumns as $day) {
-                            $dateKey = $year . "-" . str_pad($month,2,'0',STR_PAD_LEFT) . "-" . str_pad($day,2,'0',STR_PAD_LEFT);
-                            if (isset($attendanceData[$dateKey])) {
-                                $status = $attendanceData[$dateKey]['status'];
-                                if ($status === 'P')  $working++;
-                                if ($status === 'PP') $extra++;
-                                $class = match($status) {
-                                    'P'  => 'status-present',
-                                    'PP' => 'status-pp',
-                                    'L'  => 'status-leave',
-                                    'A'  => 'status-absent',
-                                    default => ''
-                                };
-                                echo "<td class='day-col'><span class='status-indicator $class'>$status</span></td>";
-                            } else {
-                                echo "<td class='day-col'>-</td>";
+                <div class="attendance-table-wrapper">
+                    <table class="attendance-table">
+                        <thead>
+                            <tr>
+                                <th>S.N.</th><th>EMP CODE</th><th>NAME</th><th>RANK</th>
+                                <?php foreach ($dayColumns as $d): ?>
+                                    <th class="day-col"><?= $d ?></th>
+                                <?php endforeach; ?>
+                                <th class="summary-col col-working">WORKING</th>
+                                <th class="summary-col extra-col col-extra">EXTRA</th>
+                                <th class="summary-col total-col col-total">TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php
+                        $sn = 1;
+                        foreach ($attendanceRows as $row):
+                            $attendanceData = json_decode($row['attendance_json'], true) ?? [];
+                            $working = 0; $extra = 0;
+                            echo "<tr>";
+                            echo "<td>" . $sn++ . "</td>";
+                            echo "<td>" . htmlspecialchars($row['esic_no']) . "</td>";
+                            echo "<td>" . htmlspecialchars($row['employee_name']) . "</td>";
+                            echo "<td>" . htmlspecialchars($row['rank']) . "</td>";
+                            foreach ($dayColumns as $day) {
+                                $dateKey = $year . "-" . str_pad($month,2,'0',STR_PAD_LEFT) . "-" . str_pad($day,2,'0',STR_PAD_LEFT);
+                                if (isset($attendanceData[$dateKey])) {
+                                    $status = $attendanceData[$dateKey]['status'];
+                                    if ($status === 'P')  $working++;
+                                    if ($status === 'PP') $extra++;
+                                    $class = match($status) {
+                                        'P'  => 'status-present',
+                                        'PP' => 'status-pp',
+                                        'L'  => 'status-leave',
+                                        'A'  => 'status-absent',
+                                        default => ''
+                                    };
+                                    echo "<td class='day-col'><span class='status-indicator $class'>$status</span></td>";
+                                } else {
+                                    echo "<td class='day-col'>-</td>";
+                                }
                             }
-                        }
-
-                        $total = $working + $extra;
-                        echo "<td class='total-cell working-cell col-working'>$working</td>";
-                        echo "<td class='total-cell extra-cell col-extra'>$extra</td>";
-                        echo "<td class='total-cell total-value col-total'>$total</td>";
-                        echo "</tr>";
-                    endforeach;
-                    ?>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Legend -->
-            <div class="legend">
-                <div class="legend-item"><div class="legend-box status-present">P</div><span>Present</span></div>
-                <div class="legend-item"><div class="legend-box status-pp">PP</div><span>Double Duty</span></div>
-                <div class="legend-item"><div class="legend-box status-leave">L</div><span>Leave</span></div>
-                <div class="legend-item"><div class="legend-box status-absent">A</div><span>Absent</span></div>
-            </div>
-
-            <div class="pagination">
-                <button class="page-btn"><i class="fa-solid fa-chevron-left"></i></button>
-                <button class="page-btn active">1</button>
-                <button class="page-btn">2</button>
-                <button class="page-btn">3</button>
-                <button class="page-btn">4</button>
-                <button class="page-btn">5</button>
-                <button class="page-btn"><i class="fa-solid fa-chevron-right"></i></button>
-            </div>
-
-            <!-- Forward / Approve Section -->
-            <form method="POST" action="" id="approveForm">
-                <input type="hidden" name="site_code"  value="<?= htmlspecialchars($siteCode) ?>">
-                <input type="hidden" name="year"       value="<?= $year ?>">
-                <input type="hidden" name="month"      value="<?= $month ?>">
-                <div class="forward-section">
-                    <div class="form-group">
-                        <label class="form-label">Add your comment <span class="required">*</span></label>
-                        <textarea class="form-control" id="commentBox" name="comment" rows="5" placeholder="Add your HQSO review comment (required)..." required></textarea>
-                    </div>
-                    <div class="forward-btn-group">
-                        <button type="button" class="btn btn-primary" id="forwardBtn">
-                            <i class="fa-solid fa-paper-plane"></i> FORWARD TO SDHOD
-                        </button>
-                    </div>
+                            $total = $working + $extra;
+                            echo "<td class='total-cell working-cell col-working'>$working</td>";
+                            echo "<td class='total-cell extra-cell col-extra'>$extra</td>";
+                            echo "<td class='total-cell total-value col-total'>$total</td>";
+                            echo "</tr>";
+                        endforeach;
+                        ?>
+                        </tbody>
+                    </table>
                 </div>
-            </form>
-        </div>
+
+                <div class="legend">
+                    <div class="legend-item"><div class="legend-box status-present">P</div><span>Present</span></div>
+                    <div class="legend-item"><div class="legend-box status-pp">PP</div><span>Double Duty</span></div>
+                    <div class="legend-item"><div class="legend-box status-leave">L</div><span>Leave</span></div>
+                    <div class="legend-item"><div class="legend-box status-absent">A</div><span>Absent</span></div>
+                </div>
+
+                <div class="pagination">
+                    <button class="page-btn"><i class="fa-solid fa-chevron-left"></i></button>
+                    <button class="page-btn active">1</button>
+                    <button class="page-btn">2</button>
+                    <button class="page-btn">3</button>
+                    <button class="page-btn">4</button>
+                    <button class="page-btn">5</button>
+                    <button class="page-btn"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+
+                <?php if (!$alreadyApproved): ?>
+                <form method="POST" action="" id="approveForm">
+                    <input type="hidden" name="site_code" value="<?= htmlspecialchars($siteCode) ?>">
+                    <input type="hidden" name="year"      value="<?= $year ?>">
+                    <input type="hidden" name="month"     value="<?= $month ?>">
+                    <div class="forward-section">
+                        <div class="form-group">
+                            <label class="form-label">Add Approval Comment <span class="required">*</span></label>
+                            <textarea class="form-control" id="commentBox" name="comment" rows="5"
+                                placeholder="Add your HQSO approval comment..." required></textarea>
+                        </div>
+                        <div class="forward-btn-group">
+                            <button type="submit" name="approve_report" class="btn btn-primary">
+                                <i class="fa-solid fa-paper-plane"></i> APPROVE & FORWARD TO SDHOD
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                <?php else: ?>
+                <div class="forward-section" style="text-align:center;color:#6b7280;font-size:0.9rem;padding:1rem 0;">
+                    <i class="fa-solid fa-lock" style="margin-right:0.4rem;color:#d97706;"></i>
+                    Approval form is locked. Report has been forwarded to <strong><?= htmlspecialchars($workflow['current_step'] ?? 'SDHOD') ?></strong>.
+                </div>
+                <?php endif; ?>
+
+            </div><!-- /.card -->
+        </div><!-- /#attendanceContent -->
 
         <!-- SUCCESS PAGE -->
-        <div class="success-page" id="successPage">
+        <div class="success-page <?= $approvalSuccess ? 'visible' : '' ?>" id="successPage">
             <div class="success-banner">
                 <div class="success-check"><i class="fa-solid fa-check"></i></div>
-                <div class="success-title">Report Forwarded to SDHOD!</div>
+                <div class="success-title">Report Approved &amp; Forwarded to SDHOD!</div>
                 <div class="success-card">
-                    <div class="success-card-title"><i class="fa-solid fa-user-check"></i> HQSO APPROVED &amp; FORWARDED</div>
-                    <div class="success-card-desc">You have successfully reviewed and forwarded this attendance report to SDHOD for final approval.</div>
-                    <div class="success-card-date">Processed On: <span id="processedDate"></span></div>
+                    <div class="success-card-title"><i class="fa-solid fa-user-check"></i> HQSO APPROVED</div>
+                    <div class="success-card-desc">
+                        You have successfully reviewed and forwarded this attendance report to SDHOD for final approval.
+                    </div>
+                    <div class="success-card-date">
+                        Processed On: <span><?= $approvalSuccess ? date('Y-m-d H:i:s') : '' ?></span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -828,53 +821,15 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
 </div>
 
 <script>
-    /* Sidebar toggle */
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
-    document.getElementById('hamburgerBtn').addEventListener('click', () => { sidebar.classList.add('open'); overlay.classList.add('active'); });
+    document.getElementById('hamburgerBtn').addEventListener('click', () => { sidebar.classList.add('open');    overlay.classList.add('active'); });
     document.getElementById('sidebarClose').addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
     overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
 
-    <?php if ($reportLoaded): ?>
-    /* Forward / Approve button */
-    document.getElementById('forwardBtn').addEventListener('click', () => {
-        const comment = document.getElementById('commentBox').value.trim();
-        if (!comment) {
-            document.getElementById('commentBox').style.borderColor = '#ef4444';
-            document.getElementById('commentBox').style.boxShadow  = '0 0 0 3px rgba(239,68,68,0.15)';
-            document.getElementById('commentBox').focus();
-            return;
-        }
-
-        /* Submit to PHP with hidden approve_report flag */
-        const form = document.getElementById('approveForm');
-        const hidden = document.createElement('input');
-        hidden.type  = 'hidden';
-        hidden.name  = 'approve_report';
-        hidden.value = '1';
-        form.appendChild(hidden);
-
-        /* Show success UI */
-        const now = new Date();
-        const pad = n => String(n).padStart(2, '0');
-        document.getElementById('processedDate').textContent =
-            `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-
-        ['attnHeader','workflowSection','attnStats','mainCard'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = 'none';
-        });
-        document.getElementById('successPage').classList.add('visible');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-
-        /* Submit the form after showing success */
-        setTimeout(() => form.submit(), 400);
-    });
-
-    /* Toggle comments */
     function toggleComments() {
-        const panel = document.getElementById('approvalComments');
-        const btn   = document.getElementById('toggleCommentsBtn');
+        const panel  = document.getElementById('approvalComments');
+        const btn    = document.getElementById('toggleCommentsBtn');
         const isOpen = panel.classList.contains('open');
         panel.classList.toggle('open');
         btn.innerHTML = isOpen
@@ -882,11 +837,13 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
             : '<i class="fa-solid fa-comments"></i> Hide Approval Comments';
     }
 
-    document.getElementById('commentBox').addEventListener('input', function() {
-        this.style.borderColor = '';
-        this.style.boxShadow   = '';
-    });
-    <?php endif; ?>
+    const commentBox = document.getElementById('commentBox');
+    if (commentBox) {
+        commentBox.addEventListener('input', function () {
+            this.style.borderColor = '';
+            this.style.boxShadow   = '';
+        });
+    }
 </script>
 </body>
 </html>
