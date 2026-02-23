@@ -55,7 +55,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 } elseif ($role === 'Admin') {
                     header("Location: dashboard.php");
                 } elseif ($role === 'HQSO') {
-                    header("Location: hqso_dashboard.php");
+                    header("Location: hqso/monthly.php");
                 }elseif ($role === 'user') {
                     header("Location: user_dashboard.php");
                 }else if ($role === 'APM') {
