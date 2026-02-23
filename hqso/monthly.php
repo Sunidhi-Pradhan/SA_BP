@@ -34,7 +34,11 @@ $reportLoaded = !empty($siteCode);
 /* ---------------------------
    FETCH ALL SITES (for dropdown)
 ----------------------------*/
-$stmtSites = $pdo->query("SELECT DISTINCT site_code FROM employee_master ORDER BY site_code");
+$stmtSites = $pdo->query("
+    SELECT SiteCode, SiteName 
+    FROM site_master 
+    ORDER BY SiteName ASC
+");
 $sites = $stmtSites->fetchAll(PDO::FETCH_ASSOC);
 
 $attendanceRows = [];
@@ -515,13 +519,16 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
                     <div class="filter-field">
                         <label class="filter-label"><i class="fa-solid fa-location-dot"></i> Select Site Code</label>
                         <select name="site_code" class="filter-select" required>
-                            <option value="" disabled selected>-- Select Site --</option>
-                            <?php foreach ($sites as $s): ?>
-                                <option value="<?= htmlspecialchars($s['site_code']) ?>">
-                                    <?= htmlspecialchars($s['site_code']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+    <option value="" disabled selected>-- Select Site --</option>
+
+    <?php foreach ($sites as $s): ?>
+        <option value="<?= htmlspecialchars($s['SiteCode']) ?>">
+            <?= htmlspecialchars($s['SiteCode']) ?> - 
+            <?= htmlspecialchars($s['SiteName']) ?>
+        </option>
+    <?php endforeach; ?>
+
+</select>
                     </div>
 
                     <!-- Month & Year -->
@@ -565,7 +572,7 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
                 &nbsp;|&nbsp; Site: <strong><?= htmlspecialchars($siteCode) ?></strong>
                 &nbsp;|&nbsp; Working Days: <?= $workingDays ?> (Weekends Excluded)
                 &nbsp;|&nbsp;
-                <a href="hqso-monthly-attendance.php" style="color:#0f766e;text-decoration:none;font-weight:600;">
+                <a href="monthly.php" style="color:#0f766e;text-decoration:none;font-weight:600;">
                     <i class="fa-solid fa-filter"></i> Change Filter
                 </a>
             </p>
