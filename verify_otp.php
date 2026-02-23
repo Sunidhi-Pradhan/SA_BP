@@ -62,6 +62,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     header("Location: apm/apm_dashboard.php");
                 }elseif ($role === 'GM') {
                     header("Location: gm/monthly.php");
+                 }elseif ($role === 'SDHOD') {
+                    header("Location: sdhod/monthlyatt.php");
                  } else {
                     // fallback
                     header("Location: dashboard.php");
