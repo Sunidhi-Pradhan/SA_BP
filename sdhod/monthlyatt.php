@@ -530,11 +530,13 @@ if ($workflow) {
             <div class="topbar-right">
                 <span class="role-badge"><i class="fa-solid fa-user-tie"></i> SDHOD</span>
                 <div class="header-icon"><i class="fa-regular fa-bell"></i><span class="badge">3</span></div>
-                <div class="user-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="8" r="4"/>
-                    </svg>
-                </div>
+                <a href="profile.php" title="My Profile" style="text-decoration:none;">
+    <div class="user-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="8" r="4"/>
+        </svg>
+    </div>
+</a>
             </div>
         </header>
 
@@ -715,8 +717,8 @@ if ($workflow) {
                         <label>entries</label>
                     </div>
                     <div class="export-buttons">
-                        <button class="btn-export btn-excel"><i class="fa-solid fa-file-excel"></i> Excel</button>
-                        <button class="btn-export btn-pdf"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+                        <button class="btn-export btn-excel" onclick="exportExcel()"><i class="fa-solid fa-file-excel"></i> Excel</button>
+                        <button class="btn-export btn-pdf" onclick="exportPdf()"><i class="fa-solid fa-file-pdf"></i> PDF</button>
                     </div>
                     <input type="text" class="search-input" placeholder="Search">
                 </div>
@@ -879,6 +881,20 @@ if ($workflow) {
             this.style.boxShadow   = '';
         });
     }
+    function buildExportUrl(page) {
+    var siteCode = '<?= htmlspecialchars($siteCode ?? '') ?>';
+    var year     = '<?= (int)($year ?? date('Y')) ?>';
+    var month    = '<?= (int)($month ?? date('n')) ?>';
+    return page + '?site_code=' + encodeURIComponent(siteCode)
+                + '&year='      + encodeURIComponent(year)
+                + '&month='     + encodeURIComponent(month);
+}
+function exportExcel() {
+    window.location.href = buildExportUrl('export_excel.php');
+}
+function exportPdf() {
+    window.open(buildExportUrl('export_pdf.php'), '_blank');
+}
 </script>
 </body>
 </html>

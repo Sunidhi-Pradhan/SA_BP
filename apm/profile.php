@@ -1,9 +1,9 @@
 <?php
 session_start();
-require "config.php";
+require "../config.php";
 
 if (!isset($_SESSION['user'])) {
-    header("Location: login.php");
+    header("Location: ../login.php");
     exit;
 }
 
@@ -11,7 +11,7 @@ $stmtUser = $pdo->prepare("SELECT * FROM user WHERE id = ?");
 $stmtUser->execute([$_SESSION['user']]);
 $user = $stmtUser->fetch(PDO::FETCH_ASSOC);
 
-if (!$user || $user['role'] !== 'ASO') {
+if (!$user || $user['role'] !== 'APM') {
     die("Access denied");
 }
 
@@ -22,7 +22,7 @@ $createdAt = isset($user['created_at']) ? date('d-m-Y H:i', strtotime($user['cre
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>My Profile – ASO</title>
+    <title>My Profile – APM</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -91,7 +91,7 @@ $createdAt = isset($user['created_at']) ? date('d-m-Y H:i', strtotime($user['cre
         <header class="topbar">
             <h2>Security Billing Management Portal</h2>
             <div class="topbar-right">
-                <span class="role-badge"><i class="fa-solid fa-user-check"></i> ASO</span>
+                <span class="role-badge"><i class="fa-solid fa-user-gear"></i> APM</span>
                 <div class="header-icon">
                     <i class="fa-regular fa-bell"></i>
                     <span class="badge">3</span>
@@ -108,7 +108,7 @@ $createdAt = isset($user['created_at']) ? date('d-m-Y H:i', strtotime($user['cre
                     <div class="profile-header-info">
                         <div class="profile-name"><?= htmlspecialchars($user['name']) ?></div>
                         <div class="profile-empid">Emp ID: <?= htmlspecialchars($user['id']) ?></div>
-                        <span class="role-chip"><i class="fa-solid fa-user-check"></i> <?= htmlspecialchars($user['role']) ?></span>
+                        <span class="role-chip"><i class="fa-solid fa-user-gear"></i> <?= htmlspecialchars($user['role']) ?></span>
                     </div>
                 </div>
 
@@ -128,7 +128,7 @@ $createdAt = isset($user['created_at']) ? date('d-m-Y H:i', strtotime($user['cre
                             ?>
                             <div class="info-value"><?= htmlspecialchars($user['site_code']) ?><?= $siteName ? ' – ' . htmlspecialchars($siteName) : '' ?></div>
                         <?php else: ?>
-                            <div class="info-value muted">All Sites (ASO)</div>
+                            <div class="info-value muted">All Sites (APM)</div>
                         <?php endif; ?>
                     </div>
 
@@ -158,7 +158,7 @@ $createdAt = isset($user['created_at']) ? date('d-m-Y H:i', strtotime($user['cre
                 </div>
 
                 <div class="clearfix">
-                    <a href="aso_dashboard.php" class="btn-back">
+                    <a href="apm_dashboard.php" class="btn-back">
                         <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
                     </a>
                 </div>

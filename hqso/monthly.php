@@ -516,11 +516,13 @@ if ($workflow) {
             <div class="topbar-right">
                 <span class="role-badge"><i class="fa-solid fa-shield-halved"></i> HQSO</span>
                 <div class="header-icon"><i class="fa-regular fa-bell"></i><span class="badge">3</span></div>
-                <div class="user-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="8" r="4"/>
-                    </svg>
-                </div>
+                <a href="profile.php" title="My Profile" style="text-decoration:none;">
+    <div class="user-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="8" r="4"/>
+        </svg>
+    </div>
+</a>
             </div>
         </header>
 

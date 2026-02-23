@@ -840,7 +840,7 @@ $asoSiteCode = $u['site_code'];   // 🔐 VERY IMPORTANT
                             class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a></li>
                 <li><a href="monthly_attendance.php" class="nav-link"><i
                             class="fa-solid fa-calendar-days"></i><span>Monthly Attendance</span></a></li>
-                <li><a href="login.html" class="nav-link"><i
+                <li><a href="../login.php" class="nav-link"><i
                             class="fa-solid fa-right-from-bracket"></i><span>Logout</span></a></li>
             </ul>
         </aside>
@@ -858,13 +858,13 @@ $asoSiteCode = $u['site_code'];   // 🔐 VERY IMPORTANT
                 </div>
                 <div class="topbar-right">
                     <div class="header-icon"><i class="fa-regular fa-bell"></i><span class="badge">3</span></div>
-                    <div class="user-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                            <circle cx="12" cy="8" r="4" />
-                        </svg>
-                    </div>
+                    <a href="profile.php" title="My Profile" style="text-decoration:none;">
+    <div class="user-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="8" r="4"/>
+        </svg>
+    </div>
+</a>
                 </div>
             </header>
 
