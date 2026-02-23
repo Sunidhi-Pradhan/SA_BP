@@ -22,7 +22,7 @@ if (!$user || $user['role'] !== 'GM') {
 }
 
 $siteCode = $user['site_code'];
-$approvedBy = $user['name']; // GM name
+$approvedBy = $user['name'];
 
 $year = 2026;
 $month = 1;
@@ -44,7 +44,6 @@ $stmt = $pdo->prepare("
     AND e.site_code = :siteCode
 ");
 
-
 $stmt->execute([
     ':year' => $year,
     ':month' => $month,
@@ -59,26 +58,16 @@ $attendanceRows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?? [];
 $approvalSuccess = false;
 
 if (isset($_POST['approve_report']) && !empty($_POST['comment'])) {
-
     $comment = $_POST['comment'];
-
     $stmtInsert = $pdo->prepare("
         INSERT INTO approval_comments
         (site_code, attendance_year, attendance_month, comment, approved_by, role)
         VALUES (?, ?, ?, ?, ?, ?)
     ");
-
-    $stmtInsert->execute([
-        $siteCode,
-        $year,
-        $month,
-        $comment,
-        $approvedBy,
-        'GM' // role tracking
-    ]);
-
+    $stmtInsert->execute([$siteCode, $year, $month, $comment, $approvedBy, 'GM']);
     $approvalSuccess = true;
 }
+
 /* ---------------------------
    FETCH APPROVAL COMMENTS
 ----------------------------*/
@@ -89,14 +78,9 @@ $stmtComments = $pdo->prepare("
     AND attendance_month = ?
     ORDER BY id ASC
 ");
-
 $stmtComments->execute([$siteCode, $year, $month]);
-
 $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
-
-
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -113,20 +97,8 @@ $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
         .dashboard-layout { display: grid; grid-template-columns: var(--sidebar-width) 1fr; min-height: 100vh; }
 
         /* ── SIDEBAR ── */
-        .sidebar {
-            background: linear-gradient(180deg, #0f766e 0%, #0a5c55 100%);
-            color: white; padding: 0;
-            box-shadow: 4px 0 24px rgba(13,95,88,0.35);
-            position: sticky; top: 0; height: 100vh; overflow-y: auto;
-            z-index: 100; transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-            display: flex; flex-direction: column;
-        }
-        .sidebar-close {
-            display: none; position: absolute; top: 1rem; right: 1rem;
-            background: rgba(255,255,255,0.12); border: none; color: white;
-            width: 32px; height: 32px; border-radius: 8px; cursor: pointer;
-            font-size: 1rem; align-items: center; justify-content: center; z-index: 2;
-        }
+        .sidebar { background: linear-gradient(180deg, #0f766e 0%, #0a5c55 100%); color: white; padding: 0; box-shadow: 4px 0 24px rgba(13,95,88,0.35); position: sticky; top: 0; height: 100vh; overflow-y: auto; z-index: 100; transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; }
+        .sidebar-close { display: none; position: absolute; top: 1rem; right: 1rem; background: rgba(255,255,255,0.12); border: none; color: white; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 1rem; align-items: center; justify-content: center; z-index: 2; }
         .sidebar-logo { padding: 1.4rem 1.5rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; }
         .mcl-logo-img { max-width: 155px; height: auto; display: block; background: white; padding: 10px 14px; border-radius: 10px; }
         .sidebar-nav { list-style: none; padding: 1rem 0; flex: 1; }
@@ -155,128 +127,40 @@ $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
         .attendance-header p { font-size: 0.95rem; color: #6b7280; }
 
         /* ── APPROVAL WORKFLOW ── */
-        .workflow-section {
-            background: white; border-radius: 14px; padding: 1.5rem 2rem;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;
-            display: flex; flex-direction: column; align-items: center; gap: 1.2rem;
-        }
+        .workflow-section { background: white; border-radius: 14px; padding: 1.5rem 2rem; box-shadow: 0 2px 12px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; display: flex; flex-direction: column; align-items: center; gap: 1.2rem; }
         .workflow-title { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; font-weight: 600; color: #374151; }
         .workflow-title i { color: #0f766e; }
         .workflow-meta { font-size: 0.82rem; color: #9ca3af; text-align: center; }
         .workflow-meta strong { color: #1f2937; font-weight: 700; }
-
         .workflow-steps { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0; }
-
         .workflow-step { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
-
-        /* Card box */
-        .step-card {
-            width: 95px; height: 115px;
-            border-radius: 14px;
-            border: 2px solid #e5e7eb;
-            background: #f9fafb;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            gap: 0.35rem; position: relative;
-            padding-top: 20px;
-            transition: all 0.2s;
-        }
-
-        /* Icon circle inside card */
-        .step-avatar {
-            width: 56px; height: 56px; border-radius: 50%;
-            background: #d1d5db;
-            display: flex; align-items: center; justify-content: center;
-        }
+        .step-card { width: 95px; height: 115px; border-radius: 14px; border: 2px solid #e5e7eb; background: #f9fafb; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.35rem; position: relative; padding-top: 20px; transition: all 0.2s; }
+        .step-avatar { width: 56px; height: 56px; border-radius: 50%; background: #d1d5db; display: flex; align-items: center; justify-content: center; }
         .step-avatar i { font-size: 1.6rem; color: white; }
-
         .step-label { font-size: 0.75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; }
         .step-sub   { font-size: 0.62rem; color: #9ca3af; margin-top: -0.2rem; }
-
-        /* Green check badge (center-top of card) */
-        .step-check {
-            position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
-            width: 22px; height: 22px; border-radius: 50%;
-            background: #16a34a; color: white;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 0.65rem; font-weight: 700;
-            border: 2px solid white;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
-        }
-
-        /* Approved step */
+        .step-check { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); width: 22px; height: 22px; border-radius: 50%; background: #16a34a; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; border: 2px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
         .workflow-step.approved .step-card { border-color: #86efac; background: #f0fdf4; }
         .workflow-step.approved .step-avatar { background: #16a34a; }
         .workflow-step.approved .step-label { color: #15803d; }
-
-        /* Current step (GM – orange) */
-        .workflow-step.current .step-card {
-            border-color: #fdba74;
-            background: #fff7ed;
-            box-shadow: 0 0 0 3px rgba(251,146,60,0.2);
-        }
+        .workflow-step.current .step-card { border-color: #fdba74; background: #fff7ed; box-shadow: 0 0 0 3px rgba(251,146,60,0.2); }
         .workflow-step.current .step-avatar { background: #f97316; }
         .workflow-step.current .step-label { color: #c2410c; }
-
-        /* Pending steps */
         .workflow-step.pending .step-card { border-color: #e5e7eb; background: #f9fafb; }
         .workflow-step.pending .step-avatar { background: #9ca3af; }
         .workflow-step.pending .step-label { color: #9ca3af; }
-
-        /* Arrow between steps */
-        .workflow-arrow {
-            display: flex; align-items: center;
-            padding: 0 0.6rem; color: #9ca3af;
-            font-size: 1rem; margin-bottom: 1.6rem;
-        }
-
-        .btn-approval {
-            display: inline-flex; align-items: center; gap: 0.5rem;
-            padding: 0.5rem 1.4rem; border-radius: 8px;
-            background: #f0fdf4; color: #15803d;
-            border: 1.5px solid #86efac;
-            font-size: 0.84rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
-        }
+        .workflow-arrow { display: flex; align-items: center; padding: 0 0.6rem; color: #9ca3af; font-size: 1rem; margin-bottom: 1.6rem; }
+        .btn-approval { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1.4rem; border-radius: 8px; background: #f0fdf4; color: #15803d; border: 1.5px solid #86efac; font-size: 0.84rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .btn-approval:hover { background: #dcfce7; border-color: #4ade80; }
-
-        /* Approval Comments Panel */
-        .approval-comments {
-            display: none; width: 100%; margin-top: 0.5rem;
-            border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;
-        }
+        .approval-comments { display: none; width: 100%; margin-top: 0.5rem; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
         .approval-comments.open { display: block; animation: fadeUp 0.3s ease; }
-
-        .comment-item {
-            padding: 0.9rem 1.25rem;
-            border-bottom: 1px solid #f0f0f0;
-            background: white;
-        }
+        .comment-item { padding: 0.9rem 1.25rem; border-bottom: 1px solid #f0f0f0; background: white; }
         .comment-item:last-child { border-bottom: none; }
-
-        .comment-header {
-            display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 0.4rem;
-        }
-
-        .comment-role {
-            font-size: 0.85rem; font-weight: 700; color: #1f2937;
-        }
-        .comment-role span {
-            color: #0f766e; font-weight: 600; margin-left: 0.3rem;
-        }
-
-        .comment-time {
-            display: flex; align-items: center; gap: 0.3rem;
-            font-size: 0.75rem; color: #9ca3af;
-        }
-
-        .comment-text {
-            font-size: 0.84rem; color: #4b5563;
-            background: #f9fafb; border-radius: 8px;
-            padding: 0.5rem 0.85rem;
-            border-left: 3px solid #86efac;
-            font-style: italic;
-        }
+        .comment-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; }
+        .comment-role { font-size: 0.85rem; font-weight: 700; color: #1f2937; }
+        .comment-role span { color: #0f766e; font-weight: 600; margin-left: 0.3rem; }
+        .comment-time { display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; color: #9ca3af; }
+        .comment-text { font-size: 0.84rem; color: #4b5563; background: #f9fafb; border-radius: 8px; padding: 0.5rem 0.85rem; border-left: 3px solid #86efac; font-style: italic; }
 
         /* ── STAT CARDS ── */
         .attendance-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
@@ -295,156 +179,46 @@ $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
         .table-controls { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem; }
         .table-controls-left { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; color: #6b7280; }
         .table-controls-left select { padding: 0.5rem 0.75rem; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 0.9rem; outline: none; }
-        .export-buttons { display: flex; gap: 0.5rem; }
-        .btn-export { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; }
-        .btn-excel { background: #10b981; color: white; } .btn-excel:hover { background: #059669; }
-        .btn-pdf { background: #ef4444; color: white; } .btn-pdf:hover { background: #dc2626; }
         .search-input { padding: 0.6rem 1rem 0.6rem 2.75rem; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 0.9rem; outline: none; width: 240px; background: white url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%236b7280" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>') no-repeat 1rem center; background-size: 16px; }
 
-        /* ══════════════════════════════════════════
-           TABLE OVERFLOW FIX — ONLY CHANGES HERE
-           ══════════════════════════════════════════ */
-
-        /* 1. Wrapper scrolls horizontally */
-        .attendance-table-wrapper {
-            overflow-x: auto;
-            overflow-y: visible;
-            border-radius: 12px;
-            border: 1px solid #e5e7eb;
-            -webkit-overflow-scrolling: touch;
-            /* nice thin scrollbar */
-            scrollbar-width: thin;
-            scrollbar-color: #0f766e #f0f0f0;
-        }
+        /* ── TABLE ── */
+        .attendance-table-wrapper { overflow-x: auto; overflow-y: visible; border-radius: 12px; border: 1px solid #e5e7eb; -webkit-overflow-scrolling: touch; scrollbar-width: thin; scrollbar-color: #0f766e #f0f0f0; }
         .attendance-table-wrapper::-webkit-scrollbar { height: 6px; }
         .attendance-table-wrapper::-webkit-scrollbar-track { background: #f0f0f0; }
         .attendance-table-wrapper::-webkit-scrollbar-thumb { background: #0f766e; border-radius: 3px; }
-
-        /* 2. Table natural width — don't force 100% */
-        .attendance-table {
-            width: max-content;
-            min-width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            font-size: 0.85rem;
-            background: white;
-        }
-
-        /* 3. All header styles unchanged */
+        .attendance-table { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.85rem; background: white; }
         .attendance-table thead th { background: linear-gradient(135deg, #0f766e, #0d5f58); color: white; font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.3px; padding: 0.875rem 0.45rem; text-align: center; position: sticky; top: 0; z-index: 10; white-space: nowrap; }
         .attendance-table thead th:first-child { text-align: left; padding-left: 1rem; }
         .attendance-table thead th.summary-col { background: linear-gradient(135deg, #0ea5e9, #0284c7); font-weight: 800; font-size: 0.8rem; }
         .attendance-table thead th.extra-col { background: linear-gradient(135deg, #f59e0b, #d97706); }
         .attendance-table thead th.total-col { background: linear-gradient(135deg, #10b981, #059669); }
 
-        /* 4. Sticky left: S.N., EMP CODE, NAME, RANK */
-        .attendance-table thead th:nth-child(1),
-        .attendance-table tbody td:nth-child(1) {
-            position: sticky; left: 0; z-index: 11;
-            min-width: 48px; width: 48px;
-        }
-        .attendance-table thead th:nth-child(2),
-        .attendance-table tbody td:nth-child(2) {
-            position: sticky; left: 48px; z-index: 11;
-            min-width: 90px; width: 90px;
-        }
-        .attendance-table thead th:nth-child(3),
-        .attendance-table tbody td:nth-child(3) {
-            position: sticky; left: 138px; z-index: 11;
-            min-width: 140px; width: 140px;
-            text-align: left !important;
-        }
-        .attendance-table thead th:nth-child(4),
-        .attendance-table tbody td:nth-child(4) {
-            position: sticky; left: 278px; z-index: 11;
-            min-width: 90px; width: 90px;
-            border-right: 2px solid rgba(255,255,255,0.3) !important;
-        }
+        /* Sticky left */
+        .attendance-table thead th:nth-child(1),.attendance-table tbody td:nth-child(1) { position: sticky; left: 0; z-index: 11; min-width: 48px; width: 48px; }
+        .attendance-table thead th:nth-child(2),.attendance-table tbody td:nth-child(2) { position: sticky; left: 48px; z-index: 11; min-width: 90px; width: 90px; }
+        .attendance-table thead th:nth-child(3),.attendance-table tbody td:nth-child(3) { position: sticky; left: 138px; z-index: 11; min-width: 140px; width: 140px; text-align: left !important; }
+        .attendance-table thead th:nth-child(4),.attendance-table tbody td:nth-child(4) { position: sticky; left: 278px; z-index: 11; min-width: 90px; width: 90px; border-right: 2px solid rgba(255,255,255,0.3) !important; }
+        .attendance-table thead th:nth-child(1),.attendance-table thead th:nth-child(2),.attendance-table thead th:nth-child(3),.attendance-table thead th:nth-child(4) { background: linear-gradient(135deg, #0f766e, #0d5f58); z-index: 12; }
+        .attendance-table tbody td:nth-child(1),.attendance-table tbody td:nth-child(2),.attendance-table tbody td:nth-child(3),.attendance-table tbody td:nth-child(4) { background: #fff; }
+        .attendance-table tbody tr:nth-child(even) td:nth-child(1),.attendance-table tbody tr:nth-child(even) td:nth-child(2),.attendance-table tbody tr:nth-child(even) td:nth-child(3),.attendance-table tbody tr:nth-child(even) td:nth-child(4) { background: #fafafa; }
+        .attendance-table tbody tr:hover td:nth-child(1),.attendance-table tbody tr:hover td:nth-child(2),.attendance-table tbody tr:hover td:nth-child(3),.attendance-table tbody tr:hover td:nth-child(4) { background: #f9fafb; }
+        .attendance-table tbody td:nth-child(4) { border-right: 2px solid #e5e7eb !important; }
 
-        /* thead sticky bg (keep gradient) */
-        .attendance-table thead th:nth-child(1),
-        .attendance-table thead th:nth-child(2),
-        .attendance-table thead th:nth-child(3),
-        .attendance-table thead th:nth-child(4) {
-            background: linear-gradient(135deg, #0f766e, #0d5f58);
-            z-index: 12;
-        }
-
-        /* tbody sticky bg */
-        .attendance-table tbody td:nth-child(1),
-        .attendance-table tbody td:nth-child(2),
-        .attendance-table tbody td:nth-child(3),
-        .attendance-table tbody td:nth-child(4) {
-            background: #fff;
-        }
-        .attendance-table tbody tr:nth-child(even) td:nth-child(1),
-        .attendance-table tbody tr:nth-child(even) td:nth-child(2),
-        .attendance-table tbody tr:nth-child(even) td:nth-child(3),
-        .attendance-table tbody tr:nth-child(even) td:nth-child(4) {
-            background: #fafafa;
-        }
-        .attendance-table tbody tr:hover td:nth-child(1),
-        .attendance-table tbody tr:hover td:nth-child(2),
-        .attendance-table tbody tr:hover td:nth-child(3),
-        .attendance-table tbody tr:hover td:nth-child(4) {
-            background: #f9fafb;
-        }
-        /* right border separator after RANK */
-        .attendance-table tbody td:nth-child(4) {
-            border-right: 2px solid #e5e7eb !important;
-        }
-
-        /* 5. Sticky right: WORKING (col 27), EXTRA (col 28), TOTAL (col 29) */
-        /* 4 fixed + 22 days = 26 columns before summary, so cols 27,28,29 */
-        .attendance-table thead th:nth-child(27),
-        .attendance-table tbody td:nth-child(27) {
-            position: sticky; right: 100px; z-index: 11;
-            min-width: 72px; width: 72px;
-        }
-        .attendance-table thead th:nth-child(28),
-        .attendance-table tbody td:nth-child(28) {
-            position: sticky; right: 52px; z-index: 11;
-            min-width: 52px; width: 52px;
-        }
-        .attendance-table thead th:nth-child(29),
-        .attendance-table tbody td:nth-child(29) {
-            position: sticky; right: 0; z-index: 11;
-            min-width: 52px; width: 52px;
-        }
-
-        /* thead sticky right bg */
-        .attendance-table thead th:nth-child(27) {
-            background: linear-gradient(135deg, #0ea5e9, #0284c7);
-            z-index: 12;
-        }
-        .attendance-table thead th:nth-child(28) {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            z-index: 12;
-        }
-        .attendance-table thead th:nth-child(29) {
-            background: linear-gradient(135deg, #10b981, #059669);
-            z-index: 12;
-        }
-
-        /* tbody sticky right bg — reuse existing total-cell classes */
+        /* Sticky right */
+        .attendance-table thead th:nth-child(27),.attendance-table tbody td:nth-child(27) { position: sticky; right: 100px; z-index: 11; min-width: 72px; width: 72px; }
+        .attendance-table thead th:nth-child(28),.attendance-table tbody td:nth-child(28) { position: sticky; right: 52px; z-index: 11; min-width: 52px; width: 52px; }
+        .attendance-table thead th:nth-child(29),.attendance-table tbody td:nth-child(29) { position: sticky; right: 0; z-index: 11; min-width: 52px; width: 52px; }
+        .attendance-table thead th:nth-child(27) { background: linear-gradient(135deg, #0ea5e9, #0284c7); z-index: 12; }
+        .attendance-table thead th:nth-child(28) { background: linear-gradient(135deg, #f59e0b, #d97706); z-index: 12; }
+        .attendance-table thead th:nth-child(29) { background: linear-gradient(135deg, #10b981, #059669); z-index: 12; }
         .attendance-table tbody td:nth-child(27) { background: #dbeafe; border-left: 2px solid #bfdbfe !important; }
         .attendance-table tbody td:nth-child(28) { background: #fef3c7; }
         .attendance-table tbody td:nth-child(29) { background: #d1fae5; }
         .attendance-table tbody tr:nth-child(even) td:nth-child(27) { background: #bfdbfe; }
         .attendance-table tbody tr:nth-child(even) td:nth-child(28) { background: #fde68a; }
         .attendance-table tbody tr:nth-child(even) td:nth-child(29) { background: #a7f3d0; }
-        .attendance-table tbody tr:hover td:nth-child(27),
-        .attendance-table tbody tr:hover td:nth-child(28),
-        .attendance-table tbody tr:hover td:nth-child(29) { filter: brightness(0.96); }
-
-        /* Day columns compact */
-        .attendance-table thead th:nth-child(n+5):nth-child(-n+26),
-        .attendance-table tbody td:nth-child(n+5):nth-child(-n+26) {
-            min-width: 36px; width: 36px;
-        }
-        /* ══════════════════════════════════════════
-           END OF FIX
-           ══════════════════════════════════════════ */
+        .attendance-table tbody tr:hover td:nth-child(27),.attendance-table tbody tr:hover td:nth-child(28),.attendance-table tbody tr:hover td:nth-child(29) { filter: brightness(0.96); }
+        .attendance-table thead th:nth-child(n+5):nth-child(-n+26),.attendance-table tbody td:nth-child(n+5):nth-child(-n+26) { min-width: 36px; width: 36px; }
 
         .attendance-table tbody tr { transition: background 0.2s; }
         .attendance-table tbody tr:hover { background: #f9fafb; }
@@ -452,8 +226,8 @@ $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
         .attendance-table tbody tr:nth-child(even):hover { background: #f9fafb; }
         .attendance-table tbody td { padding: 0.7rem 0.45rem; border-bottom: 1px solid #f0f0f0; text-align: center; vertical-align: middle; }
         .attendance-table tbody tr:last-child td { border-bottom: none; }
-        .attendance-table tbody td:first-child, .attendance-table tbody td:nth-child(2), .attendance-table tbody td:nth-child(3), .attendance-table tbody td:nth-child(4) { text-align: left; font-size: 0.82rem; color: #1f2937; font-weight: 500; padding-left: 1rem; white-space: nowrap; }
-        .attendance-table tbody td:nth-child(3), .attendance-table tbody td:nth-child(4) { color: #6b7280; font-weight: 400; font-size: 0.8rem; }
+        .attendance-table tbody td:first-child,.attendance-table tbody td:nth-child(2),.attendance-table tbody td:nth-child(3),.attendance-table tbody td:nth-child(4) { text-align: left; font-size: 0.82rem; color: #1f2937; font-weight: 500; padding-left: 1rem; white-space: nowrap; }
+        .attendance-table tbody td:nth-child(3),.attendance-table tbody td:nth-child(4) { color: #6b7280; font-weight: 400; font-size: 0.8rem; }
 
         .status-indicator { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 7px; font-size: 0.72rem; font-weight: 700; cursor: default; transition: transform 0.15s; }
         .status-indicator:hover { transform: scale(1.1); }
@@ -520,11 +294,8 @@ $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
             .main-content { padding: 1rem; gap: 1rem; }
             .attendance-stats { grid-template-columns: 1fr; gap: 0.75rem; }
             .workflow-steps { gap: 0; }
-            .step-circle { width: 52px; height: 52px; }
             .table-controls { flex-direction: column; align-items: stretch; }
             .search-input { width: 100%; }
-            .export-buttons { width: 100%; flex-wrap: wrap; }
-            .btn-export { flex: 1; }
         }
     </style>
 </head>
@@ -565,7 +336,7 @@ $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
             <p>Attendance Period: January 2026 &nbsp;|&nbsp; Working Days: 22 (Weekends Excluded)</p>
         </div>
 
-        <!-- ── APPROVAL WORKFLOW ── -->
+        <!-- APPROVAL WORKFLOW -->
         <div class="workflow-section" id="workflowSection">
             <div class="workflow-title">
                 <i class="fa-solid fa-sitemap"></i>
@@ -576,7 +347,6 @@ $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
             </div>
 
             <div class="workflow-steps">
-                <!-- ASO – approved -->
                 <div class="workflow-step approved">
                     <div class="step-card">
                         <span class="step-check"><i class="fa-solid fa-check"></i></span>
@@ -587,7 +357,6 @@ $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
                 </div>
                 <div class="workflow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
 
-                <!-- APM – approved -->
                 <div class="workflow-step approved">
                     <div class="step-card">
                         <span class="step-check"><i class="fa-solid fa-check"></i></span>
@@ -598,7 +367,6 @@ $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
                 </div>
                 <div class="workflow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
 
-                <!-- GM – current (orange) -->
                 <div class="workflow-step current">
                     <div class="step-card">
                         <div class="step-avatar"><i class="fa-solid fa-user"></i></div>
@@ -608,7 +376,6 @@ $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
                 </div>
                 <div class="workflow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
 
-                <!-- HQSO – pending -->
                 <div class="workflow-step pending">
                     <div class="step-card">
                         <div class="step-avatar"><i class="fa-solid fa-user"></i></div>
@@ -618,7 +385,6 @@ $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
                 </div>
                 <div class="workflow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
 
-                <!-- SDHOD – pending -->
                 <div class="workflow-step pending">
                     <div class="step-card">
                         <div class="step-avatar"><i class="fa-solid fa-user"></i></div>
@@ -632,7 +398,6 @@ $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
                 <i class="fa-solid fa-comments"></i> View Approval Comments
             </button>
 
-            <!-- Approval Comments Panel -->
             <div id="approvalComments" class="approval-comments">
                 <?php if (!empty($comments)): ?>
                     <?php foreach ($comments as $c): ?>
@@ -642,21 +407,16 @@ $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
                                     <?= $c['role'] ?? 'Unknown' ?> :
                                     <span><?= htmlspecialchars($c['approved_by']) ?></span>
                                 </div>
-                                <div class="comment-time">
-                                    <?= $c['created_at'] ?? '' ?>
-                                </div>
+                                <div class="comment-time"><?= $c['created_at'] ?? '' ?></div>
                             </div>
-                            <div class="comment-text">
-                                "<?= htmlspecialchars($c['comment']) ?>"
-                            </div>
+                            <div class="comment-text">"<?= htmlspecialchars($c['comment']) ?>"</div>
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
                     <p style="text-align:center;color:#999;padding:1rem;">No comments yet</p>
                 <?php endif; ?>
             </div>
-
-        </div><!-- end workflow-section -->
+        </div>
 
         <!-- STAT CARDS -->
         <div class="attendance-stats" id="attnStats">
@@ -682,10 +442,6 @@ $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
                     <select><option>10</option><option>25</option><option>50</option><option>100</option></select>
                     <label>entries</label>
                 </div>
-                <div class="export-buttons">
-                    <button class="btn-export btn-excel"><i class="fa-solid fa-file-excel"></i> Excel</button>
-                    <button class="btn-export btn-pdf"><i class="fa-solid fa-file-pdf"></i> PDF</button>
-                </div>
                 <input type="text" class="search-input" placeholder="Search">
             </div>
 
@@ -706,12 +462,8 @@ $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
                     <tbody>
                     <?php
                     $sn = 1;
-
                     foreach ($attendanceRows as $row):
-
-                        // ✅ decode JSON directly
                         $attendanceData = json_decode($row['attendance_json'], true) ?? [];
-
                         $working = 0;
                         $extra = 0;
 
@@ -724,16 +476,11 @@ $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
                         $days = [1,2,5,6,7,8,9,12,13,14,15,16,19,20,21,22,23,26,27,28,29,30];
 
                         foreach ($days as $day) {
-
                             $dateKey = $year . "-" . str_pad($month,2,'0',STR_PAD_LEFT) . "-" . str_pad($day,2,'0',STR_PAD_LEFT);
-
                             if (isset($attendanceData[$dateKey])) {
-
                                 $status = $attendanceData[$dateKey]['status'];
-
                                 if ($status == 'P')  $working++;
                                 if ($status == 'PP') $extra++;
-
                                 $class = match($status) {
                                     'P'  => 'status-present',
                                     'PP' => 'status-pp',
@@ -741,7 +488,6 @@ $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
                                     'A'  => 'status-absent',
                                     default => ''
                                 };
-
                                 echo "<td><span class='status-indicator $class'>$status</span></td>";
                             } else {
                                 echo "<td>-</td>";
@@ -749,19 +495,16 @@ $comments = $stmtComments->fetchAll(PDO::FETCH_ASSOC);
                         }
 
                         $total = $working + $extra;
-
                         echo "<td class='total-cell working-cell'>$working</td>";
                         echo "<td class='total-cell extra-cell'>$extra</td>";
                         echo "<td class='total-cell total-value'>$total</td>";
                         echo "</tr>";
-
                     endforeach;
                     ?>
                     </tbody>
                 </table>
             </div>
 
-            <!-- Legend -->
             <div class="legend">
                 <div class="legend-item"><div class="legend-box status-present">P</div><span>Present</span></div>
                 <div class="legend-item"><div class="legend-box status-pp">PP</div><span>Double Duty</span></div>

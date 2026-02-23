@@ -46,10 +46,8 @@ if(isset($_POST['approve_report'])){
     $year = 2026;
     $month = 1;
 
-    // ✅ Get user ID from session
     $userId = $_SESSION['user'] ?? null;
 
-    // ✅ Fetch name from user table
     $stmtUser = $pdo->prepare("SELECT name FROM user WHERE id = ?");
     $stmtUser->execute([$userId]);
 
@@ -57,7 +55,6 @@ if(isset($_POST['approve_report'])){
 
     $approvedBy = $userData['name'] ?? 'Unknown';
 
-    // ✅ Insert into approval_comments
     $stmt = $pdo->prepare("
         INSERT INTO approval_comments
         (site_code, attendance_year, attendance_month, comment, approved_by)
@@ -423,42 +420,6 @@ if(isset($_POST['approve_report'])){
             border-radius: 8px;
             font-size: 0.9rem;
             outline: none;
-        }
-
-        .export-buttons {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .btn-export {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            border: none;
-            transition: all 0.2s;
-        }
-
-        .btn-excel {
-            background: #10b981;
-            color: white;
-        }
-
-        .btn-excel:hover {
-            background: #059669;
-        }
-
-        .btn-pdf {
-            background: #ef4444;
-            color: white;
-        }
-
-        .btn-pdf:hover {
-            background: #dc2626;
         }
 
         .search-input {
@@ -916,28 +877,6 @@ if(isset($_POST['approve_report'])){
             font-weight: 400;
         }
 
-        .success-actions {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            margin-top: 1.75rem;
-            animation: fadeUp 0.45s 0.5s ease both;
-            flex-wrap: wrap;
-        }
-
-        .btn-white {
-            background: white;
-            color: #16a34a;
-            border: 2px solid white;
-            font-weight: 700;
-        }
-
-        .btn-white:hover {
-            background: #f0fdf4;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-        }
-
         /* RESPONSIVE */
         @media (max-width: 768px) {
             .dashboard-layout {
@@ -997,15 +936,6 @@ if(isset($_POST['approve_report'])){
             .search-input {
                 width: 100%;
             }
-
-            .export-buttons {
-                width: 100%;
-                flex-wrap: wrap;
-            }
-
-            .btn-export {
-                flex: 1;
-            }
         }
     </style>
 </head>
@@ -1043,7 +973,7 @@ if(isset($_POST['approve_report'])){
                 </div>
             </header>
 
-            <!-- ===================== ATTENDANCE CONTENT (hidden on success) ===================== -->
+            <!-- ATTENDANCE CONTENT -->
             <div id="attendanceContent" <?= $approvalSuccess ? 'style="display:none"' : '' ?>>
 
                 <div class="attendance-header">
@@ -1087,10 +1017,6 @@ if(isset($_POST['approve_report'])){
                             </select>
                             <label>entries</label>
                         </div>
-                        <div class="export-buttons">
-                            <button class="btn-export btn-excel"><i class="fa-solid fa-file-excel"></i> Excel</button>
-                            <button class="btn-export btn-pdf"><i class="fa-solid fa-file-pdf"></i> PDF</button>
-                        </div>
                         <input type="text" class="search-input" placeholder="Search">
                     </div>
 
@@ -1125,7 +1051,6 @@ foreach ($attendanceRows as $row):
     echo "<td>".$row['esic_no']."</td>";
     echo "<td>".$row['employee_name']."</td>";
     echo "<td>".$row['rank']."</td>";
-
 
     $days = [1,2,5,6,7,8,9,12,13,14,15,16,19,20,21,22,23,26,27,28,29,30];
 
@@ -1204,7 +1129,6 @@ endforeach;
                                 <button type="submit" name="approve_report" class="btn btn-primary">
                                     <i class="fa-solid fa-check"></i> APPROVE REPORT
                                 </button>
-
                             </div>
                         </form>
                     </div>
@@ -1213,7 +1137,7 @@ endforeach;
 
             </div><!-- /#attendanceContent -->
 
-            <!-- ===================== SUCCESS PAGE ===================== -->
+            <!-- SUCCESS PAGE -->
             <div class="success-page <?= $approvalSuccess ? 'visible' : '' ?>" id="successPage">
                 <div class="success-banner">
                     <div class="success-check">
@@ -1232,14 +1156,6 @@ endforeach;
                             Processed On: <span><?= $approvalSuccess ? date('Y-m-d H:i:s') : '' ?></span>
                         </div>
                     </div>
-                    <!-- <div class="success-actions">
-                        <a href="asomonthly.php" class="btn btn-white">
-                            <i class="fa-solid fa-calendar-days"></i> View Attendance
-                        </a>
-                        <a href="login.php" class="btn btn-white" style="background: rgba(255,255,255,0.15); color: white; border-color: rgba(255,255,255,0.4);">
-                            <i class="fa-solid fa-right-from-bracket"></i> Logout
-                        </a>
-                    </div> -->
                 </div>
             </div>
 
@@ -1247,7 +1163,6 @@ endforeach;
     </div>
 
     <script>
-        // Sidebar toggle
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebarOverlay');
 
@@ -1264,22 +1179,6 @@ endforeach;
             overlay.classList.remove('active');
         });
 
-        // Approve Report button — validate then submit form
-        // document.getElementById('forwardBtn').addEventListener('click', function () {
-        //     const commentBox = document.getElementById('commentBox');
-        //     const comment = commentBox.value.trim();
-
-        //     if (!comment) {
-        //         commentBox.focus();
-        //         commentBox.classList.add('error');
-        //         return;
-        //     }
-
-        //     // Submit the PHP form
-        //     document.getElementById('approvalForm').submit();
-        // });
-
-        // Remove error style on input
         const commentBox = document.getElementById('commentBox');
         if (commentBox) {
             commentBox.addEventListener('input', function () {

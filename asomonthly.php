@@ -425,42 +425,6 @@ if(isset($_POST['approve_report'])){
             outline: none;
         }
 
-        .export-buttons {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .btn-export {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            border: none;
-            transition: all 0.2s;
-        }
-
-        .btn-excel {
-            background: #10b981;
-            color: white;
-        }
-
-        .btn-excel:hover {
-            background: #059669;
-        }
-
-        .btn-pdf {
-            background: #ef4444;
-            color: white;
-        }
-
-        .btn-pdf:hover {
-            background: #dc2626;
-        }
-
         .search-input {
             padding: 0.6rem 1rem 0.6rem 2.75rem;
             border: 1.5px solid #e5e7eb;
@@ -997,15 +961,6 @@ if(isset($_POST['approve_report'])){
             .search-input {
                 width: 100%;
             }
-
-            .export-buttons {
-                width: 100%;
-                flex-wrap: wrap;
-            }
-
-            .btn-export {
-                flex: 1;
-            }
         }
     </style>
 </head>
@@ -1086,10 +1041,6 @@ if(isset($_POST['approve_report'])){
                                 <option>100</option>
                             </select>
                             <label>entries</label>
-                        </div>
-                        <div class="export-buttons">
-                            <button class="btn-export btn-excel"><i class="fa-solid fa-file-excel"></i> Excel</button>
-                            <button class="btn-export btn-pdf"><i class="fa-solid fa-file-pdf"></i> PDF</button>
                         </div>
                         <input type="text" class="search-input" placeholder="Search">
                     </div>
@@ -1204,7 +1155,6 @@ endforeach;
                                 <button type="submit" name="approve_report" class="btn btn-primary">
                                     <i class="fa-solid fa-check"></i> APPROVE REPORT
                                 </button>
-
                             </div>
                         </form>
                     </div>
@@ -1232,14 +1182,6 @@ endforeach;
                             Processed On: <span><?= $approvalSuccess ? date('Y-m-d H:i:s') : '' ?></span>
                         </div>
                     </div>
-                    <!-- <div class="success-actions">
-                        <a href="asomonthly.php" class="btn btn-white">
-                            <i class="fa-solid fa-calendar-days"></i> View Attendance
-                        </a>
-                        <a href="login.php" class="btn btn-white" style="background: rgba(255,255,255,0.15); color: white; border-color: rgba(255,255,255,0.4);">
-                            <i class="fa-solid fa-right-from-bracket"></i> Logout
-                        </a>
-                    </div> -->
                 </div>
             </div>
 
@@ -1263,21 +1205,6 @@ endforeach;
             sidebar.classList.remove('open');
             overlay.classList.remove('active');
         });
-
-        // Approve Report button — validate then submit form
-        // document.getElementById('forwardBtn').addEventListener('click', function () {
-        //     const commentBox = document.getElementById('commentBox');
-        //     const comment = commentBox.value.trim();
-
-        //     if (!comment) {
-        //         commentBox.focus();
-        //         commentBox.classList.add('error');
-        //         return;
-        //     }
-
-        //     // Submit the PHP form
-        //     document.getElementById('approvalForm').submit();
-        // });
 
         // Remove error style on input
         const commentBox = document.getElementById('commentBox');

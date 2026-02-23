@@ -347,10 +347,10 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
         .table-controls { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; flex-wrap:wrap; gap:1rem; }
         .table-controls-left { display:flex; align-items:center; gap:0.5rem; font-size:0.9rem; color:#6b7280; }
         .table-controls-left select { padding:0.5rem 0.75rem; border:1.5px solid #e5e7eb; border-radius:8px; font-size:0.9rem; outline:none; }
-        .export-buttons { display:flex; gap:0.5rem; }
+        /* .export-buttons { display:flex; gap:0.5rem; }
         .btn-export { display:inline-flex; align-items:center; gap:0.4rem; padding:0.5rem 1rem; border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer; border:none; transition:all 0.2s; }
         .btn-excel { background:#10b981; color:white; } .btn-excel:hover { background:#059669; }
-        .btn-pdf   { background:#ef4444; color:white; } .btn-pdf:hover   { background:#dc2626; }
+        .btn-pdf   { background:#ef4444; color:white; } .btn-pdf:hover   { background:#dc2626; } */
         .search-input { padding:0.6rem 1rem 0.6rem 2.75rem; border:1.5px solid #e5e7eb; border-radius:8px; font-size:0.9rem; outline:none; width:240px; background:white url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%236b7280" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>') no-repeat 1rem center; background-size:16px; }
 
         /* ── TABLE ── */
@@ -708,10 +708,10 @@ $dayColumns = $reportLoaded ? getWeekdays($year, $month) : [];
                     <select><option>10</option><option>25</option><option>50</option><option>100</option></select>
                     <label>entries</label>
                 </div>
-                <div class="export-buttons">
+                <!-- <div class="export-buttons">
                     <button class="btn-export btn-excel"><i class="fa-solid fa-file-excel"></i> Excel</button>
                     <button class="btn-export btn-pdf"><i class="fa-solid fa-file-pdf"></i> PDF</button>
-                </div>
+                </div> -->
                 <input type="text" class="search-input" placeholder="Search">
             </div>
 
