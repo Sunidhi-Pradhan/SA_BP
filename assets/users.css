@@ -7,6 +7,7 @@
 
 body {
     background: #f4f6f8;
+    overflow-x: hidden;
 }
 
 .container {
@@ -14,45 +15,130 @@ body {
     min-height: 100vh;
 }
 
-/* ================= SIDEBAR ================= */
+/* ==============================================
+   OVERLAY (mobile)
+=============================================== */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 998;
+    backdrop-filter: blur(2px);
+}
+.sidebar-overlay.active {
+    display: block;
+}
+
+/* ==============================================
+   SIDEBAR — pixel-perfect match to dashboard
+=============================================== */
 .sidebar {
     width: 240px;
-    background: #0f766e;
-    color: #fff;
-    padding: 20px;
-}
-
-.logo {
-    text-align: center;
-    padding: 15px;
-    font-size: 18px;
-    font-weight: 600;
-    border-bottom: 1px solid rgba(255,255,255,0.2);
-    margin-bottom: 20px;
-}
-
-nav {
+    min-width: 240px;
+    background: #0f766e;          /* teal */
+    color: #ffffff;
+    padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 999;
+    overflow-y: auto;
+    transition: transform 0.3s ease;
 }
 
-.menu {
+/* Logo white card */
+.sidebar .logo {
+    padding: 20px 15px;
+    margin-bottom: 10px;
+    text-align: unset;
+    font-size: unset;
+    font-weight: unset;
+    border-bottom: none;
+}
+.sidebar .logo img {
+    max-width: 160px;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 10px 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Nav */
+.sidebar nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0 15px;
+    flex: 1;
+}
+
+/* Menu items */
+.sidebar .menu {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px;
-    border-radius: 8px;
-    color: #fff;
+    gap: 12px;
+    padding: 12px 15px;
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.9);
     text-decoration: none;
+    font-size: 14px;
+    font-weight: 400;
+    transition: all 0.25s ease;
+    position: relative;
+    margin-bottom: 2px;
+    letter-spacing: 0.1px;
+    white-space: nowrap;
+    background: none;             /* reset any inherited bg */
+}
+.sidebar .menu .icon {
+    font-size: 16px;
+    width: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.95;
+    flex-shrink: 0;
+}
+.sidebar .menu:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
 }
 
-.menu:hover,
-.menu.active {
-    background: rgba(255,255,255,0.15);
+/* Active state — white bg tint + left white bar */
+.sidebar .menu.active {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    font-weight: 500;
+}
+.sidebar .menu.active::before {
+    content: "";
+    position: absolute;
+    left: -15px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 70%;
+    background: #ffffff;
+    border-radius: 0 4px 4px 0;
 }
 
-/* ================= MAIN ================= */
+/* Logout — push to bottom with top divider */
+.sidebar .menu.logout {
+    margin-top: auto;
+    margin-bottom: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    padding-top: 15px;
+}
+
+/* ==============================================
+   MAIN — unchanged from original
+=============================================== */
 .main {
     flex: 1;
     padding: 20px;
@@ -68,36 +154,133 @@ nav {
     background-color: #ffffff;
 }
 
-/* TWO CARD LAYOUT */
+/* Two-card layout — both cards same height */
 .content {
     display: grid;
-    grid-template-columns: 1fr 1fr;   /* SAME WIDTH */
+    grid-template-columns: 1fr 1fr;
     gap: 24px;
-    align-items: stretch;
+    align-items: stretch;    /* both columns same height */
 }
 
-/* ================= CARD ================= */
+/* Form stretches to fill column height */
+.add-user-form {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Card fills full height and stacks content evenly */
+.add-user-form .card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 24px;
+}
+
+/* Add New User heading inside the card */
+.add-user-form .card-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.add-user-form .card-title i {
+    color: #0f766e;
+}
+
+.add-user-form label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.add-user-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.add-user-form .form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.add-user-form input,
+.add-user-form select {
+    width: 100%;
+    height: 46px;
+    font-size: 14px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1.5px solid #d1d5db;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    font-family: "Segoe UI", sans-serif;
+    background: #fff;
+    color: #111827;
+}
+.add-user-form input:focus,
+.add-user-form select:focus {
+    outline: none;
+    border-color: #0f766e;
+    box-shadow: 0 0 0 3px rgba(15,118,110,0.1);
+}
+.add-user-form input::placeholder {
+    color: #9ca3af;
+}
+
+.add-user-form button {
+    width: 100%;
+    margin-top: auto;
+    padding: 0;
+    height: 52px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    background: #0f766e;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+}
+.add-user-form button:hover {
+    background: #0d6460;
+    transform: translateY(-1px);
+}
+
+/* ==============================================
+   CARD — unchanged
+=============================================== */
 .card {
     background: #ffffff;
     border-radius: 12px;
     padding: 20px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
     width: 100%;
 }
-
 .card h3 {
     font-size: 18px;
     font-weight: 600;
     margin-bottom: 16px;
 }
 
-/* ================= TABLE ================= */
+/* ==============================================
+   TABLE — unchanged
+=============================================== */
 .users-table {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0 10px;
 }
-
 .users-table thead th {
     background: #f1fdfa;
     padding: 12px;
@@ -105,22 +288,19 @@ nav {
     text-align: left;
     border-radius: 6px;
 }
-
 .users-table tbody tr {
     background: #fff;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
-
 .users-table td {
     padding: 10px;
 }
-
 .status.active {
     color: green;
     font-weight: 600;
 }
 
-/* ACTION BUTTONS */
+/* Action buttons */
 .action-btns {
     display: flex;
     gap: 8px;
@@ -138,60 +318,33 @@ nav {
     align-items: center;
     justify-content: center;
 }
+.edit-btn         { background: #0f766e; }
+.edit-btn:hover   { background: #0d6b63; }
+.delete-btn       { background: #dc2626; }
+.delete-btn:hover { background: #b91c1c; }
 
-.edit-btn {
-    background: #0f766e;
-}
+.icon-btn        { border: none; padding: 3px 6px; border-radius: 6px; cursor: pointer; color: #fff; }
+.icon-btn.edit   { background: #2563eb; }
+.icon-btn.delete { background: #dc2626; }
 
-.edit-btn:hover {
-    background: #0d6b63;
-}
-
-.delete-btn {
-    background: #dc2626;
-}
-
-.delete-btn:hover {
-    background: #b91c1c;
-}
-
-
-.icon-btn {
-    border: none;
-    padding: 3px 6px;
-    border-radius: 6px;
-    cursor: pointer;
-    color: #fff;
-}
-
-.icon-btn.edit {
-    background: #2563eb;
-}
-
-.icon-btn.delete {
-    background: #dc2626;
-}
-
-/* ================= ADD USER FORM ================= */
+/* ==============================================
+   ADD USER FORM — unchanged
+=============================================== */
 .add-user-form label {
     font-size: 14px;
     margin-bottom: 4px;
     display: block;
 }
-
-/* TWO COLUMN FORM */
 .add-user-form .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
     margin-bottom: 12px;
 }
-
 .add-user-form .form-group {
     display: flex;
     flex-direction: column;
 }
-
 .add-user-form input,
 .add-user-form select {
     width: 100%;
@@ -199,7 +352,6 @@ nav {
     border-radius: 8px;
     border: 1px solid #ccc;
 }
-
 .add-user-form button {
     width: 100%;
     padding: 12px;
@@ -211,8 +363,9 @@ nav {
     font-size: 15px;
 }
 
-
-/* ================= RESPONSIVE ================= */
+/* ==============================================
+   RESPONSIVE
+=============================================== */
 @media (max-width: 900px) {
     .content {
         grid-template-columns: 1fr;
@@ -224,14 +377,15 @@ nav {
         grid-template-columns: 1fr;
     }
 
+    /* Sidebar slides off-screen on mobile */
     .sidebar {
-        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        transform: translateX(-100%);
+    }
+    .sidebar.open {
+        transform: translateX(0);
     }
 }
-.logo img {
-            max-width: 140px;   /* adjust as needed */
-            height: auto;
-            display: block;
-            margin: 0 auto;
-            border-radius: 5px;
-            }
