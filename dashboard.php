@@ -15,6 +15,33 @@ if (!isset($_SESSION["user"])) {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="assets/desh.css">
+    <style>
+        /* ── Stat card icon badge ── */
+        .stat-card {
+            position: relative;
+        }
+        .card-icon {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+        }
+        /* Icon colours matching the screenshot */
+        .stat-card:nth-child(1) .card-icon { background: #ede9fe; color: #7c3aed; }
+        .stat-card:nth-child(2) .card-icon { background: #d1fae5; color: #059669; }
+        .stat-card:nth-child(3) .card-icon { background: #fee2e2; color: #dc2626; }
+        .stat-card:nth-child(4) .card-icon { background: #fef3c7; color: #d97706; }
+        .stat-card:nth-child(5) .card-icon { background: #dbeafe; color: #2563eb; }
+        .stat-card:nth-child(6) .card-icon { background: #fef9c3; color: #ca8a04; }
+        .stat-card:nth-child(7) .card-icon { background: #d1fae5; color: #059669; }
+        .stat-card:nth-child(8) .card-icon { background: #dbeafe; color: #2563eb; }
+    </style>
 </head>
 
 <body>
@@ -90,10 +117,9 @@ if (!isset($_SESSION["user"])) {
                 <i class="fa-solid fa-bars"></i>
             </button>
             <h1>Security Billing Portal</h1>
-            <label class="theme-toggle" title="Toggle dark mode">
-                <input type="checkbox" id="themeToggle">
-                <span class="slider"></span>
-            </label>
+            <button class="theme-btn" id="themeToggle" title="Toggle dark mode">
+                <i class="fa-solid fa-moon"></i>
+            </button>
         </header>
 
         <!-- PAGE CONTENT -->
@@ -101,14 +127,46 @@ if (!isset($_SESSION["user"])) {
 
             <!-- STATS -->
             <section class="stats">
-                <div class="stat-card"><p>Total Employees</p><h2>3,555</h2></div>
-                <div class="stat-card"><p>Today Present</p><h2>0</h2></div>
-                <div class="stat-card"><p>Today Absent</p><h2>0</h2></div>
-                <div class="stat-card"><p>On Leave Today</p><h2>0</h2></div>
-                <div class="stat-card"><p>Attendance Uploaded</p><h2>0</h2></div>
-                <div class="stat-card"><p>Pending Attendance</p><h2 class="warning">3,555</h2></div>
-                <div class="stat-card"><p>Active Sites</p><h2>35</h2></div>
-                <div class="stat-card"><p>Attendance Rate</p><h2>0%</h2></div>
+                <div class="stat-card">
+                    <span class="card-icon"><i class="fa-solid fa-users"></i></span>
+                    <p>Total Employees</p>
+                    <h2>3,555</h2>
+                </div>
+                <div class="stat-card">
+                    <span class="card-icon"><i class="fa-solid fa-user-check"></i></span>
+                    <p>Today Present</p>
+                    <h2>0</h2>
+                </div>
+                <div class="stat-card">
+                    <span class="card-icon"><i class="fa-solid fa-user-xmark"></i></span>
+                    <p>Today Absent</p>
+                    <h2>0</h2>
+                </div>
+                <div class="stat-card">
+                    <span class="card-icon"><i class="fa-regular fa-calendar-xmark"></i></span>
+                    <p>On Leave Today</p>
+                    <h2>0</h2>
+                </div>
+                <div class="stat-card">
+                    <span class="card-icon"><i class="fa-solid fa-upload"></i></span>
+                    <p>Attendance Uploaded</p>
+                    <h2>0</h2>
+                </div>
+                <div class="stat-card">
+                    <span class="card-icon"><i class="fa-regular fa-clock"></i></span>
+                    <p>Pending Attendance</p>
+                    <h2 class="warning">3,555</h2>
+                </div>
+                <div class="stat-card">
+                    <span class="card-icon"><i class="fa-solid fa-location-dot"></i></span>
+                    <p>Active Sites</p>
+                    <h2>35</h2>
+                </div>
+                <div class="stat-card">
+                    <span class="card-icon"><i class="fa-solid fa-arrow-trend-up"></i></span>
+                    <p>Attendance Rate</p>
+                    <h2>0%</h2>
+                </div>
             </section>
 
             <!-- GRAPH + SUMMARY -->
@@ -123,23 +181,25 @@ if (!isset($_SESSION["user"])) {
 
                 <div class="summary-box">
                     <h3>📋 Today Summary</h3>
-                    <div class="summary-item">
-                        <span>Total Employees</span><b>3,555</b>
-                    </div>
-                    <div class="summary-item">
-                        <span>Present</span><b class="green">0</b>
-                    </div>
-                    <div class="summary-item">
-                        <span>Absent</span><b class="red">0</b>
-                    </div>
-                    <div class="summary-item">
-                        <span>On Leave</span><b>0</b>
-                    </div>
-                    <div class="summary-item">
-                        <span>Pending Attendance</span><b class="red">3,555</b>
-                    </div>
-                    <div class="summary-item">
-                        <span>Attendance Rate</span><b>0%</b>
+                    <div class="summary-items-wrap">
+                        <div class="summary-item">
+                            <span>Total Employees</span><b>3,555</b>
+                        </div>
+                        <div class="summary-item">
+                            <span>Present</span><b class="green">0</b>
+                        </div>
+                        <div class="summary-item">
+                            <span>Absent</span><b class="red">0</b>
+                        </div>
+                        <div class="summary-item">
+                            <span>On Leave</span><b>0</b>
+                        </div>
+                        <div class="summary-item">
+                            <span>Pending Attendance</span><b class="red">3,555</b>
+                        </div>
+                        <div class="summary-item">
+                            <span>Attendance Rate</span><b>0%</b>
+                        </div>
                     </div>
                 </div>
 
@@ -191,20 +251,30 @@ window.addEventListener('resize', function () {
    THEME TOGGLE
 ================================================ */
 const themeToggle = document.getElementById('themeToggle');
-if (localStorage.getItem('theme') === 'dark') {
-    document.body.classList.add('dark');
-    themeToggle.checked = true;
+const themeIcon   = themeToggle.querySelector('i');
+
+function applyTheme(dark) {
+    if (dark) {
+        document.body.classList.add('dark');
+        themeToggle.classList.add('active');
+        themeIcon.className = 'fa-solid fa-sun';
+    } else {
+        document.body.classList.remove('dark');
+        themeToggle.classList.remove('active');
+        themeIcon.className = 'fa-solid fa-moon';
+    }
 }
-themeToggle.addEventListener('change', function () {
-    document.body.classList.toggle('dark');
-    localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+
+applyTheme(localStorage.getItem('theme') === 'dark');
+
+themeToggle.addEventListener('click', function () {
+    const isDark = document.body.classList.contains('dark');
+    applyTheme(!isDark);
+    localStorage.setItem('theme', !isDark ? 'dark' : 'light');
 });
 
 /* ================================================
    ATTENDANCE TREND CHART
-   responsive: true + maintainAspectRatio: false
-   are the two essential settings for Chart.js
-   to respect the .chart-wrapper container size
 ================================================ */
 const ctx = document.getElementById('attendanceChart').getContext('2d');
 new Chart(ctx, {
@@ -240,7 +310,7 @@ new Chart(ctx, {
     },
     options: {
         responsive: true,
-        maintainAspectRatio: false,   /* CRITICAL — lets CSS control height */
+        maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
             legend: {
