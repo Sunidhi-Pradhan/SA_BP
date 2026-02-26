@@ -10,6 +10,7 @@
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="../assets/desh.css">
 
     <!-- jsPDF + AutoTable -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -61,7 +62,7 @@
             box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
         }
 
-        .logo {
+        /* .logo {
             padding: 20px 15px;
             margin-bottom: 10px;
         }
@@ -72,7 +73,7 @@
             display: block;
             margin: 0 auto;
             border-radius: 5px;
-        }
+        } */
 
         nav {
             display: flex;
@@ -642,7 +643,7 @@
                     <span class="icon"><i class="fa-solid fa-file-pdf"></i></span>
                     <span>Download Salary</span>
                 </a>
-                <a href="../login.php" class="menu logout">
+                <a href="../logout.php" class="menu logout">
                     <span class="icon"><i class="fa-solid fa-right-from-bracket"></i></span>
                     <span>Logout</span>
                 </a>

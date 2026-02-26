@@ -428,7 +428,7 @@ require_once '../config.php';
                 <span class="icon"><i class="fa-solid fa-file-pdf"></i></span>
                 <span>Download Salary</span>
             </a>
-            <a href="../login.php" class="menu logout">
+            <a href="../logout.php" class="menu logout">
                 <span class="icon"><i class="fa-solid fa-right-from-bracket"></i></span>
                 <span>Logout</span>
             </a>
