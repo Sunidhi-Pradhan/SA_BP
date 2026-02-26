@@ -2,9 +2,6 @@
 session_start();
 require "config.php";
 
-// echo $_SESSION['user'];
-// exit;
-
 /*
 |--------------------------------------------------
 | LOGIN PROTECTION (ASO)
@@ -15,8 +12,6 @@ if (!isset($_SESSION['user'])) {
     exit;
 }
 
-// role check
-// role + site check
 $stmt = $pdo->prepare("SELECT role, site_code FROM user WHERE id = ?");
 $stmt->execute([$_SESSION['user']]);
 $u = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -25,8 +20,7 @@ if (!$u || $u['role'] !== 'ASO') {
     die("Access denied");
 }
 
-$asoSiteCode = $u['site_code'];   // 🔐 VERY IMPORTANT
-
+$asoSiteCode = $u['site_code'];
 
 /*
 |--------------------------------------------------
@@ -46,63 +40,33 @@ if (isset($_POST['approve_records']) && isset($_POST['esic_numbers'])) {
 
     try {
         foreach ($esicNumbers as $esic) {
-
-            // 1️⃣ Fetch existing JSON
             $stmt = $pdo->prepare("
                 SELECT a.attendance_json
                 FROM attendance a
-                INNER JOIN employee_master em 
-                    ON em.esic_no = a.esic_no
-                WHERE a.esic_no = ?
-                AND em.site_code = ?
+                INNER JOIN employee_master em ON em.esic_no = a.esic_no
+                WHERE a.esic_no = ? AND em.site_code = ?
             ");
             $stmt->execute([$esic, $asoSiteCode]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-
             if (!$row) continue;
-
             $json = json_decode($row['attendance_json'], true);
             if (!is_array($json)) continue;
-
-            // 2️⃣ Date must exist
             if (!isset($json[$today])) continue;
+            if (($json[$today]['approve_status'] ?? 0) == 1) continue;
 
-            // 3️⃣ Already approved → skip
-            if (($json[$today]['approve_status'] ?? 0) == 1) {
-                continue;
-            }
-
-            // 4️⃣ Apply approval
             $json[$today]['approve_status'] = 1;
-
-            // 5️⃣ Save back to DB
-            $update = $pdo->prepare("
-                UPDATE attendance 
-                SET attendance_json = ? 
-                WHERE esic_no = ?
-            ");
-            $update->execute([
-                json_encode($json, JSON_UNESCAPED_UNICODE),
-                $esic
-            ]);
+            $update = $pdo->prepare("UPDATE attendance SET attendance_json = ? WHERE esic_no = ?");
+            $update->execute([json_encode($json, JSON_UNESCAPED_UNICODE), $esic]);
         }
 
-        echo json_encode([
-            'success' => true,
-            'message' => 'Selected records approved successfully'
-        ]);
+        echo json_encode(['success' => true, 'message' => 'Selected records approved successfully']);
         exit;
-
     } catch (Exception $e) {
-        echo json_encode([
-            'success' => false,
-            'message' => $e->getMessage()
-        ]);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         exit;
     }
 }
-
 
 /*
 |--------------------------------------------------
@@ -110,46 +74,30 @@ if (isset($_POST['approve_records']) && isset($_POST['esic_numbers'])) {
 |--------------------------------------------------
 */
 $stmt = $pdo->prepare("
-    SELECT 
-        a.esic_no,
-        em.employee_name AS emp_name,
-        a.attendance_json
+    SELECT a.esic_no, em.employee_name AS emp_name, a.attendance_json
     FROM attendance a
-    INNER JOIN employee_master em 
-        ON em.esic_no = a.esic_no
+    INNER JOIN employee_master em ON em.esic_no = a.esic_no
     WHERE em.site_code = ?
 ");
-
 $stmt->execute([$asoSiteCode]);
 $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-
-// $stmt->execute();
 $attendanceList = [];
 $selectedDate = $_GET['date'] ?? date('Y-m-d');
 
-
 foreach ($records as $record) {
-
     $json = json_decode($record['attendance_json'], true);
     if (!is_array($json)) continue;
-
-    /* 🔑 DATE IS THE KEY NOW */
     if (!isset($json[$selectedDate])) continue;
 
     $entry = $json[$selectedDate];
-
-    // ✅ FIXED: Skip already approved (check approve_status in JSON)
-    if (isset($entry['approve_status']) && $entry['approve_status'] == 1) {
-        continue;
-    }
+    if (isset($entry['approve_status']) && $entry['approve_status'] == 1) continue;
 
     $statusRaw = strtoupper($entry['status'] ?? '');
-
     switch ($statusRaw) {
-        case 'P':  $status = 'present'; break;
-        case 'A':  $status = 'absent'; break;
-        case 'L':  $status = 'leave'; break;
+        case 'P':  $status = 'present';  break;
+        case 'A':  $status = 'absent';   break;
+        case 'L':  $status = 'leave';    break;
         case 'PP': $status = 'overtime'; break;
         default:   $status = 'unknown';
     }
@@ -161,8 +109,6 @@ foreach ($records as $record) {
         'attendance_status' => $status
     ];
 }
-
-
 ?>
 
 <!DOCTYPE html>
@@ -175,11 +121,7 @@ foreach ($records as $record) {
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
             --primary-color: #0f766e;
@@ -204,7 +146,118 @@ foreach ($records as $record) {
             background: var(--bg-primary);
             color: var(--text-primary);
             line-height: 1.6;
+            overflow-x: hidden;
         }
+
+        /* =============================================
+           KEYFRAME ANIMATIONS
+        ============================================= */
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeDown {
+            from { opacity: 0; transform: translateY(-16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-40px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(40px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.88); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes popIn {
+            0%   { opacity: 0; transform: scale(0.6) rotate(-8deg); }
+            70%  { transform: scale(1.08) rotate(2deg); }
+            100% { opacity: 1; transform: scale(1) rotate(0deg); }
+        }
+
+        @keyframes rowEntrance {
+            from { opacity: 0; transform: translateX(-18px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50%       { transform: scale(1.12); }
+        }
+
+        @keyframes badgePulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+            50%       { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+        }
+
+        @keyframes shimmer {
+            0%   { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to   { transform: translateX(0);     opacity: 1; }
+        }
+
+        @keyframes slideOut {
+            from { transform: translateX(0);     opacity: 1; }
+            to   { transform: translateX(400px); opacity: 0; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translateX(0) scaleY(1); max-height: 80px; }
+            to   { opacity: 0; transform: translateX(-40px) scaleY(0.3); max-height: 0; padding: 0; }
+        }
+
+        @keyframes navItemReveal {
+            from { opacity: 0; transform: translateX(-20px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes legendSlide {
+            from { opacity: 0; transform: translateX(16px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes iconFloat {
+            0%, 100% { transform: translateY(0px); }
+            50%       { transform: translateY(-4px); }
+        }
+
+        @keyframes gradientShift {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes checkmarkDraw {
+            from { stroke-dashoffset: 50; opacity: 0; }
+            to   { stroke-dashoffset: 0;  opacity: 1; }
+        }
+
+        /* =============================================
+           LAYOUT
+        ============================================= */
 
         .dashboard-layout {
             display: grid;
@@ -212,9 +265,12 @@ foreach ($records as $record) {
             min-height: 100vh;
         }
 
-        /* Sidebar Styles */
+        /* =============================================
+           SIDEBAR  — animated entry + nav stagger
+        ============================================= */
         .sidebar {
-            background: linear-gradient(135deg, #0f766e 0%, #0d5f58 100%);
+            background: linear-gradient(160deg, #0f766e 0%, #0d5f58 60%, #095950 100%);
+            background-size: 200% 200%;
             color: white;
             padding: 2rem 0;
             box-shadow: var(--shadow-lg);
@@ -222,12 +278,14 @@ foreach ($records as $record) {
             top: 0;
             height: 100vh;
             overflow-y: auto;
+            animation: slideInLeft 0.5s cubic-bezier(0.22,1,0.36,1) both;
         }
 
         .sidebar-logo {
             padding: 0 2rem 2rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            border-bottom: 1px solid rgba(255,255,255,0.2);
             margin-bottom: 2rem;
+            animation: fadeDown 0.5s 0.1s ease both;
         }
 
         .sidebar-logo h1 {
@@ -242,47 +300,61 @@ foreach ($records as $record) {
             margin-top: 0.25rem;
         }
 
-        .sidebar-nav {
-            list-style: none;
-        }
+        .sidebar-nav { list-style: none; }
 
         .sidebar-nav li {
             margin: 0.25rem 1rem;
+            opacity: 0;
+            animation: navItemReveal 0.4s ease forwards;
         }
+        .sidebar-nav li:nth-child(1) { animation-delay: 0.25s; }
+        .sidebar-nav li:nth-child(2) { animation-delay: 0.35s; }
+        .sidebar-nav li:nth-child(3) { animation-delay: 0.45s; }
 
         .sidebar-nav a {
             display: flex;
             align-items: center;
             gap: 1rem;
             padding: 0.875rem 1rem;
-            color: white;
+            color: rgba(255,255,255,0.88);
             text-decoration: none;
             border-radius: 0.75rem;
-            transition: all 0.2s;
+            transition: background 0.2s, transform 0.2s, color 0.2s, box-shadow 0.2s;
             font-weight: 500;
         }
 
         .sidebar-nav a:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: translateX(4px);
+            background: rgba(255,255,255,0.15);
+            transform: translateX(5px);
+            color: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
         .sidebar-nav a.active {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255,255,255,0.22);
+            color: white;
         }
 
         .sidebar-nav i {
             font-size: 1.125rem;
             width: 24px;
+            transition: transform 0.25s;
         }
 
-        /* Main Content */
+        .sidebar-nav a:hover i { transform: scale(1.2) rotate(-5deg); }
+
+        /* =============================================
+           MAIN CONTENT
+        ============================================= */
         .main-content {
             padding: 2rem;
             overflow-y: auto;
+            animation: fadeIn 0.4s 0.2s ease both;
         }
 
-        /* Header */
+        /* =============================================
+           HEADER
+        ============================================= */
         .header {
             background: var(--bg-secondary);
             padding: 1.5rem 2rem;
@@ -292,7 +364,12 @@ foreach ($records as $record) {
             justify-content: space-between;
             align-items: center;
             margin-bottom: 2rem;
+            opacity: 0;
+            animation: fadeDown 0.5s 0.3s ease forwards;
+            transition: box-shadow 0.3s;
         }
+
+        .header:hover { box-shadow: 0 8px 24px rgba(15,118,110,0.15); }
 
         .header-left h2 {
             font-size: 1.5rem;
@@ -301,74 +378,65 @@ foreach ($records as $record) {
             margin-bottom: 0.25rem;
         }
 
-        .header-left p {
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-        }
+        .header-left p { color: var(--text-secondary); font-size: 0.875rem; }
 
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-        }
+        .header-right { display: flex; align-items: center; gap: 1.5rem; }
 
         .header-icon {
-            width: 40px;
-            height: 40px;
+            width: 40px; height: 40px;
             border-radius: 50%;
             background: var(--bg-primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
             position: relative;
         }
 
         .header-icon:hover {
             background: var(--primary-light);
             color: white;
-            transform: scale(1.05);
+            transform: scale(1.1);
+            box-shadow: 0 4px 14px rgba(15,118,110,0.3);
         }
 
         .header-icon .badge {
             position: absolute;
-            top: -4px;
-            right: -4px;
+            top: -4px; right: -4px;
             background: var(--danger-color);
             color: white;
             font-size: 0.625rem;
-            width: 18px;
-            height: 18px;
+            width: 18px; height: 18px;
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             font-weight: 600;
+            animation: badgePulse 2s ease-in-out infinite;
         }
 
         .user-avatar {
-            width: 40px;
-            height: 40px;
+            width: 40px; height: 40px;
             border-radius: 50%;
             background: linear-gradient(135deg, #0f766e 0%, #0d5f58 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             color: white;
             font-weight: 600;
             cursor: pointer;
             border: 2px solid var(--border-color);
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
-        /* Toast Notification */
+        .user-avatar:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 14px rgba(15,118,110,0.35);
+        }
+
+        /* =============================================
+           TOAST NOTIFICATIONS
+        ============================================= */
         .toast-container {
             position: fixed;
-            top: 2rem;
-            right: 2rem;
+            top: 2rem; right: 2rem;
             z-index: 9999;
-            display: flex;
-            flex-direction: column;
+            display: flex; flex-direction: column;
             gap: 1rem;
         }
 
@@ -377,119 +445,69 @@ foreach ($records as $record) {
             background: white;
             padding: 1.25rem 1.5rem;
             border-radius: 0.75rem;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            animation: slideIn 0.3s ease-out;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            display: flex; align-items: center; gap: 1rem;
+            animation: slideIn 0.35s cubic-bezier(0.22,1,0.36,1) both;
             border-left: 4px solid var(--success-color);
         }
 
-        .toast.success {
-            border-left-color: var(--success-color);
-        }
-
-        .toast.error {
-            border-left-color: var(--danger-color);
-        }
-
-        .toast.warning {
-            border-left-color: var(--warning-color);
-        }
+        .toast.success  { border-left-color: var(--success-color); }
+        .toast.error    { border-left-color: var(--danger-color); }
+        .toast.warning  { border-left-color: var(--warning-color); }
+        .toast.hiding   { animation: slideOut 0.3s ease-out forwards; }
 
         .toast-icon {
-            width: 40px;
-            height: 40px;
+            width: 40px; height: 40px;
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             font-size: 1.25rem;
             flex-shrink: 0;
+            animation: popIn 0.4s 0.1s cubic-bezier(0.22,1,0.36,1) both;
         }
 
-        .toast.success .toast-icon {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success-color);
-        }
+        .toast.success .toast-icon { background: rgba(16,185,129,0.1); color: var(--success-color); }
+        .toast.error   .toast-icon { background: rgba(239,68,68,0.1);  color: var(--danger-color); }
+        .toast.warning .toast-icon { background: rgba(245,158,11,0.1); color: var(--warning-color); }
 
-        .toast.error .toast-icon {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--danger-color);
-        }
-
-        .toast.warning .toast-icon {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--warning-color);
-        }
-
-        .toast-content {
-            flex: 1;
-        }
-
-        .toast-title {
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-            color: var(--text-primary);
-        }
-
-        .toast-message {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
+        .toast-content { flex: 1; }
+        .toast-title   { font-weight: 600; margin-bottom: 0.25rem; color: var(--text-primary); }
+        .toast-message { font-size: 0.875rem; color: var(--text-secondary); }
 
         .toast-close {
-            width: 24px;
-            height: 24px;
-            border: none;
-            background: transparent;
+            width: 24px; height: 24px;
+            border: none; background: transparent;
             color: var(--text-secondary);
-            cursor: pointer;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
+            cursor: pointer; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s, transform 0.2s;
         }
 
-        .toast-close:hover {
-            background: var(--bg-primary);
-            color: var(--text-primary);
+        .toast-close:hover { background: var(--bg-primary); transform: rotate(90deg); }
+
+        /* =============================================
+           CONTENT GRID
+        ============================================= */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 420px;
+            gap: 1.5rem;
+            align-items: start;
         }
 
-        @keyframes slideIn {
-            from {
-                transform: translateX(400px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        @keyframes slideOut {
-            from {
-                transform: translateX(0);
-                opacity: 1;
-            }
-            to {
-                transform: translateX(400px);
-                opacity: 0;
-            }
-        }
-
-        .toast.hiding {
-            animation: slideOut 0.3s ease-out forwards;
-        }
-
-        /* Table Card */
+        /* =============================================
+           TABLE CARD
+        ============================================= */
         .table-card {
             background: var(--bg-secondary);
             border-radius: 1rem;
             box-shadow: var(--shadow-md);
             overflow: hidden;
+            opacity: 0;
+            animation: fadeUp 0.5s 0.45s ease forwards;
+            transition: box-shadow 0.3s;
         }
+
+        .table-card:hover { box-shadow: 0 12px 32px rgba(15,118,110,0.14); }
 
         .table-header {
             padding: 1.5rem 2rem;
@@ -497,21 +515,22 @@ foreach ($records as $record) {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
+            flex-wrap: wrap; gap: 1rem;
         }
 
         .table-header h3 {
             font-size: 1.25rem;
             font-weight: 700;
+            transition: color 0.2s;
         }
 
-        .table-actions {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
+        .table-header h3:hover { color: var(--primary-color); }
 
+        .table-actions { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+        /* =============================================
+           BUTTONS
+        ============================================= */
         .btn {
             padding: 0.625rem 1.25rem;
             border-radius: 0.5rem;
@@ -519,27 +538,38 @@ foreach ($records as $record) {
             font-weight: 600;
             font-size: 0.875rem;
             cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
+            transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
         }
 
-        .btn-primary {
-            background: var(--primary-color);
-            color: white;
+        /* Ripple effect on click */
+        .btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.25);
+            transform: scale(0);
+            border-radius: inherit;
+            transition: transform 0.3s ease;
         }
 
+        .btn:active::after { transform: scale(2.5); opacity: 0; transition: none; }
+
+        .btn-primary { background: var(--primary-color); color: white; }
         .btn-primary:hover {
             background: var(--primary-dark);
             transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
+            box-shadow: 0 6px 16px rgba(15,118,110,0.35);
         }
+        .btn-primary:active { transform: translateY(0); }
 
         .btn-primary:disabled {
             background: var(--text-secondary);
             cursor: not-allowed;
             transform: none;
+            box-shadow: none;
         }
 
         .btn-secondary {
@@ -547,11 +577,11 @@ foreach ($records as $record) {
             color: var(--text-primary);
             border: 1px solid var(--border-color);
         }
+        .btn-secondary:hover { background: var(--border-color); }
 
-        .btn-secondary:hover {
-            background: var(--border-color);
-        }
-
+        /* =============================================
+           FORM CONTROLS
+        ============================================= */
         .select-box {
             padding: 0.625rem 1rem;
             border: 1px solid var(--border-color);
@@ -560,23 +590,23 @@ foreach ($records as $record) {
             color: var(--text-primary);
             font-size: 0.875rem;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
         }
 
         .select-box:focus {
             outline: none;
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+            box-shadow: 0 0 0 3px rgba(15,118,110,0.1);
         }
+
+        .select-box:hover { transform: translateY(-1px); }
 
         .table-controls {
             padding: 1rem 2rem;
             background: var(--bg-primary);
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
+            justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 1rem;
             border-bottom: 1px solid var(--border-color);
         }
 
@@ -586,22 +616,21 @@ foreach ($records as $record) {
             border-radius: 0.5rem;
             background: white;
             font-size: 0.875rem;
-            width: 100%;
-            max-width: 300px;
-            transition: all 0.2s;
+            width: 100%; max-width: 300px;
+            transition: border-color 0.2s, box-shadow 0.2s, width 0.3s;
         }
 
         .search-box:focus {
             outline: none;
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+            box-shadow: 0 0 0 3px rgba(15,118,110,0.1);
+            max-width: 340px;
         }
 
-        /* Table */
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+        /* =============================================
+           DATA TABLE  — staggered row entrance
+        ============================================= */
+        .data-table { width: 100%; border-collapse: collapse; }
 
         .data-table thead {
             background: var(--bg-primary);
@@ -616,83 +645,82 @@ foreach ($records as $record) {
             color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            transition: color 0.2s;
         }
+
+        .data-table th:hover { color: var(--primary-color); }
 
         .data-table td {
             padding: 1rem 1.5rem;
             border-bottom: 1px solid var(--border-color);
             font-size: 0.9375rem;
+            transition: background 0.2s;
         }
 
         .data-table tbody tr {
-            transition: all 0.2s;
+            opacity: 0;
+            animation: rowEntrance 0.35s ease forwards;
+            transition: background 0.2s, transform 0.15s;
         }
 
+        /* Stagger up to 15 rows, then cap */
+        .data-table tbody tr:nth-child(1)  { animation-delay: 0.55s; }
+        .data-table tbody tr:nth-child(2)  { animation-delay: 0.62s; }
+        .data-table tbody tr:nth-child(3)  { animation-delay: 0.69s; }
+        .data-table tbody tr:nth-child(4)  { animation-delay: 0.76s; }
+        .data-table tbody tr:nth-child(5)  { animation-delay: 0.83s; }
+        .data-table tbody tr:nth-child(6)  { animation-delay: 0.90s; }
+        .data-table tbody tr:nth-child(7)  { animation-delay: 0.97s; }
+        .data-table tbody tr:nth-child(8)  { animation-delay: 1.04s; }
+        .data-table tbody tr:nth-child(9)  { animation-delay: 1.11s; }
+        .data-table tbody tr:nth-child(10) { animation-delay: 1.18s; }
+        .data-table tbody tr:nth-child(n+11) { animation-delay: 1.22s; }
+
         .data-table tbody tr:hover {
-            background: var(--bg-primary);
+            background: #f0fdf9;
+            transform: translateX(3px);
         }
 
         .data-table tbody tr.removing {
-            animation: fadeOut 0.5s ease-out forwards;
+            animation: fadeOut 0.45s ease-out forwards !important;
+            overflow: hidden;
         }
 
-        @keyframes fadeOut {
-            from {
-                opacity: 1;
-                transform: translateX(0);
-            }
-            to {
-                opacity: 0;
-                transform: translateX(-50px);
-            }
-        }
-
+        /* =============================================
+           CHECKBOX
+        ============================================= */
         .checkbox {
-            width: 18px;
-            height: 18px;
+            width: 18px; height: 18px;
             cursor: pointer;
             accent-color: var(--primary-color);
+            transition: transform 0.15s;
         }
 
+        .checkbox:hover { transform: scale(1.15); }
+
+        /* =============================================
+           STATUS BADGES
+        ============================================= */
         .status-badge {
-            display: inline-flex;
-            align-items: center;
+            display: inline-flex; align-items: center;
             padding: 0.375rem 0.75rem;
             border-radius: 0.5rem;
-            font-size: 0.8125rem;
-            font-weight: 600;
+            font-size: 0.8125rem; font-weight: 600;
             margin-right: 0.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            animation: scaleIn 0.3s ease both;
         }
 
-        .status-badge.present {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success-color);
-        }
+        .status-badge:hover { transform: scale(1.07); }
 
-        .status-badge.absent {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--danger-color);
-        }
+        .status-badge.present  { background: rgba(16,185,129,0.1); color: var(--success-color); }
+        .status-badge.absent   { background: rgba(239,68,68,0.1);  color: var(--danger-color); }
+        .status-badge.leave    { background: rgba(245,158,11,0.1); color: var(--warning-color); }
+        .status-badge.overtime { background: rgba(15,118,110,0.1); color: var(--primary-color); }
 
-        .status-badge.leave {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--warning-color);
-        }
-
-        .status-badge.overtime {
-            background: rgba(15, 118, 110, 0.1);
-            color: var(--primary-color);
-        }
-
-        /* Content Grid - Table and Chart side by side */
-        .content-grid {
-            display: grid;
-            grid-template-columns: 1fr 420px;
-            gap: 1.5rem;
-            align-items: start;
-        }
-
-        /* Chart Card */
+        /* =============================================
+           CHART CARD
+        ============================================= */
         .chart-card {
             background: var(--bg-secondary);
             border-radius: 1rem;
@@ -700,148 +728,122 @@ foreach ($records as $record) {
             padding: 1.5rem;
             position: sticky;
             top: 2rem;
+            opacity: 0;
+            animation: slideInRight 0.5s 0.5s ease forwards;
+            transition: box-shadow 0.3s;
         }
 
-        .chart-header {
-            margin-bottom: 1.5rem;
-        }
+        .chart-card:hover { box-shadow: 0 12px 32px rgba(15,118,110,0.14); }
+
+        .chart-header { margin-bottom: 1.5rem; animation: fadeDown 0.4s 0.6s ease both; }
 
         .chart-header h3 {
-            font-size: 1.25rem;
-            font-weight: 700;
+            font-size: 1.25rem; font-weight: 700;
             margin-bottom: 0.5rem;
             color: var(--text-primary);
         }
 
-        .chart-header p {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
+        .chart-header p { font-size: 0.875rem; color: var(--text-secondary); }
 
         .chart-container {
             position: relative;
             height: 280px;
             margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
+            animation: scaleIn 0.6s 0.7s cubic-bezier(0.22,1,0.36,1) both;
         }
 
-        .chart-legend {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 0.75rem;
-        }
+        /* =============================================
+           CHART LEGEND — staggered
+        ============================================= */
+        .chart-legend { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
 
         .legend-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            display: flex; align-items: center; justify-content: space-between;
             padding: 0.75rem;
             background: var(--bg-primary);
             border-radius: 0.5rem;
-            transition: all 0.2s;
+            transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+            opacity: 0;
+            animation: legendSlide 0.35s ease forwards;
+            cursor: default;
         }
+
+        .legend-item:nth-child(1) { animation-delay: 0.85s; }
+        .legend-item:nth-child(2) { animation-delay: 0.95s; }
+        .legend-item:nth-child(3) { animation-delay: 1.05s; }
+        .legend-item:nth-child(4) { animation-delay: 1.15s; }
 
         .legend-item:hover {
-            background: var(--border-color);
-            transform: translateX(4px);
+            background: #e6f7f5;
+            transform: translateX(5px);
+            box-shadow: 0 2px 10px rgba(15,118,110,0.1);
         }
 
-        .legend-left {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
+        .legend-left { display: flex; align-items: center; gap: 0.75rem; }
 
         .legend-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            flex-shrink: 0;
+            width: 12px; height: 12px;
+            border-radius: 50%; flex-shrink: 0;
+            transition: transform 0.2s;
         }
 
-        .legend-label {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            font-weight: 500;
-        }
+        .legend-item:hover .legend-dot { transform: scale(1.4); }
+
+        .legend-label { font-size: 0.875rem; color: var(--text-secondary); font-weight: 500; }
 
         .legend-value {
-            font-size: 1.125rem;
-            font-weight: 700;
+            font-size: 1.125rem; font-weight: 700;
             color: var(--text-primary);
+            transition: transform 0.2s;
         }
 
-        /* Responsive */
+        .legend-item:hover .legend-value { transform: scale(1.1); }
+
+        /* =============================================
+           LOGO
+        ============================================= */
+        .logo img {
+            max-width: 140px; height: auto; display: block;
+            margin: 0 auto; border-radius: 5px;
+            animation: fadeUp 0.5s 0.1s ease both;
+            transition: transform 0.2s;
+        }
+
+        .logo img:hover { transform: scale(1.06) translateY(0); }
+
+        /* =============================================
+           SKELETON LOADER (used if needed)
+        ============================================= */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s infinite;
+            border-radius: 4px;
+        }
+
+        /* =============================================
+           RESPONSIVE
+        ============================================= */
         @media (max-width: 1024px) {
-            .dashboard-layout {
-                grid-template-columns: 1fr;
-            }
-
-            .sidebar {
-                position: relative;
-                height: auto;
-            }
-
-            .content-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .chart-card {
-                position: relative;
-                top: 0;
-            }
+            .dashboard-layout   { grid-template-columns: 1fr; }
+            .sidebar            { position: relative; height: auto; }
+            .content-grid       { grid-template-columns: 1fr; }
+            .chart-card         { position: relative; top: 0; }
         }
 
         @media (max-width: 768px) {
-            .main-content {
-                padding: 1rem;
-            }
-
-            .header {
-                padding: 1rem;
-            }
-
-            .toast-container {
-                left: 1rem;
-                right: 1rem;
-            }
-
-            .toast {
-                min-width: auto;
-            }
-
-            .table-header {
-                padding: 1rem;
-            }
-
-            .table-actions {
-                width: 100%;
-            }
-
+            .main-content { padding: 1rem; }
+            .header       { padding: 1rem; }
+            .toast-container { left: 1rem; right: 1rem; }
+            .toast        { min-width: auto; }
+            .table-header { padding: 1rem; }
+            .table-actions { width: 100%; }
             .table-actions .btn,
-            .table-actions .select-box {
-                width: 100%;
-            }
-
-            .table-controls {
-                padding: 1rem;
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .search-box {
-                max-width: 100%;
-            }
+            .table-actions .select-box { width: 100%; }
+            .table-controls { padding: 1rem; flex-direction: column; align-items: stretch; }
+            .search-box { max-width: 100%; }
         }
-        .logo img {
-            max-width: 140px;   /* adjust as needed */
-            height: auto;
-            display: block;
-            margin: 0 auto;
-            border-radius: 5px;
-            }
     </style>
 </head>
 
@@ -856,8 +858,8 @@ foreach ($records as $record) {
     <aside class="sidebar">
         <div class="sidebar-logo">
             <h2 class="logo">
-            <img src="assets/logo/images.png" alt="MCL Logo">
-        </h2>
+                <img src="assets/logo/images.png" alt="MCL Logo">
+            </h2>
         </div>
         <ul class="sidebar-nav">
             <li>
@@ -874,7 +876,7 @@ foreach ($records as $record) {
             </li>
             <li>
                 <a href="login.php">
-                    <i class="fa-solid fa-chart-pie"></i>
+                    <i class="fa-solid fa-right-from-bracket"></i>
                     <span>Logout</span>
                 </a>
             </li>
@@ -895,7 +897,7 @@ foreach ($records as $record) {
                     <i class="fa-regular fa-bell"></i>
                     <span class="badge">3</span>
                 </div>
-                <a href="aso_details.php" style="text-decoration: none;">
+                <a href="aso_details.php" style="text-decoration:none;">
                     <div class="user-avatar">
                         <i class="fa-solid fa-user"></i>
                     </div>
@@ -903,378 +905,296 @@ foreach ($records as $record) {
             </div>
         </div>
 
-        <!-- Content Grid: Table and Chart -->
+        <!-- Content Grid: Table + Chart -->
         <div class="content-grid">
+
             <!-- Table Card -->
             <div class="table-card">
-            <div class="table-header">
-                <h3>Today's Attendance Records</h3>
-                <div class="table-actions">
-                    <input type="date" id="dateFilter" class="select-box" value="<?= $selectedDate ?>" style="min-width: 160px;">
-                    <select id="statusFilter" class="select-box">
-                        <option value="all">All Status</option>
-                        <option value="present">Present</option>
-                        <option value="absent">Absent</option>
-                        <option value="leave">Leave</option>
-                        <option value="overtime">Overtime</option>
-                    </select>
-                    <button class="btn btn-primary" id="approveBtn" onclick="approveSelected()">
-                        <i class="fa-solid fa-check"></i>
-                        Approve Selected <span id="selectedCount">(0)</span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="table-controls">
-                <div>
-                    Show
-                    <select class="select-box" style="width: 80px;">
-                        <option selected>10</option>
-                        <option>25</option>
-                        <option>50</option>
-                        <option>100</option>
-                    </select>
-                    entries
-                </div>
-                <input type="text" id="searchInput" class="search-box" placeholder="Search by name, ESIC...">
-            </div>
-
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th><input type="checkbox" id="selectAll" class="checkbox"></th>
-                        <th>S.No</th>
-                        <th>ESIC No</th>
-                        <th>Employee Name</th>
-                        <th>Date</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="attendanceTableBody">
-                <?php if ($attendanceList && count($attendanceList) > 0): ?>
-                    <?php $i = 1; foreach ($attendanceList as $row): 
-                        $statusClass = strtolower(trim($row['attendance_status']));
-                    ?>
-                    <tr data-esic="<?= htmlspecialchars($row['esic_no']) ?>">
-                        <td><input type="checkbox" class="rowCheck checkbox"></td>
-                        <td><?= $i++ ?></td>
-                        <td><strong><?= htmlspecialchars($row['esic_no']) ?></strong></td>
-                        <td><?= htmlspecialchars($row['emp_name'] ?? 'N/A') ?></td>
-                        <td><?= date('d-m-Y', strtotime($row['attendance_date'])) ?></td>
-                        <td>
-                            <?php if ($row['attendance_status'] === 'overtime'): ?>
-                                <span class="status-badge present">Present</span>
-                                <span class="status-badge overtime">Overtime</span>
-                            <?php else: ?>
-                                <span class="status-badge <?= $statusClass ?>">
-                                    <?= ucfirst(htmlspecialchars($row['attendance_status'])) ?>
-                                </span>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <tr id="noRecordsRow">
-                        <td colspan="6" style="text-align:center; padding: 2rem; color: var(--text-secondary);">
-                            <i class="fa-solid fa-circle-check" style="font-size: 3rem; margin-bottom: 0.5rem; color: var(--success-color);"></i>
-                            <p style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem;">All records approved!</p>
-                            <p style="font-size: 0.875rem;">No pending attendance records to display.</p>
-                        </td>
-                    </tr>
-                <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Chart Card -->
-        <div class="chart-card">
-            <div class="chart-header">
-                <h3>Attendance Overview</h3>
-                <p>Today's distribution</p>
-            </div>
-            <div class="chart-container">
-                <canvas id="attendancePieChart"></canvas>
-            </div>
-            <div class="chart-legend">
-                <div class="legend-item">
-                    <div class="legend-left">
-                        <div class="legend-dot" style="background: #10b981;"></div>
-                        <span class="legend-label">Present</span>
+                <div class="table-header">
+                    <h3>Today's Attendance Records</h3>
+                    <div class="table-actions">
+                        <input type="date" id="dateFilter" class="select-box"
+                               value="<?= $selectedDate ?>" style="min-width:160px;">
+                        <select id="statusFilter" class="select-box">
+                            <option value="all">All Status</option>
+                            <option value="present">Present</option>
+                            <option value="absent">Absent</option>
+                            <option value="leave">Leave</option>
+                            <option value="overtime">Overtime</option>
+                        </select>
+                        <button class="btn btn-primary" id="approveBtn" onclick="approveSelected()">
+                            <i class="fa-solid fa-check"></i>
+                            Approve Selected <span id="selectedCount">(0)</span>
+                        </button>
                     </div>
-                    <span class="legend-value" id="legendPresent">0</span>
                 </div>
-                <div class="legend-item">
-                    <div class="legend-left">
-                        <div class="legend-dot" style="background: #ef4444;"></div>
-                        <span class="legend-label">Absent</span>
-                    </div>
-                    <span class="legend-value" id="legendAbsent">0</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-left">
-                        <div class="legend-dot" style="background: #f59e0b;"></div>
-                        <span class="legend-label">Leave</span>
-                    </div>
-                    <span class="legend-value" id="legendLeave">0</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-left">
-                        <div class="legend-dot" style="background: #0f766e;"></div>
-                        <span class="legend-label">Overtime</span>
-                    </div>
-                    <span class="legend-value" id="legendOvertime">0</span>
-                </div>
-            </div>
-        </div>
 
-    </div>
-    <!-- End Content Grid -->
+                <div class="table-controls">
+                    <div>
+                        Show
+                        <select class="select-box" style="width:80px;">
+                            <option selected>10</option>
+                            <option>25</option>
+                            <option>50</option>
+                            <option>100</option>
+                        </select>
+                        entries
+                    </div>
+                    <input type="text" id="searchInput" class="search-box" placeholder="Search by name, ESIC…">
+                </div>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAll" class="checkbox"></th>
+                            <th>S.No</th>
+                            <th>ESIC No</th>
+                            <th>Employee Name</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody">
+                    <?php if ($attendanceList && count($attendanceList) > 0): ?>
+                        <?php $i = 1; foreach ($attendanceList as $row):
+                            $statusClass = strtolower(trim($row['attendance_status']));
+                        ?>
+                        <tr data-esic="<?= htmlspecialchars($row['esic_no']) ?>">
+                            <td><input type="checkbox" class="rowCheck checkbox"></td>
+                            <td><?= $i++ ?></td>
+                            <td><strong><?= htmlspecialchars($row['esic_no']) ?></strong></td>
+                            <td><?= htmlspecialchars($row['emp_name'] ?? 'N/A') ?></td>
+                            <td><?= date('d-m-Y', strtotime($row['attendance_date'])) ?></td>
+                            <td>
+                                <?php if ($row['attendance_status'] === 'overtime'): ?>
+                                    <span class="status-badge present">Present</span>
+                                    <span class="status-badge overtime">Overtime</span>
+                                <?php else: ?>
+                                    <span class="status-badge <?= $statusClass ?>">
+                                        <?= ucfirst(htmlspecialchars($row['attendance_status'])) ?>
+                                    </span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr id="noRecordsRow">
+                            <td colspan="6" style="text-align:center; padding:2rem; color:var(--text-secondary);">
+                                <i class="fa-solid fa-circle-check"
+                                   style="font-size:3rem; margin-bottom:0.5rem; color:var(--success-color);
+                                          display:block; animation: popIn 0.5s cubic-bezier(0.22,1,0.36,1) both;"></i>
+                                <p style="font-size:1.125rem; font-weight:600; margin-bottom:0.25rem;">All records approved!</p>
+                                <p style="font-size:0.875rem;">No pending attendance records to display.</p>
+                            </td>
+                        </tr>
+                    <?php endif; ?>
+                    </tbody>
+                </table>
+            </div><!-- /.table-card -->
+
+            <!-- Chart Card -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3>Attendance Overview</h3>
+                    <p>Today's distribution</p>
+                </div>
+                <div class="chart-container">
+                    <canvas id="attendancePieChart"></canvas>
+                </div>
+                <div class="chart-legend">
+                    <div class="legend-item">
+                        <div class="legend-left">
+                            <div class="legend-dot" style="background:#10b981;"></div>
+                            <span class="legend-label">Present</span>
+                        </div>
+                        <span class="legend-value" id="legendPresent">0</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-left">
+                            <div class="legend-dot" style="background:#ef4444;"></div>
+                            <span class="legend-label">Absent</span>
+                        </div>
+                        <span class="legend-value" id="legendAbsent">0</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-left">
+                            <div class="legend-dot" style="background:#f59e0b;"></div>
+                            <span class="legend-label">Leave</span>
+                        </div>
+                        <span class="legend-value" id="legendLeave">0</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-left">
+                            <div class="legend-dot" style="background:#0f766e;"></div>
+                            <span class="legend-label">Overtime</span>
+                        </div>
+                        <span class="legend-value" id="legendOvertime">0</span>
+                    </div>
+                </div>
+            </div><!-- /.chart-card -->
+
+        </div><!-- /.content-grid -->
 
     </main>
 </div>
 
-<!-- JS -->
+<!-- =============================================
+     JAVASCRIPT
+============================================= -->
 <script>
-// Toast Notification System
+/* --- Toast System ---------------------------------------- */
 function showToast(type, title, message, duration = 5000) {
-    const toastContainer = document.getElementById('toastContainer');
+    const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    
-    const iconMap = {
-        'success': 'fa-circle-check',
-        'error': 'fa-circle-xmark',
-        'warning': 'fa-triangle-exclamation'
-    };
-    
+    const icons = { success:'fa-circle-check', error:'fa-circle-xmark', warning:'fa-triangle-exclamation' };
+
     toast.innerHTML = `
-        <div class="toast-icon">
-            <i class="fa-solid ${iconMap[type] || 'fa-circle-info'}"></i>
-        </div>
+        <div class="toast-icon"><i class="fa-solid ${icons[type] || 'fa-circle-info'}"></i></div>
         <div class="toast-content">
             <div class="toast-title">${title}</div>
             <div class="toast-message">${message}</div>
         </div>
-        <button class="toast-close" onclick="closeToast(this)">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
+        <button class="toast-close" onclick="closeToast(this)"><i class="fa-solid fa-xmark"></i></button>
     `;
-    
-    toastContainer.appendChild(toast);
-    
-    // Auto remove after duration
-    setTimeout(() => {
-        closeToast(toast.querySelector('.toast-close'));
-    }, duration);
+    container.appendChild(toast);
+    setTimeout(() => closeToast(toast.querySelector('.toast-close')), duration);
 }
 
 function closeToast(btn) {
     const toast = btn.closest('.toast');
     toast.classList.add('hiding');
-    setTimeout(() => {
-        toast.remove();
-    }, 300);
+    setTimeout(() => toast.remove(), 300);
 }
 
-// Select All Checkbox
+/* --- Select All ------------------------------------------ */
 document.getElementById("selectAll").addEventListener("change", function () {
-    const visibleCheckboxes = Array.from(document.querySelectorAll(".rowCheck"))
-        .filter(cb => cb.closest('tr').style.display !== 'none');
-    visibleCheckboxes.forEach(cb => cb.checked = this.checked);
+    document.querySelectorAll(".rowCheck")
+        .forEach(cb => { if (cb.closest('tr').style.display !== 'none') cb.checked = this.checked; });
     updateSelectedCount();
 });
 
-// Update selected count for individual checkboxes
-document.addEventListener('change', function(e) {
-    if (e.target.classList.contains('rowCheck')) {
-        updateSelectedCount();
-    }
+document.addEventListener('change', e => {
+    if (e.target.classList.contains('rowCheck')) updateSelectedCount();
 });
 
-// Function to update the selected count display
 function updateSelectedCount() {
-    const checked = Array.from(document.querySelectorAll(".rowCheck:checked"))
-        .filter(cb => cb.closest('tr').style.display !== 'none');
-    const count = checked.length;
-    document.getElementById('selectedCount').textContent = `(${count})`;
+    const n = [...document.querySelectorAll(".rowCheck:checked")]
+        .filter(cb => cb.closest('tr').style.display !== 'none').length;
+    document.getElementById('selectedCount').textContent = `(${n})`;
 }
 
-// Approve Selected Function
+/* --- Approve Selected ------------------------------------ */
 async function approveSelected() {
-    const checked = Array.from(document.querySelectorAll(".rowCheck:checked"))
+    const checked = [...document.querySelectorAll(".rowCheck:checked")]
         .filter(cb => cb.closest('tr').style.display !== 'none');
-    
+
     if (checked.length === 0) {
         showToast('warning', 'No Selection', 'Please select at least one record to approve.');
         return;
     }
 
-    // Get ESIC numbers
     const esicNumbers = checked.map(cb => cb.closest('tr').getAttribute('data-esic'));
-    
-    // Disable approve button
-    const approveBtn = document.getElementById('approveBtn');
-    const currentCount = checked.length;
-    approveBtn.disabled = true;
-    approveBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Processing... (${currentCount})`;
+    const btn = document.getElementById('approveBtn');
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner" style="animation:spin 0.8s linear infinite;"></i> Processing… (${checked.length})`;
 
     try {
-        // Send AJAX request
-        const formData = new FormData();
-        formData.append('approve_records', '1');
-        formData.append('esic_numbers', JSON.stringify(esicNumbers));
+        const fd = new FormData();
+        fd.append('approve_records', '1');
+        fd.append('esic_numbers', JSON.stringify(esicNumbers));
 
-        const response = await fetch(window.location.href, {
-            method: 'POST',
-            body: formData
-        });
-
-        const result = await response.json();
+        const res    = await fetch(window.location.href, { method: 'POST', body: fd });
+        const result = await res.json();
 
         if (result.success) {
-            // Show success message
             showToast('success', 'Approval Successful!', result.message);
-
-            // Remove approved rows with animation
-            checked.forEach((cb, index) => {
+            checked.forEach(cb => {
                 const row = cb.closest('tr');
                 row.classList.add('removing');
-                
                 setTimeout(() => {
                     row.remove();
-                    
-                    // Update serial numbers
                     updateSerialNumbers();
-                    
-                    // Update stats and chart
                     updateStats();
-                    
-                    // Check if table is empty
                     checkEmptyTable();
-                    
-                    // Uncheck select all
                     document.getElementById('selectAll').checked = false;
-                    
-                    // Reset selected count
                     updateSelectedCount();
-                }, 500);
+                }, 450);
             });
         } else {
             showToast('error', 'Approval Failed', result.message);
         }
-    } catch (error) {
+    } catch (err) {
         showToast('error', 'System Error', 'An error occurred while processing the request.');
-        console.error('Error:', error);
     } finally {
-        // Re-enable approve button
-        approveBtn.disabled = false;
-        approveBtn.innerHTML = '<i class="fa-solid fa-check"></i> Approve Selected <span id="selectedCount">(0)</span>';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Approve Selected <span id="selectedCount">(0)</span>';
         updateSelectedCount();
     }
 }
 
-// Update serial numbers after row removal
 function updateSerialNumbers() {
-    const rows = document.querySelectorAll('#attendanceTableBody tr:not(#noRecordsRow)');
-    rows.forEach((row, index) => {
-        const sNoCell = row.cells[1];
-        if (sNoCell) {
-            sNoCell.textContent = index + 1;
-        }
+    document.querySelectorAll('#attendanceTableBody tr:not(#noRecordsRow)').forEach((row, i) => {
+        if (row.cells[1]) row.cells[1].textContent = i + 1;
     });
 }
 
-// Check if table is empty and show message
 function checkEmptyTable() {
     const tbody = document.getElementById('attendanceTableBody');
-    const rows = tbody.querySelectorAll('tr:not(#noRecordsRow)');
-    
-    if (rows.length === 0) {
-        const existingNoRecordsRow = document.getElementById('noRecordsRow');
-        if (!existingNoRecordsRow) {
-            const noRecordsRow = document.createElement('tr');
-            noRecordsRow.id = 'noRecordsRow';
-            noRecordsRow.innerHTML = `
-                <td colspan="6" style="text-align:center; padding: 2rem; color: var(--text-secondary);">
-                    <i class="fa-solid fa-circle-check" style="font-size: 3rem; margin-bottom: 0.5rem; color: var(--success-color);"></i>
-                    <p style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem;">All records approved!</p>
-                    <p style="font-size: 0.875rem;">No pending attendance records to display.</p>
-                </td>
-            `;
-            tbody.appendChild(noRecordsRow);
-        }
+    if (tbody.querySelectorAll('tr:not(#noRecordsRow)').length === 0 && !document.getElementById('noRecordsRow')) {
+        const row = document.createElement('tr');
+        row.id = 'noRecordsRow';
+        row.innerHTML = `
+            <td colspan="6" style="text-align:center; padding:2rem; color:var(--text-secondary);">
+                <i class="fa-solid fa-circle-check"
+                   style="font-size:3rem; margin-bottom:0.5rem; color:var(--success-color);
+                          display:block; animation:popIn 0.5s cubic-bezier(0.22,1,0.36,1) both;"></i>
+                <p style="font-size:1.125rem; font-weight:600; margin-bottom:0.25rem;">All records approved!</p>
+                <p style="font-size:0.875rem;">No pending attendance records to display.</p>
+            </td>`;
+        tbody.appendChild(row);
     }
 }
 
-// Search Functionality
+/* --- Search & Filter ------------------------------------- */
 document.getElementById("searchInput").addEventListener("keyup", function () {
-    let value = this.value.toLowerCase();
+    const v = this.value.toLowerCase();
     document.querySelectorAll("#attendanceTableBody tr:not(#noRecordsRow)").forEach(row => {
-        row.style.display = row.innerText.toLowerCase().includes(value) ? "" : "none";
+        row.style.display = row.innerText.toLowerCase().includes(v) ? "" : "none";
     });
-    updateStats();
-    updateSelectedCount();
+    updateStats(); updateSelectedCount();
 });
 
-// Status Filter
 document.getElementById("statusFilter").addEventListener("change", function () {
-    let value = this.value;
+    const v = this.value;
     document.querySelectorAll("#attendanceTableBody tr:not(#noRecordsRow)").forEach(row => {
-        let statusBadges = row.querySelectorAll(".status-badge");
-        let hasStatus = false;
-        
-        statusBadges.forEach(badge => {
-            if (value === "all" || badge.classList.contains(value)) {
-                hasStatus = true;
-            }
-        });
-        
-        row.style.display = hasStatus ? "" : "none";
+        let has = [...row.querySelectorAll(".status-badge")].some(b => v === "all" || b.classList.contains(v));
+        row.style.display = has ? "" : "none";
     });
-    updateStats();
-    updateSelectedCount();
+    updateStats(); updateSelectedCount();
 });
 
-// Date Filter Change
 document.getElementById("dateFilter").addEventListener("change", function () {
-    const selectedDate = this.value;
-    if (!selectedDate) return;
-
+    if (!this.value) return;
     const url = new URL(window.location.href);
-    url.searchParams.set("date", selectedDate);
-
+    url.searchParams.set("date", this.value);
     window.location.href = url.toString();
 });
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    initChart();
-    updateStats();
-});
-
-// Initialize Pie Chart
+/* --- Chart ----------------------------------------------- */
 let attendanceChart;
 
 function initChart() {
     const ctx = document.getElementById('attendancePieChart');
-    
-    if (!ctx) {
-        console.error('Canvas element not found');
-        return;
-    }
-    
+    if (!ctx) return;
+
     attendanceChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['Present', 'Absent', 'Leave', 'Overtime'],
+            labels: ['Present','Absent','Leave','Overtime'],
             datasets: [{
-                data: [0, 0, 0, 0],
-                backgroundColor: [
-                    '#10b981',
-                    '#ef4444',
-                    '#f59e0b',
-                    '#0f766e'
-                ],
+                data: [0,0,0,0],
+                backgroundColor: ['#10b981','#ef4444','#f59e0b','#0f766e'],
                 borderColor: '#ffffff',
                 borderWidth: 3,
                 hoverOffset: 15,
@@ -1285,90 +1205,81 @@ function initChart() {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: {
-                    display: false
-                },
+                legend: { display: false },
                 tooltip: {
                     enabled: true,
-                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                    padding: 16,
-                    cornerRadius: 8,
-                    titleFont: {
-                        size: 16,
-                        weight: 'bold'
-                    },
-                    bodyFont: {
-                        size: 14
-                    },
+                    backgroundColor: 'rgba(0,0,0,0.88)',
+                    padding: 16, cornerRadius: 8,
+                    titleFont: { size: 16, weight: 'bold' },
+                    bodyFont:  { size: 14 },
                     displayColors: true,
-                    boxWidth: 12,
-                    boxHeight: 12,
-                    boxPadding: 8,
+                    boxWidth: 12, boxHeight: 12, boxPadding: 8,
                     callbacks: {
-                        label: function(context) {
-                            let label = context.label || '';
-                            let value = context.parsed || 0;
-                            let total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            let percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                            return label + ': ' + value + ' (' + percentage + '%)';
+                        label(ctx) {
+                            const total = ctx.dataset.data.reduce((a,b) => a+b, 0);
+                            const pct   = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+                            return `${ctx.label}: ${ctx.parsed} (${pct}%)`;
                         }
                     }
                 }
             },
             cutout: '65%',
-            animation: {
-                animateRotate: true,
-                animateScale: true,
-                duration: 1000
-            }
+            animation: { animateRotate: true, animateScale: true, duration: 1000,
+                         easing: 'easeInOutQuart' }
         }
     });
 }
 
-// Update Statistics and Chart
+/* Animate number change smoothly */
+function animateNumber(el, targetVal) {
+    const start  = parseInt(el.textContent) || 0;
+    const diff   = targetVal - start;
+    const dur    = 400;
+    const startT = performance.now();
+
+    function step(now) {
+        const t = Math.min((now - startT) / dur, 1);
+        const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+        el.textContent = Math.round(start + diff * ease);
+        if (t < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+}
+
 function updateStats() {
     let present = 0, absent = 0, leave = 0, overtime = 0;
 
     document.querySelectorAll("#attendanceTableBody tr:not(#noRecordsRow)").forEach(row => {
         if (row.style.display === "none") return;
-        
-        let badges = row.querySelectorAll(".status-badge");
-        let hasPresent = false;
-        let hasAbsent = false;
-        let hasLeave = false;
-        let hasOvertime = false;
-        
-        badges.forEach(badge => {
-            if (badge.classList.contains("present")) hasPresent = true;
-            if (badge.classList.contains("absent")) hasAbsent = true;
-            if (badge.classList.contains("leave")) hasLeave = true;
-            if (badge.classList.contains("overtime")) hasOvertime = true;
+        const badges = row.querySelectorAll(".status-badge");
+        let hasPresent=false, hasAbsent=false, hasLeave=false, hasOvertime=false;
+        badges.forEach(b => {
+            if (b.classList.contains("present"))  hasPresent  = true;
+            if (b.classList.contains("absent"))   hasAbsent   = true;
+            if (b.classList.contains("leave"))    hasLeave    = true;
+            if (b.classList.contains("overtime")) hasOvertime = true;
         });
-        
-        if (hasAbsent) {
-            absent++;
-        } else if (hasLeave) {
-            leave++;
-        } else if (hasPresent) {
-            present++;
-            if (hasOvertime) {
-                overtime++;
-            }
-        }
+        if      (hasAbsent) absent++;
+        else if (hasLeave)  leave++;
+        else if (hasPresent) { present++; if (hasOvertime) overtime++; }
     });
 
-    // Update chart legend
-    document.getElementById("legendPresent").innerText = present;
-    document.getElementById("legendAbsent").innerText = absent;
-    document.getElementById("legendLeave").innerText = leave;
-    document.getElementById("legendOvertime").innerText = overtime;
+    animateNumber(document.getElementById("legendPresent"),  present);
+    animateNumber(document.getElementById("legendAbsent"),   absent);
+    animateNumber(document.getElementById("legendLeave"),    leave);
+    animateNumber(document.getElementById("legendOvertime"), overtime);
 
-    // Update chart
     if (attendanceChart) {
         attendanceChart.data.datasets[0].data = [present, absent, leave, overtime];
         attendanceChart.update('active');
     }
 }
+
+/* --- Init ----------------------------------------------- */
+document.addEventListener('DOMContentLoaded', () => {
+    initChart();
+    updateStats();
+});
 </script>
 
 </body>

@@ -2,18 +2,11 @@
 session_start();
 require "../config.php";
 
-/*
-|--------------------------------------------------
-| LOGIN PROTECTION (ASO)
-|--------------------------------------------------
-*/
 if (!isset($_SESSION['user'])) {
     header("Location: /login.php");
     exit;
 }
 
-// role check
-// role + site check
 $stmt = $pdo->prepare("SELECT role, site_code FROM user WHERE id = ?");
 $stmt->execute([$_SESSION['user']]);
 $u = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -22,7 +15,7 @@ if (!$u || $u['role'] !== 'APM') {
     die("Access denied");
 }
 
-$asoSiteCode = $u['site_code'];   // 🔐 VERY IMPORTANT
+$asoSiteCode = $u['site_code'];
 ?>
 
 <!DOCTYPE html>
@@ -34,20 +27,15 @@ $asoSiteCode = $u['site_code'];   // 🔐 VERY IMPORTANT
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        :root {
-            --sidebar-width: 270px;
-        }
+        :root { --sidebar-width: 270px; }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #f5f5f5;
             color: #333;
+            overflow-x: hidden;
         }
 
         .dashboard-layout {
@@ -56,477 +44,376 @@ $asoSiteCode = $u['site_code'];   // 🔐 VERY IMPORTANT
             min-height: 100vh;
         }
 
-        /* ── SIDEBAR ── */
+        /* =============================================
+           KEYFRAME ANIMATIONS
+        ============================================= */
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(22px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeDown {
+            from { opacity: 0; transform: translateY(-16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-40px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes navItemReveal {
+            from { opacity: 0; transform: translateX(-18px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes cardPop {
+            from { opacity: 0; transform: translateY(16px) scale(0.96); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes rowSlideIn {
+            from { opacity: 0; transform: translateX(-12px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes logoFadeUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes badgePulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+            50%       { transform: scale(1.12); box-shadow: 0 0 0 5px rgba(239,68,68,0); }
+        }
+
+        @keyframes expandDown {
+            from { opacity: 0; transform: translateY(-8px); max-height: 0; }
+            to   { opacity: 1; transform: translateY(0);  max-height: 400px; }
+        }
+
+        @keyframes collapseUp {
+            from { opacity: 1; transform: translateY(0);  max-height: 400px; }
+            to   { opacity: 0; transform: translateY(-8px); max-height: 0; }
+        }
+
+        @keyframes statCountUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes barGrow {
+            from { width: 0 !important; }
+            to   { /* width set inline */ }
+        }
+
+        /* =============================================
+           SIDEBAR
+        ============================================= */
         .sidebar {
             background: linear-gradient(180deg, #0f766e 0%, #0a5c55 100%);
             color: white;
-            box-shadow: 4px 0 24px rgba(13, 95, 88, 0.35);
+            box-shadow: 4px 0 24px rgba(13,95,88,0.35);
             position: sticky;
             top: 0;
             height: 100vh;
             overflow-y: auto;
             z-index: 100;
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
             display: flex;
             flex-direction: column;
+            animation: slideInLeft 0.5s cubic-bezier(0.22,1,0.36,1) both;
         }
 
         .sidebar-close {
             display: none;
             position: absolute;
-            top: 1rem;
-            right: 1rem;
-            background: rgba(255, 255, 255, 0.12);
-            border: none;
-            color: white;
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            cursor: pointer;
+            top: 1rem; right: 1rem;
+            background: rgba(255,255,255,0.12);
+            border: none; color: white;
+            width: 32px; height: 32px;
+            border-radius: 8px; cursor: pointer;
             font-size: 1rem;
-            align-items: center;
-            justify-content: center;
+            align-items: center; justify-content: center;
             z-index: 2;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .sidebar-close:hover {
+            background: rgba(255,255,255,0.25);
+            transform: rotate(90deg);
         }
 
         .sidebar-logo {
             padding: 1.4rem 1.5rem 1.2rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            border-bottom: 1px solid rgba(255,255,255,0.15);
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         .mcl-logo-img {
-            max-width: 155px;
-            height: auto;
-            display: block;
-            background: white;
-            padding: 10px 14px;
-            border-radius: 10px;
-        }
-
-        .sidebar-nav {
-            list-style: none;
-            padding: 1rem 0;
-            flex: 1;
-        }
-
-        .sidebar-nav li {
-            margin: 0.25rem 1rem;
-        }
-
-        .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 0.9rem;
-            padding: 0.85rem 1.1rem;
-            color: rgba(255, 255, 255, 0.88);
-            text-decoration: none;
-            border-radius: 12px;
-            transition: background 0.25s ease, color 0.25s ease,
-                padding-left 0.25s ease, letter-spacing 0.25s ease;
-            font-weight: 500;
-            font-size: 0.95rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .nav-link:hover {
-            background: rgba(255, 255, 255, 0.18);
-            color: #fff;
-            padding-left: 1.45rem;
-            letter-spacing: 0.15px;
-        }
-
-        .nav-link:active {
-            transform: scale(0.98);
-        }
-
-        .nav-link.active {
-            background: rgba(255, 255, 255, 0.22);
-            color: #fff;
-            font-weight: 600;
-            padding-left: 1.45rem;
-        }
-
-        .nav-link i {
-            font-size: 1.05rem;
-            width: 22px;
-            text-align: center;
-            opacity: 0.9;
-            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
-        }
-
-        .nav-link:hover i {
-            transform: scale(1.25) rotate(-6deg);
-            opacity: 1;
-        }
-
-        .nav-link.active i {
-            transform: scale(1.15);
-            opacity: 1;
-        }
-
-        .nav-link span {
-            transition: letter-spacing 0.25s ease;
-        }
-
-        /* Logout special hover */
-        .logout-link {
-            color: rgba(255, 255, 255, 0.7) !important;
-        }
-
-        .logout-link:hover {
-            background: rgba(239, 68, 68, 0.2) !important;
-            color: #fca5a5 !important;
-            padding-left: 1.45rem;
-        }
-
-        .logout-link:hover i {
-            color: #fca5a5;
-            transform: scale(1.2) translateX(2px) !important;
-        }
-
-        .mcl-logo-img {
+            max-width: 155px; height: auto; display: block;
+            background: white; padding: 10px 14px; border-radius: 10px;
+            animation: logoFadeUp 0.5s 0.15s ease both;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
         .mcl-logo-img:hover {
             transform: scale(1.04);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
         }
 
-        .header-icon {
-            transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        .sidebar-nav { list-style: none; padding: 1rem 0; flex: 1; }
+
+        .sidebar-nav li {
+            margin: 0.25rem 1rem;
+            opacity: 0;
+            animation: navItemReveal 0.4s ease forwards;
+        }
+        .sidebar-nav li:nth-child(1) { animation-delay: 0.28s; }
+        .sidebar-nav li:nth-child(2) { animation-delay: 0.38s; }
+        .sidebar-nav li:nth-child(3) { animation-delay: 0.48s; }
+
+        .nav-link {
+            display: flex; align-items: center; gap: 0.9rem;
+            padding: 0.85rem 1.1rem;
+            color: rgba(255,255,255,0.88);
+            text-decoration: none; border-radius: 12px;
+            transition: background 0.25s, color 0.25s, padding-left 0.25s, box-shadow 0.25s;
+            font-weight: 500; font-size: 0.95rem;
+            position: relative; overflow: hidden;
         }
 
-        .header-icon:hover {
-            background: #e5e7eb;
-            transform: scale(1.1);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        .nav-link:hover {
+            background: rgba(255,255,255,0.18);
+            color: #fff; padding-left: 1.45rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
         }
 
-        .user-icon {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        .nav-link:active { transform: scale(0.98); }
+
+        .nav-link.active {
+            background: rgba(255,255,255,0.22);
+            color: #fff; font-weight: 600; padding-left: 1.45rem;
         }
 
-        .user-icon:hover {
-            transform: scale(1.1);
-            box-shadow: 0 2px 8px rgba(15, 118, 110, 0.4);
+        .nav-link i {
+            font-size: 1.05rem; width: 22px; text-align: center;
+            opacity: 0.9;
+            transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s;
         }
 
-        .hamburger-btn {
-            transition: background 0.2s ease, transform 0.2s ease;
-        }
+        .nav-link:hover i  { transform: scale(1.25) rotate(-6deg); opacity: 1; }
+        .nav-link.active i { transform: scale(1.15); opacity: 1; }
 
-        .hamburger-btn:hover {
-            background: #e5e7eb;
-            transform: scale(1.08);
+        .logout-link { color: rgba(255,255,255,0.7) !important; }
+        .logout-link:hover {
+            background: rgba(239,68,68,0.2) !important;
+            color: #fca5a5 !important;
         }
+        .logout-link:hover i { color: #fca5a5; transform: scale(1.2) translateX(2px) !important; }
 
-        .sidebar-close {
-            transition: background 0.2s ease, transform 0.2s ease;
-        }
-
-        .sidebar-close:hover {
-            background: rgba(255, 255, 255, 0.25);
-            transform: rotate(90deg);
-        }
-
-        /* ── TOPBAR ── */
+        /* =============================================
+           TOPBAR
+        ============================================= */
         .topbar {
             background: white;
             border-bottom: 1px solid #e5e7eb;
             padding: 0.85rem 1.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 50;
-            box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 50;
+            box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+            animation: fadeDown 0.45s 0.3s ease both;
+            opacity: 0;
         }
 
-        .topbar-left {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
+        .topbar-left { display: flex; align-items: center; gap: 0.75rem; }
 
         .hamburger-btn {
             display: none;
-            background: #f3f4f6;
-            border: 1.5px solid #e5e7eb;
-            border-radius: 8px;
-            width: 38px;
-            height: 38px;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            color: #0f766e;
-            font-size: 1rem;
+            background: #f3f4f6; border: 1.5px solid #e5e7eb;
+            border-radius: 8px; width: 38px; height: 38px;
+            align-items: center; justify-content: center;
+            cursor: pointer; color: #0f766e; font-size: 1rem;
+            transition: background 0.2s, transform 0.2s;
         }
+        .hamburger-btn:hover { background: #e5e7eb; transform: scale(1.08); }
 
         .topbar-center {
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
+            position: absolute; left: 50%; transform: translateX(-50%);
         }
-
         .topbar-center h2 {
-            font-size: 1.15rem;
-            font-weight: 700;
-            color: #1f2937;
-            white-space: nowrap;
+            font-size: 1.15rem; font-weight: 700; color: #1f2937; white-space: nowrap;
         }
 
-        .topbar-right {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+        .topbar-right { display: flex; align-items: center; gap: 12px; }
 
         .header-icon {
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
+            width: 38px; height: 38px; border-radius: 50%;
             background: #f3f4f6;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            position: relative;
-            color: #6b7280;
-            font-size: 1rem;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; position: relative;
+            color: #6b7280; font-size: 1rem;
             border: 1px solid #e5e7eb;
+            transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+        }
+        .header-icon:hover {
+            background: #e5e7eb; transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         .header-icon .badge {
-            position: absolute;
-            top: -4px;
-            right: -4px;
-            background: #ef4444;
-            color: white;
-            font-size: 0.6rem;
-            width: 17px;
-            height: 17px;
+            position: absolute; top: -4px; right: -4px;
+            background: #ef4444; color: white;
+            font-size: 0.6rem; width: 17px; height: 17px;
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             font-weight: 700;
+            animation: badgePulse 2s ease-in-out infinite;
         }
 
         .user-icon {
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
+            width: 38px; height: 38px; border-radius: 50%;
             background: #0f766e;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
+        .user-icon:hover { transform: scale(1.1); box-shadow: 0 2px 8px rgba(15,118,110,0.4); }
+        .user-icon svg { width: 20px; height: 20px; stroke: white; }
 
-        .user-icon svg {
-            width: 20px;
-            height: 20px;
-            stroke: white;
-        }
-
-        /* ── MAIN CONTENT ── */
-        .main-content {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
+        /* =============================================
+           MAIN CONTENT
+        ============================================= */
+        .main-content { display: flex; flex-direction: column; min-height: 100vh; }
 
         .page-content {
-            flex: 1;
-            padding: 2rem;
-            /* ── Your page content goes here ── */
+            flex: 1; padding: 2rem;
+            animation: fadeIn 0.4s 0.35s ease both;
+            opacity: 0;
         }
 
-        /* ── OVERLAY ── */
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 99;
-            backdrop-filter: blur(2px);
-        }
+        .dash-page { display: flex; flex-direction: column; gap: 1.5rem; }
 
-        .sidebar-overlay.active {
-            display: block;
-        }
-
-        /* ── DASHBOARD CONTENT ── */
-        .dash-page {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-
-        /* Page header */
+        /* =============================================
+           DASH HEADER
+        ============================================= */
         .dash-header {
-            display: flex;
-            align-items: flex-start;
+            display: flex; align-items: flex-start;
             justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 1rem;
+            flex-wrap: wrap; gap: 1rem;
+            animation: fadeUp 0.45s 0.4s ease both;
+            opacity: 0;
         }
 
-        .dash-header-left {
-            display: flex;
-            align-items: center;
-            gap: 0.85rem;
-        }
+        .dash-header-left { display: flex; align-items: center; gap: 0.85rem; }
 
         .dash-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
+            width: 48px; height: 48px; border-radius: 12px;
             background: linear-gradient(135deg, #0f766e, #0d5f58);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.2rem;
-            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 1.2rem; flex-shrink: 0;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
+        .dash-icon:hover { transform: scale(1.1) rotate(-5deg); box-shadow: 0 6px 18px rgba(15,118,110,0.35); }
 
-        .dash-title {
-            font-size: 1.6rem;
-            font-weight: 800;
-            color: #1f2937;
-        }
-
-        .dash-subtitle {
-            font-size: 0.82rem;
-            color: #6b7280;
-            margin-top: 0.1rem;
-        }
+        .dash-title { font-size: 1.6rem; font-weight: 800; color: #1f2937; }
+        .dash-subtitle { font-size: 0.82rem; color: #6b7280; margin-top: 0.1rem; }
 
         .fy-selector {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            background: white;
-            border: 1.5px solid #e5e7eb;
-            border-radius: 10px;
-            padding: 0.55rem 1rem;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+            display: flex; align-items: center; gap: 0.6rem;
+            background: white; border: 1.5px solid #e5e7eb;
+            border-radius: 10px; padding: 0.55rem 1rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
-
-        .fy-selector label {
-            font-size: 0.82rem;
-            color: #6b7280;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-
+        .fy-selector:hover { border-color: #0f766e; box-shadow: 0 0 0 3px rgba(15,118,110,0.08); }
+        .fy-selector label { font-size: 0.82rem; color: #6b7280; font-weight: 500; white-space: nowrap; }
         .fy-selector select {
-            border: none;
-            outline: none;
-            font-size: 0.9rem;
-            font-weight: 700;
-            color: #1f2937;
-            background: transparent;
-            cursor: pointer;
+            border: none; outline: none;
+            font-size: 0.9rem; font-weight: 700; color: #1f2937;
+            background: transparent; cursor: pointer;
         }
 
-        /* Stat cards */
+        /* =============================================
+           STAT CARDS  — staggered pop
+        ============================================= */
         .stat-cards {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(4,1fr);
             gap: 1rem;
         }
 
         .stat-card {
-            background: white;
-            border-radius: 14px;
+            background: white; border-radius: 14px;
             padding: 1.4rem 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
+            display: flex; align-items: center; gap: 1rem;
             border: 1px solid #e5e7eb;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            opacity: 0;
+            animation: cardPop 0.4s ease forwards;
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
         }
+        .stat-card:nth-child(1) { animation-delay: 0.50s; }
+        .stat-card:nth-child(2) { animation-delay: 0.60s; }
+        .stat-card:nth-child(3) { animation-delay: 0.70s; }
+        .stat-card:nth-child(4) { animation-delay: 0.80s; }
 
         .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.09);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 28px rgba(0,0,0,0.12);
+            border-color: #d1d5db;
         }
 
         .stat-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.25rem;
-            flex-shrink: 0;
+            width: 50px; height: 50px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.25rem; flex-shrink: 0;
+            transition: transform 0.2s;
         }
+        .stat-card:hover .stat-icon { transform: scale(1.12) rotate(-6deg); }
 
-        .stat-icon.purple {
-            background: #ede9fe;
-            color: #7c3aed;
-        }
-
-        .stat-icon.blue {
-            background: #dbeafe;
-            color: #1d4ed8;
-        }
-
-        .stat-icon.amber {
-            background: #fef3c7;
-            color: #d97706;
-        }
-
-        .stat-icon.green {
-            background: #d1fae5;
-            color: #059669;
-        }
+        .stat-icon.purple { background: #ede9fe; color: #7c3aed; }
+        .stat-icon.blue   { background: #dbeafe; color: #1d4ed8; }
+        .stat-icon.amber  { background: #fef3c7; color: #d97706; }
+        .stat-icon.green  { background: #d1fae5; color: #059669; }
 
         .stat-label {
-            font-size: 0.72rem;
-            color: #9ca3af;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 0.25rem;
+            font-size: 0.72rem; color: #9ca3af; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.25rem;
         }
 
         .stat-value {
-            font-size: 2.1rem;
-            font-weight: 800;
-            color: #1f2937;
-            line-height: 1;
+            font-size: 2.1rem; font-weight: 800; color: #1f2937; line-height: 1;
+            animation: statCountUp 0.4s ease both;
         }
 
-        /* Table card */
+        /* =============================================
+           TABLE CARD
+        ============================================= */
         .table-card {
-            background: white;
-            border-radius: 14px;
+            background: white; border-radius: 14px;
             border: 1px solid #e5e7eb;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             overflow: hidden;
+            opacity: 0;
+            animation: fadeUp 0.45s 0.85s ease forwards;
+            transition: box-shadow 0.2s;
         }
+        .table-card:hover { box-shadow: 0 8px 24px rgba(15,118,110,0.12); }
 
-        .table-scroll {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
+        .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
         .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.88rem;
-            min-width: 700px;
+            width: 100%; border-collapse: collapse;
+            font-size: 0.88rem; min-width: 700px;
         }
 
         .data-table thead tr {
@@ -535,290 +422,202 @@ $asoSiteCode = $u['site_code'];   // 🔐 VERY IMPORTANT
 
         .data-table thead th {
             padding: 1rem 1.25rem;
-            text-align: left;
-            color: white;
-            font-weight: 700;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            text-align: left; color: white;
+            font-weight: 700; font-size: 0.75rem;
+            text-transform: uppercase; letter-spacing: 0.5px;
             white-space: nowrap;
-        }
-
-        .data-table thead th .sort {
-            opacity: 0.7;
-            font-size: 0.65rem;
-            margin-left: 3px;
-        }
-
-        /* Month row */
-        .month-row {
-            cursor: pointer;
             transition: background 0.2s;
         }
 
-        .month-row:hover td {
-            background: #f9fafb;
+        .data-table thead th .sort { opacity: 0.7; font-size: 0.65rem; margin-left: 3px; }
+
+        /* =============================================
+           MONTH ROWS — staggered entrance
+        ============================================= */
+        .month-row {
+            cursor: pointer;
+            opacity: 0;
+            animation: rowSlideIn 0.35s ease forwards;
         }
+        .month-row:nth-child(1)  { animation-delay: 0.95s; }
+        .month-row:nth-child(3)  { animation-delay: 1.05s; }
+        .month-row:nth-child(5)  { animation-delay: 1.15s; }
+        .month-row:nth-child(7)  { animation-delay: 1.25s; }
+        .month-row:nth-child(9)  { animation-delay: 1.35s; }
+        .month-row:nth-child(n+11) { animation-delay: 1.40s; }
 
         .month-row td {
             padding: 1rem 1.25rem;
             border-bottom: 1px solid #f0f0f0;
-            color: #374151;
-            vertical-align: middle;
+            color: #374151; vertical-align: middle;
+            transition: background 0.2s;
         }
+        .month-row:hover td { background: #f0fdf9; }
 
         .month-name {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            font-weight: 600;
-            color: #1f2937;
+            display: flex; align-items: center; gap: 0.6rem;
+            font-weight: 600; color: #1f2937;
         }
 
         .expand-btn {
-            width: 26px;
-            height: 26px;
-            border-radius: 7px;
+            width: 26px; height: 26px; border-radius: 7px;
             background: #e5e7eb;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.65rem;
-            color: #6b7280;
-            transition: background 0.2s, transform 0.25s ease;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 0.65rem; color: #6b7280;
+            transition: background 0.2s, transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
             flex-shrink: 0;
         }
 
         .month-row.expanded .expand-btn {
-            background: #0f766e;
-            color: white;
+            background: #0f766e; color: white;
             transform: rotate(90deg);
         }
 
-        /* Breakdown row */
+        /* =============================================
+           BREAKDOWN ROW — smooth expand/collapse
+        ============================================= */
         .breakdown-row td {
-            padding: 0;
-            border-bottom: 1px solid #e5e7eb;
+            padding: 0; border-bottom: 1px solid #e5e7eb;
         }
 
-        .breakdown-row.hidden {
-            display: none;
-        }
+        .breakdown-row.hidden { display: none; }
 
         .breakdown-inner {
             padding: 0 1.25rem 1.25rem;
             background: #f9fafb;
+            animation: expandDown 0.3s cubic-bezier(0.22,1,0.36,1) both;
+            overflow: hidden;
         }
 
         .breakdown-label {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            display: flex; align-items: center; gap: 0.5rem;
             padding: 0.75rem 0;
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #6b7280;
-            border-bottom: 1px solid #e5e7eb;
-            margin-bottom: 0.5rem;
+            font-size: 0.8rem; font-weight: 600; color: #6b7280;
+            border-bottom: 1px solid #e5e7eb; margin-bottom: 0.5rem;
         }
 
-        .breakdown-scroll {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
+        .breakdown-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
         .breakdown-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.84rem;
-            min-width: 500px;
+            width: 100%; border-collapse: collapse;
+            font-size: 0.84rem; min-width: 500px;
         }
 
         .breakdown-table thead th {
-            background: #1f2937;
-            color: white;
-            padding: 0.65rem 1rem;
-            text-align: left;
-            font-size: 0.72rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
+            background: #1f2937; color: white;
+            padding: 0.65rem 1rem; text-align: left;
+            font-size: 0.72rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.3px;
         }
 
         .breakdown-table tbody td {
             padding: 0.7rem 1rem;
             border-bottom: 1px solid #eeeeee;
             color: #374151;
+            transition: background 0.15s;
         }
+        .breakdown-table tbody tr:last-child td { border-bottom: none; }
+        .breakdown-table tbody tr:hover td { background: #f3f4f6; }
 
-        .breakdown-table tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-        .breakdown-table tbody tr:hover td {
-            background: #f3f4f6;
-        }
-
-        /* Badge */
+        /* =============================================
+           BADGE & ATTENDANCE BAR
+        ============================================= */
         .badge-blue {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: #dbeafe;
-            color: #1d4ed8;
-            font-size: 0.8rem;
-            font-weight: 700;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            background: #dbeafe; color: #1d4ed8;
+            font-size: 0.8rem; font-weight: 700;
+            width: 28px; height: 28px; border-radius: 50%;
+            transition: transform 0.2s, background 0.2s;
         }
+        .badge-blue:hover { transform: scale(1.15); background: #bfdbfe; }
 
-        /* Attendance bar */
-        .att-wrap {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-        }
+        .att-wrap { display: flex; align-items: center; gap: 0.6rem; }
 
         .att-bar-bg {
-            flex: 1;
-            height: 9px;
-            background: #e5e7eb;
-            border-radius: 5px;
-            overflow: hidden;
-            min-width: 80px;
+            flex: 1; height: 9px; background: #e5e7eb;
+            border-radius: 5px; overflow: hidden; min-width: 80px;
         }
 
         .att-bar-fill {
             height: 100%;
             background: linear-gradient(90deg, #10b981, #059669);
             border-radius: 5px;
+            width: 0 !important;               /* start at 0 for animation */
+            transition: width 1s cubic-bezier(0.22,1,0.36,1);
         }
 
         .att-pct {
-            font-size: 0.84rem;
-            font-weight: 700;
-            color: #059669;
-            white-space: nowrap;
+            font-size: 0.84rem; font-weight: 700; color: #059669; white-space: nowrap;
+            transition: transform 0.2s;
         }
+        .att-wrap:hover .att-pct { transform: scale(1.08); }
 
-        /* Pagination */
+        /* =============================================
+           PAGINATION
+        ============================================= */
         .pagination-bar {
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            gap: 0.4rem;
-            padding: 1rem 1.25rem;
+            display: flex; align-items: center; justify-content: flex-end;
+            gap: 0.4rem; padding: 1rem 1.25rem;
             border-top: 1px solid #f0f0f0;
+            animation: fadeUp 0.35s 1.1s ease both;
+            opacity: 0;
         }
 
         .pg-btn {
-            height: 34px;
-            min-width: 34px;
-            border-radius: 8px;
-            border: 1.5px solid #e5e7eb;
-            background: white;
-            cursor: pointer;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #6b7280;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            height: 34px; min-width: 34px; border-radius: 8px;
+            border: 1.5px solid #e5e7eb; background: white;
+            cursor: pointer; font-size: 0.85rem; font-weight: 600; color: #6b7280;
+            display: flex; align-items: center; justify-content: center;
             padding: 0 0.75rem;
-            transition: all 0.2s;
+            transition: border-color 0.2s, color 0.2s, background 0.2s, transform 0.15s;
         }
+        .pg-btn:hover { border-color: #0f766e; color: #0f766e; transform: translateY(-1px); }
+        .pg-btn.active { background: #0f766e; color: white; border-color: #0f766e; }
 
-        .pg-btn:hover {
-            border-color: #0f766e;
-            color: #0f766e;
+        /* =============================================
+           OVERLAY
+        ============================================= */
+        .sidebar-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 99;
+            backdrop-filter: blur(2px);
         }
+        .sidebar-overlay.active { display: block; }
 
-        .pg-btn.active {
-            background: #0f766e;
-            color: white;
-            border-color: #0f766e;
-        }
-
-        /* Responsive */
+        /* =============================================
+           RESPONSIVE
+        ============================================= */
         @media (max-width: 900px) {
-            .stat-cards {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 600px) {
-            .stat-cards {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 0.75rem;
-            }
-
-            .stat-card {
-                padding: 1rem;
-            }
-
-            .stat-value {
-                font-size: 1.7rem;
-            }
-
-            .dash-title {
-                font-size: 1.2rem;
-            }
-
-            .fy-selector {
-                width: 100%;
-                justify-content: space-between;
-            }
-
-            .dash-header {
-                flex-direction: column;
-            }
-
-            .att-bar-bg {
-                display: none;
-            }
+            .stat-cards { grid-template-columns: repeat(2,1fr); }
         }
 
         @media (max-width: 768px) {
-            .dashboard-layout {
-                grid-template-columns: 1fr;
-            }
-
+            .dashboard-layout { grid-template-columns: 1fr; }
             .sidebar {
-                position: fixed;
-                left: 0;
-                top: 0;
-                height: 100vh;
-                width: var(--sidebar-width);
+                position: fixed; left: 0; top: 0;
+                height: 100vh; width: var(--sidebar-width);
                 transform: translateX(-100%);
+                animation: none;
             }
+            .sidebar.open { transform: translateX(0); box-shadow: 8px 0 32px rgba(0,0,0,0.3); }
+            .sidebar-close { display: flex; }
+            .hamburger-btn { display: flex; }
+            .topbar-center h2 { font-size: 0.9rem; }
+            .page-content { padding: 1rem; }
+        }
 
-            .sidebar.open {
-                transform: translateX(0);
-                box-shadow: 8px 0 32px rgba(0, 0, 0, 0.3);
-            }
-
-            .sidebar-close {
-                display: flex;
-            }
-
-            .hamburger-btn {
-                display: flex;
-            }
-
-            .topbar-center h2 {
-                font-size: 0.9rem;
-            }
-
-            .page-content {
-                padding: 1rem;
-            }
+        @media (max-width: 600px) {
+            .stat-cards { grid-template-columns: repeat(2,1fr); gap: 0.75rem; }
+            .stat-card { padding: 1rem; }
+            .stat-value { font-size: 1.7rem; }
+            .dash-title { font-size: 1.2rem; }
+            .fy-selector { width: 100%; justify-content: space-between; }
+            .dash-header { flex-direction: column; }
+            .att-bar-bg { display: none; }
         }
 
         @media (max-width: 480px) {
-            .topbar-center h2 {
-                font-size: 0.8rem;
-            }
+            .topbar-center h2 { font-size: 0.8rem; }
         }
     </style>
 </head>
@@ -836,12 +635,21 @@ $asoSiteCode = $u['site_code'];   // 🔐 VERY IMPORTANT
                 <img src="../assets/logo/images.png" alt="MCL Logo" class="mcl-logo-img">
             </div>
             <ul class="sidebar-nav">
-                <li><a href="apm_dashboard.php" class="nav-link active"><i
-                            class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a></li>
-                <li><a href="monthly_attendance.php" class="nav-link"><i
-                            class="fa-solid fa-calendar-days"></i><span>Monthly Attendance</span></a></li>
-                <li><a href="../login.php" class="nav-link"><i
-                            class="fa-solid fa-right-from-bracket"></i><span>Logout</span></a></li>
+                <li>
+                    <a href="apm_dashboard.php" class="nav-link active">
+                        <i class="fa-solid fa-gauge-high"></i><span>Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="monthly_attendance.php" class="nav-link">
+                        <i class="fa-solid fa-calendar-days"></i><span>Monthly Attendance</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="../login.php" class="nav-link logout-link">
+                        <i class="fa-solid fa-right-from-bracket"></i><span>Logout</span>
+                    </a>
+                </li>
             </ul>
         </aside>
 
@@ -857,18 +665,23 @@ $asoSiteCode = $u['site_code'];   // 🔐 VERY IMPORTANT
                     <h2>Security Billing Management Portal</h2>
                 </div>
                 <div class="topbar-right">
-                    <div class="header-icon"><i class="fa-regular fa-bell"></i><span class="badge">3</span></div>
+                    <div class="header-icon">
+                        <i class="fa-regular fa-bell"></i>
+                        <span class="badge">3</span>
+                    </div>
                     <a href="profile.php" title="My Profile" style="text-decoration:none;">
-    <div class="user-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="8" r="4"/>
-        </svg>
-    </div>
-</a>
+                        <div class="user-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="8" r="4"/>
+                            </svg>
+                        </div>
+                    </a>
                 </div>
             </header>
 
-            <!-- PAGE CONTENT — add your content below -->
+            <!-- PAGE CONTENT -->
             <div class="page-content">
                 <div class="dash-page">
 
@@ -941,8 +754,10 @@ $asoSiteCode = $u['site_code'];   // 🔐 VERY IMPORTANT
                                     <!-- Jan 2026 -->
                                     <tr class="month-row expanded" onclick="toggleRow('jan2026', this)">
                                         <td>
-                                            <div class="month-name"><span class="expand-btn"><i
-                                                        class="fa-solid fa-chevron-right"></i></span>Jan 2026</div>
+                                            <div class="month-name">
+                                                <span class="expand-btn"><i class="fa-solid fa-chevron-right"></i></span>
+                                                Jan 2026
+                                            </div>
                                         </td>
                                         <td>93</td>
                                         <td>458</td>
@@ -951,16 +766,18 @@ $asoSiteCode = $u['site_code'];   // 🔐 VERY IMPORTANT
                                         <td>
                                             <div class="att-wrap">
                                                 <div class="att-bar-bg">
-                                                    <div class="att-bar-fill" style="width:98.5%"></div>
-                                                </div><span class="att-pct">98.5%</span>
+                                                    <div class="att-bar-fill" data-width="98.5"></div>
+                                                </div>
+                                                <span class="att-pct">98.5%</span>
                                             </div>
                                         </td>
                                     </tr>
                                     <tr class="breakdown-row" id="breakdown-jan2026">
                                         <td colspan="6">
                                             <div class="breakdown-inner">
-                                                <div class="breakdown-label"><i class="fa-solid fa-list-ul"></i>
-                                                    Breakdown for Jan 2026</div>
+                                                <div class="breakdown-label">
+                                                    <i class="fa-solid fa-list-ul"></i> Breakdown for Jan 2026
+                                                </div>
                                                 <div class="breakdown-scroll">
                                                     <table class="breakdown-table">
                                                         <thead>
@@ -976,19 +793,15 @@ $asoSiteCode = $u['site_code'];   // 🔐 VERY IMPORTANT
                                                         <tbody>
                                                             <tr>
                                                                 <td>Security Supervisor</td>
-                                                                <td>26</td>
-                                                                <td>125</td>
+                                                                <td>26</td><td>125</td>
                                                                 <td><span class="badge-blue">2</span></td>
-                                                                <td>5</td>
-                                                                <td>3</td>
+                                                                <td>5</td><td>3</td>
                                                             </tr>
                                                             <tr>
                                                                 <td>Security Guard</td>
-                                                                <td>67</td>
-                                                                <td>333</td>
+                                                                <td>67</td><td>333</td>
                                                                 <td><span class="badge-blue">0</span></td>
-                                                                <td>2</td>
-                                                                <td>1</td>
+                                                                <td>2</td><td>1</td>
                                                             </tr>
                                                         </tbody>
                                                     </table>
@@ -1000,8 +813,10 @@ $asoSiteCode = $u['site_code'];   // 🔐 VERY IMPORTANT
                                     <!-- Feb 2026 -->
                                     <tr class="month-row" onclick="toggleRow('feb2026', this)">
                                         <td>
-                                            <div class="month-name"><span class="expand-btn"><i
-                                                        class="fa-solid fa-chevron-right"></i></span>Feb 2026</div>
+                                            <div class="month-name">
+                                                <span class="expand-btn"><i class="fa-solid fa-chevron-right"></i></span>
+                                                Feb 2026
+                                            </div>
                                         </td>
                                         <td>93</td>
                                         <td>92</td>
@@ -1010,16 +825,18 @@ $asoSiteCode = $u['site_code'];   // 🔐 VERY IMPORTANT
                                         <td>
                                             <div class="att-wrap">
                                                 <div class="att-bar-bg">
-                                                    <div class="att-bar-fill" style="width:98.9%"></div>
-                                                </div><span class="att-pct">98.9%</span>
+                                                    <div class="att-bar-fill" data-width="98.9"></div>
+                                                </div>
+                                                <span class="att-pct">98.9%</span>
                                             </div>
                                         </td>
                                     </tr>
                                     <tr class="breakdown-row hidden" id="breakdown-feb2026">
                                         <td colspan="6">
                                             <div class="breakdown-inner">
-                                                <div class="breakdown-label"><i class="fa-solid fa-list-ul"></i>
-                                                    Breakdown for Feb 2026</div>
+                                                <div class="breakdown-label">
+                                                    <i class="fa-solid fa-list-ul"></i> Breakdown for Feb 2026
+                                                </div>
                                                 <div class="breakdown-scroll">
                                                     <table class="breakdown-table">
                                                         <thead>
@@ -1035,19 +852,15 @@ $asoSiteCode = $u['site_code'];   // 🔐 VERY IMPORTANT
                                                         <tbody>
                                                             <tr>
                                                                 <td>Security Supervisor</td>
-                                                                <td>26</td>
-                                                                <td>30</td>
+                                                                <td>26</td><td>30</td>
                                                                 <td><span class="badge-blue">0</span></td>
-                                                                <td>1</td>
-                                                                <td>0</td>
+                                                                <td>1</td><td>0</td>
                                                             </tr>
                                                             <tr>
                                                                 <td>Security Guard</td>
-                                                                <td>67</td>
-                                                                <td>62</td>
+                                                                <td>67</td><td>62</td>
                                                                 <td><span class="badge-blue">0</span></td>
-                                                                <td>0</td>
-                                                                <td>1</td>
+                                                                <td>0</td><td>1</td>
                                                             </tr>
                                                         </tbody>
                                                     </table>
@@ -1075,31 +888,94 @@ $asoSiteCode = $u['site_code'];   // 🔐 VERY IMPORTANT
     </div>
 
     <script>
+        /* ── Sidebar toggle ── */
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebarOverlay');
+
         document.getElementById('hamburgerBtn').addEventListener('click', () => {
-            sidebar.classList.add('open'); overlay.classList.add('active');
+            sidebar.classList.add('open');
+            overlay.classList.add('active');
         });
         document.getElementById('sidebarClose').addEventListener('click', () => {
-            sidebar.classList.remove('open'); overlay.classList.remove('active');
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
         });
         overlay.addEventListener('click', () => {
-            sidebar.classList.remove('open'); overlay.classList.remove('active');
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
         });
 
+        /* ── Expand / collapse month rows ── */
         function toggleRow(id, rowEl) {
             const breakdown = document.getElementById('breakdown-' + id);
             const isExpanded = rowEl.classList.contains('expanded');
+
             if (isExpanded) {
                 rowEl.classList.remove('expanded');
-                breakdown.classList.add('hidden');
+                /* fade the inner content out before hiding */
+                const inner = breakdown.querySelector('.breakdown-inner');
+                if (inner) {
+                    inner.style.animation = 'collapseUp 0.25s ease forwards';
+                    setTimeout(() => {
+                        breakdown.classList.add('hidden');
+                        inner.style.animation = '';
+                    }, 240);
+                } else {
+                    breakdown.classList.add('hidden');
+                }
             } else {
                 rowEl.classList.add('expanded');
                 breakdown.classList.remove('hidden');
+                /* reset & replay expand animation */
+                const inner = breakdown.querySelector('.breakdown-inner');
+                if (inner) {
+                    inner.style.animation = 'none';
+                    void inner.offsetHeight; /* reflow */
+                    inner.style.animation = 'expandDown 0.3s cubic-bezier(0.22,1,0.36,1) both';
+                }
             }
         }
+
+        /* ── Animate attendance bars on page load ── */
+        function animateBars() {
+            document.querySelectorAll('.att-bar-fill').forEach(bar => {
+                const target = bar.getAttribute('data-width');
+                if (target) {
+                    setTimeout(() => {
+                        bar.style.width = target + '%';
+                    }, 1000); /* slight delay so bars animate after rows appear */
+                }
+            });
+        }
+
+        /* ── Animate stat numbers counting up ── */
+        function animateCountUp(el, target, duration = 900) {
+            const start = performance.now();
+            const from  = 0;
+
+            function step(now) {
+                const t    = Math.min((now - start) / duration, 1);
+                const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+                el.textContent = Math.round(from + (target - from) * ease);
+                if (t < 1) requestAnimationFrame(step);
+                else el.textContent = target;
+            }
+            requestAnimationFrame(step);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            /* Animate bars */
+            animateBars();
+
+            /* Animate stat counters after cards appear */
+            setTimeout(() => {
+                document.querySelectorAll('.stat-value').forEach(el => {
+                    const raw = parseInt(el.textContent.replace(/,/g,''), 10);
+                    if (!isNaN(raw)) animateCountUp(el, raw, 800);
+                });
+            }, 600);
+        });
     </script>
 
 </body>
-
 </html>
