@@ -7,26 +7,67 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-    <!-- Shared sidebar + topbar styles -->
     <link rel="stylesheet" href="assets/desh.css">
 
     <style>
+        /* ===== KEYFRAMES ===== */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes rowSlideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes cloudFloat {
+            0%, 100% { transform: translateY(0); }
+            50%       { transform: translateY(-8px); }
+        }
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 4px 16px rgba(15,118,110,0.12); }
+            50%       { box-shadow: 0 4px 24px rgba(15,118,110,0.28); }
+        }
+
         /* ===== PAGE CONTENT ===== */
         .emp-content {
             padding: 24px 25px 32px;
             width: 100%;
             min-width: 0;
             box-sizing: border-box;
+            animation: fadeUp 0.45s 0.15s ease both;
         }
 
         /* ===== CARD ===== */
         .card {
             background: var(--card);
             border-radius: 12px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.07);
-            border: 1px solid var(--border);
+            box-shadow: 0 4px 16px rgba(15,118,110,0.12), 0 1px 4px rgba(16,185,129,0.08);
+            border: 1px solid rgba(15,118,110,0.15);
             overflow: hidden;
+            animation: fadeUp 0.4s 0.2s ease both;
+            transition: box-shadow 0.2s, border-color 0.2s;
+        }
+        .card:hover {
+            box-shadow: 0 8px 28px rgba(15,118,110,0.22), 0 2px 8px rgba(16,185,129,0.15);
+            border-color: rgba(16,185,129,0.35);
+        }
+
+        /* dark mode card */
+        body.dark .card {
+            box-shadow: 0 4px 18px rgba(15,118,110,0.25), 0 1px 4px rgba(16,185,129,0.12);
+            border-color: rgba(15,118,110,0.25);
+        }
+        body.dark .card:hover {
+            box-shadow: 0 8px 28px rgba(15,118,110,0.4), 0 2px 10px rgba(16,185,129,0.2);
+            border-color: rgba(16,185,129,0.4);
         }
 
         /* ===== CARD HEADER ===== */
@@ -39,6 +80,7 @@
             align-items: center;
             gap: 12px;
             flex-wrap: wrap;
+            animation: fadeIn 0.4s 0.3s ease both;
         }
         .header-left {
             font-size: 18px;
@@ -76,6 +118,7 @@
             margin-bottom: 20px;
             font-size: 14px;
             font-weight: 600;
+            animation: slideDown 0.35s ease both;
         }
         .alert.success {
             background: #d1fae5;
@@ -95,6 +138,8 @@
             border-radius: 10px;
             margin-bottom: 20px;
             border-left: 4px solid #14b8a6;
+            animation: fadeUp 0.4s 0.35s ease both;
+            opacity: 0;
         }
         .instructions h4 {
             color: #0f766e;
@@ -131,7 +176,11 @@
         }
 
         /* ===== DROP BOX ===== */
-        .upload-area { width: 100%; }
+        .upload-area {
+            width: 100%;
+            animation: fadeUp 0.4s 0.45s ease both;
+            opacity: 0;
+        }
 
         .drop-box {
             border: 3px dashed #99f6e4;
@@ -158,7 +207,12 @@
             background: linear-gradient(135deg, #99f6e4, #5eead4) !important;
             transform: scale(1.02);
         }
-        .cloud { font-size: 50px; margin-bottom: 12px; }
+        .cloud {
+            font-size: 50px;
+            margin-bottom: 12px;
+            display: inline-block;
+            animation: cloudFloat 3s ease-in-out infinite;
+        }
         #dropText {
             font-size: 17px;
             font-weight: 700;
@@ -186,6 +240,8 @@
             transition: all 0.3s;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            animation: fadeUp 0.4s 0.55s ease both;
+            opacity: 0;
         }
         .btn-upload:disabled {
             opacity: 0.5;
@@ -204,6 +260,7 @@
             padding: 24px;
             border-radius: 12px;
             border: 2px solid #99f6e4;
+            animation: fadeUp 0.4s ease both;
         }
         #previewSection h4 {
             color: #0f766e;
@@ -237,6 +294,22 @@
         #previewTable tr:hover { background: #f0fdfa; }
         #previewTable td { color: #334155; }
 
+        /* staggered preview rows */
+        #previewTable tr {
+            opacity: 0;
+            animation: rowSlideIn 0.3s ease forwards;
+        }
+        #previewTable tr:nth-child(1)  { animation-delay: 0.05s; }
+        #previewTable tr:nth-child(2)  { animation-delay: 0.10s; }
+        #previewTable tr:nth-child(3)  { animation-delay: 0.15s; }
+        #previewTable tr:nth-child(4)  { animation-delay: 0.20s; }
+        #previewTable tr:nth-child(5)  { animation-delay: 0.25s; }
+        #previewTable tr:nth-child(6)  { animation-delay: 0.30s; }
+        #previewTable tr:nth-child(7)  { animation-delay: 0.35s; }
+        #previewTable tr:nth-child(8)  { animation-delay: 0.40s; }
+        #previewTable tr:nth-child(9)  { animation-delay: 0.45s; }
+        #previewTable tr:nth-child(10) { animation-delay: 0.50s; }
+
         /* ===== RESPONSIVE ===== */
         @media (max-width: 768px) {
             .emp-content { padding: 16px; }
@@ -260,7 +333,7 @@
 
 <div class="dashboard">
 
-    <!-- ========== SIDEBAR — identical to dashboard ========== -->
+    <!-- ========== SIDEBAR ========== -->
     <aside class="sidebar" id="sidebar">
         <div class="logo">
             <img src="assets/logo/images.png" alt="MCL Logo">
@@ -320,16 +393,15 @@
     <!-- ========== MAIN ========== -->
     <main class="main">
 
-        <!-- TOPBAR — same as dashboard -->
+        <!-- TOPBAR -->
         <header>
             <button class="menu-btn" id="menuBtn" aria-label="Open menu">
                 <i class="fa-solid fa-bars"></i>
             </button>
             <h1>Security Billing Portal</h1>
-            <label class="theme-toggle" title="Toggle dark mode">
-                <input type="checkbox" id="themeToggle">
-                <span class="slider"></span>
-            </label>
+            <button class="theme-btn" id="themeToggle" title="Toggle dark mode">
+                <i class="fa-solid fa-moon"></i>
+            </button>
         </header>
 
         <!-- PAGE CONTENT -->
@@ -429,26 +501,37 @@ document.querySelectorAll('.sidebar .menu').forEach(l => l.addEventListener('cli
 window.addEventListener('resize', () => { if (window.innerWidth > 768) { sidebar.classList.remove('open'); overlay.classList.remove('active'); document.body.style.overflow = ''; } });
 
 /* ================================================
-   THEME TOGGLE
+   THEME TOGGLE (moon / sun)
 ================================================ */
 const themeToggle = document.getElementById('themeToggle');
-if (localStorage.getItem('theme') === 'dark') {
-    document.body.classList.add('dark');
-    themeToggle.checked = true;
+const themeIcon   = themeToggle.querySelector('i');
+
+function applyTheme(dark) {
+    if (dark) {
+        document.body.classList.add('dark');
+        themeToggle.classList.add('active');
+        themeIcon.className = 'fa-solid fa-sun';
+    } else {
+        document.body.classList.remove('dark');
+        themeToggle.classList.remove('active');
+        themeIcon.className = 'fa-solid fa-moon';
+    }
 }
-themeToggle.addEventListener('change', () => {
-    document.body.classList.toggle('dark');
-    localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+applyTheme(localStorage.getItem('theme') === 'dark');
+themeToggle.addEventListener('click', () => {
+    const isDark = document.body.classList.contains('dark');
+    applyTheme(!isDark);
+    localStorage.setItem('theme', !isDark ? 'dark' : 'light');
 });
 
 /* ================================================
    FILE UPLOAD & PREVIEW
 ================================================ */
-const dropBox   = document.getElementById("dropBox");
-const fileInput = document.getElementById("fileInput");
-const fileName  = document.getElementById("fileName");
-const dropText  = document.getElementById("dropText");
-const uploadBtn = document.getElementById("uploadBtn");
+const dropBox        = document.getElementById("dropBox");
+const fileInput      = document.getElementById("fileInput");
+const fileName       = document.getElementById("fileName");
+const dropText       = document.getElementById("dropText");
+const uploadBtn      = document.getElementById("uploadBtn");
 const previewSection = document.getElementById("previewSection");
 const previewTable   = document.getElementById("previewTable");
 
@@ -476,8 +559,8 @@ function loadFile(file) {
 
     const reader = new FileReader();
     reader.onload = e => {
-        const data = new Uint8Array(e.target.result);
-        const wb   = XLSX.read(data, { type: "array" });
+        const data  = new Uint8Array(e.target.result);
+        const wb    = XLSX.read(data, { type: "array" });
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const rows  = XLSX.utils.sheet_to_json(sheet, { header: 1 });
         renderPreview(rows);
@@ -488,6 +571,8 @@ function loadFile(file) {
 function renderPreview(rows) {
     if (!rows.length) return;
     previewSection.style.display = "block";
+    /* re-trigger row animations by clearing and re-adding */
+    previewTable.innerHTML = "";
     rows.slice(0, 10).forEach((row, i) => {
         const tr = document.createElement("tr");
         row.forEach(cell => {

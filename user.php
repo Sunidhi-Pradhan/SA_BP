@@ -18,7 +18,6 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <title>Users – Security Billing Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- Same CSS as dashboard — picks up sidebar, header, layout, theme vars -->
     <link rel="stylesheet" href="assets/desh.css">
     <style>
         /* ── Tab Nav ── */
@@ -26,6 +25,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             display: flex;
             border-bottom: 2px solid var(--border);
             margin-bottom: 1.5rem;
+            animation: fadeUp 0.4s ease both;
         }
         .tab-btn {
             display: flex; align-items: center; gap: .5rem;
@@ -51,15 +51,31 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         /* ── Panels ── */
         .tab-panel { display: none; }
-        .tab-panel.active { display: block; }
+        .tab-panel.active { display: block; animation: fadeUp 0.35s ease both; }
+
+        /* ── Keyframes ── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes rowSlideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
 
         /* ── Card ── */
         .u-card {
             background: var(--card);
             border-radius: 14px;
-            border: 1px solid var(--border);
-            box-shadow: 0 4px 12px rgba(0,0,0,.06);
+            border: 1px solid rgba(15,118,110,0.15);
+            box-shadow: 0 4px 16px rgba(15,118,110,0.12), 0 1px 4px rgba(16,185,129,0.08);
             overflow: hidden;
+            transition: box-shadow 0.2s, border-color 0.2s;
+            animation: fadeUp 0.4s 0.1s ease both;
+        }
+        .u-card:hover {
+            box-shadow: 0 8px 28px rgba(15,118,110,0.22), 0 2px 8px rgba(16,185,129,0.15);
+            border-color: rgba(16,185,129,0.35);
         }
         .u-card-header {
             display: flex; align-items: center; justify-content: space-between;
@@ -90,7 +106,27 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             vertical-align: middle;
         }
         .users-table tbody tr:last-child td { border-bottom: none; }
-        .users-table tbody tr:hover { background: rgba(15,118,110,.04); transition: background .15s; }
+        .users-table tbody tr:hover {
+            background: rgba(15,118,110,.04);
+            transition: background .15s;
+        }
+
+        /* staggered row entrance */
+        .users-table tbody tr {
+            opacity: 0;
+            animation: rowSlideIn 0.3s ease forwards;
+        }
+        .users-table tbody tr:nth-child(1)  { animation-delay: 0.10s; }
+        .users-table tbody tr:nth-child(2)  { animation-delay: 0.15s; }
+        .users-table tbody tr:nth-child(3)  { animation-delay: 0.20s; }
+        .users-table tbody tr:nth-child(4)  { animation-delay: 0.25s; }
+        .users-table tbody tr:nth-child(5)  { animation-delay: 0.30s; }
+        .users-table tbody tr:nth-child(6)  { animation-delay: 0.35s; }
+        .users-table tbody tr:nth-child(7)  { animation-delay: 0.40s; }
+        .users-table tbody tr:nth-child(8)  { animation-delay: 0.45s; }
+        .users-table tbody tr:nth-child(9)  { animation-delay: 0.50s; }
+        .users-table tbody tr:nth-child(10) { animation-delay: 0.55s; }
+        .users-table tbody tr:nth-child(n+11) { animation-delay: 0.60s; }
 
         .emp-id {
             font-size: .76rem; font-weight: 700;
@@ -114,10 +150,11 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
         .btn-edit   { background: #dbeafe; color: #2563eb; }
         .btn-delete { background: #fee2e2; color: #ef4444; }
-        .btn-icon:hover { transform: scale(1.1); filter: brightness(.9); }
+        .btn-icon:hover { transform: scale(1.12); filter: brightness(.9); }
 
         .empty-state {
             padding: 3rem 1rem; text-align: center; color: var(--subtext);
+            animation: fadeUp 0.4s ease both;
         }
         .empty-state i { font-size: 2.2rem; margin-bottom: .5rem; display: block; opacity: .35; }
         .empty-state p { font-size: .88rem; }
@@ -127,7 +164,18 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
 
-        .form-group { display: flex; flex-direction: column; gap: .3rem; }
+        .form-group {
+            display: flex; flex-direction: column; gap: .3rem;
+            opacity: 0;
+            animation: fadeUp 0.35s ease forwards;
+        }
+        .form-grid .form-group:nth-child(1) { animation-delay: 0.10s; }
+        .form-grid .form-group:nth-child(2) { animation-delay: 0.16s; }
+        .form-grid .form-group:nth-child(3) { animation-delay: 0.22s; }
+        .form-grid .form-group:nth-child(4) { animation-delay: 0.28s; }
+        .form-grid .form-group:nth-child(5) { animation-delay: 0.34s; }
+        .form-grid .form-group:nth-child(6) { animation-delay: 0.40s; }
+
         .form-label {
             font-size: .73rem; font-weight: 700;
             color: var(--subtext); text-transform: uppercase; letter-spacing: .5px;
@@ -150,6 +198,8 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             padding: 1rem 1.25rem;
             border-top: 1px solid var(--border);
             display: flex; align-items: center; justify-content: flex-end; gap: .6rem;
+            animation: fadeUp 0.35s 0.45s ease both;
+            opacity: 0;
         }
         .btn-submit {
             display: flex; align-items: center; gap: .45rem;
@@ -158,19 +208,33 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             border: none; border-radius: 8px;
             font-size: .88rem; font-weight: 700;
             cursor: pointer; font-family: inherit;
-            transition: background .2s, transform .15s;
+            transition: background .2s, transform .15s, box-shadow .2s;
             box-shadow: 0 3px 10px rgba(15,118,110,.25);
         }
-        .btn-submit:hover { background: #0d5f58; transform: translateY(-1px); }
+        .btn-submit:hover {
+            background: #0d5f58;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(15,118,110,.35);
+        }
         .btn-reset {
             padding: .62rem 1.1rem;
             background: var(--bg); color: var(--subtext);
             border: 1px solid var(--border); border-radius: 8px;
             font-size: .88rem; font-weight: 600;
             cursor: pointer; font-family: inherit;
-            transition: background .2s;
+            transition: background .2s, transform .15s;
         }
-        .btn-reset:hover { background: var(--border); }
+        .btn-reset:hover { background: var(--border); transform: translateY(-1px); }
+
+        /* ── Dark mode card shadow ── */
+        body.dark .u-card {
+            box-shadow: 0 4px 18px rgba(15,118,110,0.25), 0 1px 4px rgba(16,185,129,0.12);
+            border-color: rgba(15,118,110,0.25);
+        }
+        body.dark .u-card:hover {
+            box-shadow: 0 8px 28px rgba(15,118,110,0.4), 0 2px 10px rgba(16,185,129,0.2);
+            border-color: rgba(16,185,129,0.4);
+        }
     </style>
 </head>
 <body>
@@ -180,7 +244,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <div class="dashboard">
 
-    <!-- ========== SIDEBAR — exact copy from dashboard ========== -->
+    <!-- ========== SIDEBAR ========== -->
     <aside class="sidebar" id="sidebar">
         <div class="logo">
             <img src="assets/logo/images.png" alt="MCL Logo">
@@ -240,16 +304,15 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <!-- ========== MAIN ========== -->
     <main class="main">
 
-        <!-- HEADER — exact same structure as dashboard -->
+        <!-- HEADER -->
         <header>
             <button class="menu-btn" id="menuBtn" aria-label="Open menu">
                 <i class="fa-solid fa-bars"></i>
             </button>
             <h1>Security Billing Portal</h1>
-            <label class="theme-toggle" title="Toggle dark mode">
-                <input type="checkbox" id="themeToggle">
-                <span class="slider"></span>
-            </label>
+            <button class="theme-btn" id="themeToggle" title="Toggle dark mode">
+                <i class="fa-solid fa-moon"></i>
+            </button>
         </header>
 
         <!-- PAGE CONTENT -->
@@ -337,7 +400,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <input class="form-control" type="text" name="emp_id" placeholder="e.g. 1007" required>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">user Name</label>
+                                    <label class="form-label">User Name</label>
                                     <input class="form-control" type="text" name="name" placeholder="Full name" required>
                                 </div>
                                 <div class="form-group">
@@ -397,7 +460,7 @@ function switchTab(tab) {
     document.getElementById('panel-' + tab).classList.add('active');
 }
 
-/* ── Sidebar toggle — identical to dashboard ── */
+/* ── Sidebar toggle ── */
 const menuBtn = document.getElementById('menuBtn');
 const sidebar  = document.getElementById('sidebar');
 const overlay  = document.getElementById('sidebarOverlay');
@@ -414,12 +477,28 @@ window.addEventListener('resize', () => {
     if (window.innerWidth > 768) { sidebar.classList.remove('open'); overlay.classList.remove('active'); document.body.style.overflow = ''; }
 });
 
-/* ── Theme toggle — identical to dashboard ── */
+/* ── Theme toggle (moon/sun) ── */
 const themeToggle = document.getElementById('themeToggle');
-if (localStorage.getItem('theme') === 'dark') { document.body.classList.add('dark'); themeToggle.checked = true; }
-themeToggle.addEventListener('change', () => {
-    document.body.classList.toggle('dark');
-    localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+const themeIcon   = themeToggle.querySelector('i');
+
+function applyTheme(dark) {
+    if (dark) {
+        document.body.classList.add('dark');
+        themeToggle.classList.add('active');
+        themeIcon.className = 'fa-solid fa-sun';
+    } else {
+        document.body.classList.remove('dark');
+        themeToggle.classList.remove('active');
+        themeIcon.className = 'fa-solid fa-moon';
+    }
+}
+
+applyTheme(localStorage.getItem('theme') === 'dark');
+
+themeToggle.addEventListener('click', function () {
+    const isDark = document.body.classList.contains('dark');
+    applyTheme(!isDark);
+    localStorage.setItem('theme', !isDark ? 'dark' : 'light');
 });
 </script>
 </body>

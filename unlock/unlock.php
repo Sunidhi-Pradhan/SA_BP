@@ -14,11 +14,35 @@ require_once '../config.php';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <!-- Shared sidebar + topbar styles from dashboard -->
     <link rel="stylesheet" href="../assets/desh.css">
 
     <style>
+        /* ===== KEYFRAMES ===== */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes rowSlideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes modalPop {
+            from { opacity: 0; transform: translateY(-40px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes counterPop {
+            from { opacity: 0; transform: scale(0.85); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
         /* ===== THEME VARIABLES ===== */
         :root {
             --primary: #0f766e;
@@ -31,6 +55,7 @@ require_once '../config.php';
         .content-wrapper {
             padding: 20px 30px;
             overflow-y: auto;
+            animation: fadeIn 0.4s 0.1s ease both;
         }
 
         /* ===== PAGE HEADER ===== */
@@ -39,50 +64,42 @@ require_once '../config.php';
             padding: 15px 20px;
             border-radius: 8px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 16px rgba(15,118,110,0.12), 0 1px 4px rgba(16,185,129,0.08);
+            border: 1px solid rgba(15,118,110,0.15);
             position: relative;
+            animation: fadeUp 0.4s 0.15s ease both;
+            transition: box-shadow 0.2s, border-color 0.2s;
         }
-        .header h2 {
-            font-size: 20px;
-            font-weight: 700;
-            color: #111827;
-            margin-bottom: 5px;
+        .header:hover {
+            box-shadow: 0 8px 24px rgba(15,118,110,0.18);
+            border-color: rgba(16,185,129,0.3);
         }
-        .header p {
-            font-size: 14px;
-            color: #6b7280;
-            margin-bottom: 15px;
-        }
-        .header .export-buttons {
-            position: absolute;
-            top: 15px;
-            right: 20px;
-        }
+        .header h2 { font-size: 20px; font-weight: 700; color: #111827; margin-bottom: 5px; }
+        .header p  { font-size: 14px; color: #6b7280; margin-bottom: 15px; }
+        .header .export-buttons { position: absolute; top: 15px; right: 20px; }
 
         /* ===== ATTENDANCE COUNTERS ===== */
-        .attendance-counters {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
+        .attendance-counters { display: flex; gap: 15px; flex-wrap: wrap; }
         .counter-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 12px;
-            background-color: #f9fafb;
-            border-radius: 6px;
-            transition: all 0.3s ease;
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 12px; background-color: #f9fafb;
+            border-radius: 6px; transition: all 0.3s ease;
+            opacity: 0;
+            animation: counterPop 0.35s ease forwards;
         }
-        .counter-item:hover { background-color: #f3f4f6; transform: translateY(-1px); }
+        .counter-item:nth-child(1) { animation-delay: 0.30s; }
+        .counter-item:nth-child(2) { animation-delay: 0.38s; }
+        .counter-item:nth-child(3) { animation-delay: 0.46s; }
+        .counter-item:nth-child(4) { animation-delay: 0.54s; }
+        .counter-item:hover { background-color: #f3f4f6; transform: translateY(-2px); }
+
         .counter-dot {
-            width: 10px; height: 10px;
-            border-radius: 50%;
+            width: 10px; height: 10px; border-radius: 50%;
             animation: dotPulse 2s infinite;
         }
         @keyframes dotPulse {
             0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.8; }
+            50%       { transform: scale(1.1); opacity: 0.8; }
         }
         .counter-dot.present  { background-color: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.4); }
         .counter-dot.absent   { background-color: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.4); }
@@ -101,19 +118,18 @@ require_once '../config.php';
             padding: 15px 20px;
             border-radius: 8px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 16px rgba(15,118,110,0.12), 0 1px 4px rgba(16,185,129,0.08);
+            border: 1px solid rgba(15,118,110,0.15);
+            animation: fadeUp 0.4s 0.25s ease both;
+            transition: box-shadow 0.2s, border-color 0.2s;
         }
-        .filter-row {
-            display: flex;
-            gap: 20px;
-            align-items: flex-end;
-            flex-wrap: wrap;
+        .filters:hover {
+            box-shadow: 0 8px 24px rgba(15,118,110,0.18);
+            border-color: rgba(16,185,129,0.3);
         }
+        .filter-row { display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap; }
         .filter-group { display: flex; flex-direction: column; gap: 6px; }
-        .filter-group label {
-            font-size: 11px; color: #6b7280; font-weight: 600;
-            text-transform: uppercase; letter-spacing: 0.5px;
-        }
+        .filter-group label { font-size: 11px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
         .filter-group input,
         .filter-group select {
             padding: 8px 12px; border: 1px solid #d1d5db;
@@ -138,37 +154,31 @@ require_once '../config.php';
         .table-section {
             background-color: white;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 16px rgba(15,118,110,0.12), 0 1px 4px rgba(16,185,129,0.08);
+            border: 1px solid rgba(15,118,110,0.15);
             overflow: hidden;
+            animation: fadeUp 0.4s 0.35s ease both;
+            transition: box-shadow 0.2s, border-color 0.2s;
+        }
+        .table-section:hover {
+            box-shadow: 0 8px 28px rgba(15,118,110,0.2);
+            border-color: rgba(16,185,129,0.3);
         }
         .table-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 20px;
-            border-bottom: 1px solid #e5e7eb;
-            background: white;
-            flex-wrap: wrap;
-            gap: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 20px; border-bottom: 1px solid #e5e7eb;
+            background: white; flex-wrap: wrap; gap: 10px;
         }
         .table-header h3 { font-size: 16px; font-weight: 600; color: #111827; }
         .search-input-wrapper { position: relative; width: 300px; }
-        .search-input-wrapper i {
-            position: absolute; left: 12px; top: 50%;
-            transform: translateY(-50%); color: #9ca3af;
-        }
+        .search-input-wrapper i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; }
         .search-input {
-            width: 100%;
-            padding: 8px 12px 8px 35px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 14px;
-            background: white;
+            width: 100%; padding: 8px 12px 8px 35px;
+            border: 1px solid #d1d5db; border-radius: 6px;
+            font-size: 14px; background: white;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
-        .search-input:focus {
-            outline: none; border-color: #0f766e;
-            box-shadow: 0 0 0 3px rgba(15,118,110,0.1);
-        }
+        .search-input:focus { outline: none; border-color: #0f766e; box-shadow: 0 0 0 3px rgba(15,118,110,0.1); }
 
         /* Export Buttons */
         .export-buttons { display: flex; gap: 10px; }
@@ -178,9 +188,9 @@ require_once '../config.php';
             display: flex; align-items: center; gap: 6px; transition: all 0.2s;
         }
         .btn-excel { background: #10b981; color: white; }
-        .btn-excel:hover { background: #059669; transform: translateY(-1px); }
+        .btn-excel:hover { background: #059669; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(16,185,129,0.3); }
         .btn-pdf   { background: #ef4444; color: white; }
-        .btn-pdf:hover   { background: #dc2626; transform: translateY(-1px); }
+        .btn-pdf:hover   { background: #dc2626; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(239,68,68,0.3); }
 
         /* ===== TABLE ===== */
         .table-container { overflow-x: auto; }
@@ -193,7 +203,23 @@ require_once '../config.php';
             border-bottom: 2px solid #0d5f58;
         }
         th input[type="checkbox"] { cursor: pointer; }
-        tbody tr { border-bottom: 1px solid #f3f4f6; transition: background 0.2s; }
+        tbody tr {
+            border-bottom: 1px solid #f3f4f6;
+            transition: background 0.2s;
+            opacity: 0;
+            animation: rowSlideIn 0.3s ease forwards;
+        }
+        tbody tr:nth-child(1)  { animation-delay: 0.05s; }
+        tbody tr:nth-child(2)  { animation-delay: 0.10s; }
+        tbody tr:nth-child(3)  { animation-delay: 0.15s; }
+        tbody tr:nth-child(4)  { animation-delay: 0.20s; }
+        tbody tr:nth-child(5)  { animation-delay: 0.25s; }
+        tbody tr:nth-child(6)  { animation-delay: 0.30s; }
+        tbody tr:nth-child(7)  { animation-delay: 0.35s; }
+        tbody tr:nth-child(8)  { animation-delay: 0.40s; }
+        tbody tr:nth-child(9)  { animation-delay: 0.45s; }
+        tbody tr:nth-child(10) { animation-delay: 0.50s; }
+        tbody tr:nth-child(n+11) { animation-delay: 0.55s; }
         tbody tr:hover { background: #f9fafb; }
         td { padding: 12px 15px; font-size: 14px; color: #374151; }
         td input[type="checkbox"] { cursor: pointer; }
@@ -231,7 +257,7 @@ require_once '../config.php';
             cursor: pointer; display: inline-flex; align-items: center;
             gap: 5px; transition: all 0.2s;
         }
-        .btn-unlock:hover { transform: scale(1.05); }
+        .btn-unlock:hover { transform: scale(1.08); filter: brightness(1.1); box-shadow: 0 3px 10px rgba(0,0,0,0.15); }
 
         /* ===== PAGINATION ===== */
         .pagination {
@@ -243,15 +269,22 @@ require_once '../config.php';
             background: white; color: #374151; border-radius: 6px;
             cursor: pointer; font-size: 14px; transition: all 0.2s;
         }
-        .pagination button:hover:not(:disabled) { background: #f9fafb; border-color: #0f766e; }
+        .pagination button:hover:not(:disabled) { background: #f9fafb; border-color: #0f766e; transform: translateY(-1px); }
         .pagination button.active { background: #0f766e; color: white; border-color: #0f766e; }
         .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* ===== STATS CONTAINER ===== */
         .stats-container {
             background: white; padding: 20px; border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 16px rgba(15,118,110,0.12), 0 1px 4px rgba(16,185,129,0.08);
+            border: 1px solid rgba(15,118,110,0.15);
             position: sticky; top: 20px;
+            animation: fadeUp 0.4s 0.45s ease both;
+            transition: box-shadow 0.2s, border-color 0.2s;
+        }
+        .stats-container:hover {
+            box-shadow: 0 8px 28px rgba(15,118,110,0.2);
+            border-color: rgba(16,185,129,0.3);
         }
         .stats-header { margin-bottom: 20px; }
         .stats-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
@@ -276,16 +309,11 @@ require_once '../config.php';
             background-color: rgba(0,0,0,0.5); animation: fadeIn 0.3s;
         }
         .modal.active { display: flex; align-items: center; justify-content: center; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .modal-content {
             background: white; padding: 25px; border-radius: 12px;
             width: 90%; max-width: 500px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            animation: slideDown 0.3s;
-        }
-        @keyframes slideDown {
-            from { transform: translateY(-50px); opacity: 0; }
-            to   { transform: translateY(0);     opacity: 1; }
+            animation: modalPop 0.3s ease both;
         }
         .modal-header {
             display: flex; justify-content: space-between; align-items: center;
@@ -298,7 +326,7 @@ require_once '../config.php';
             display: flex; align-items: center; justify-content: center;
             border-radius: 50%; transition: all 0.2s;
         }
-        .modal-close:hover { background: #f3f4f6; color: #111827; }
+        .modal-close:hover { background: #f3f4f6; color: #111827; transform: rotate(90deg); }
         .modal-body { margin-bottom: 20px; }
         .form-group { margin-bottom: 15px; }
         .form-group label {
@@ -312,16 +340,13 @@ require_once '../config.php';
             font-size: 14px; font-family: "Segoe UI", sans-serif;
             resize: vertical; min-height: 100px; transition: all 0.2s;
         }
-        .form-group textarea:focus {
-            outline: none; border-color: #0f766e;
-            box-shadow: 0 0 0 3px rgba(15,118,110,0.1);
-        }
+        .form-group textarea:focus { outline: none; border-color: #0f766e; box-shadow: 0 0 0 3px rgba(15,118,110,0.1); }
         .modal-footer { display: flex; gap: 10px; justify-content: flex-end; }
         .modal-btn { padding: 10px 20px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .modal-btn-cancel { background: #f3f4f6; color: #374151; }
-        .modal-btn-cancel:hover { background: #e5e7eb; }
+        .modal-btn-cancel:hover { background: #e5e7eb; transform: translateY(-1px); }
         .modal-btn-submit { background: #0f766e; color: white; }
-        .modal-btn-submit:hover { background: #0d5f58; transform: translateY(-1px); }
+        .modal-btn-submit:hover { background: #0d5f58; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,118,110,0.3); }
 
         /* Status Options */
         .status-options { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-top: 10px; }
@@ -329,7 +354,7 @@ require_once '../config.php';
             padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px;
             text-align: center; cursor: pointer; transition: all 0.2s; font-weight: 600; font-size: 14px;
         }
-        .status-option:hover  { border-color: #0f766e; background: #f0fdfa; }
+        .status-option:hover  { border-color: #0f766e; background: #f0fdfa; transform: translateY(-1px); }
         .status-option.selected { border-color: #0f766e; background: #0f766e; color: white; }
         .status-option.present        { border-color: #10b981; }
         .status-option.present:hover,
@@ -350,6 +375,16 @@ require_once '../config.php';
         .swal2-html-container { font-size: 15px; color: #374151; }
         .swal2-confirm, .swal2-cancel { border-radius: 6px; padding: 10px 24px; font-weight: 600; font-size: 14px; }
         .swal2-timer-progress-bar { background: rgba(15,118,110,0.8); }
+
+        /* dark mode */
+        body.dark .header,
+        body.dark .filters,
+        body.dark .table-section,
+        body.dark .stats-container {
+            background: var(--card);
+            box-shadow: 0 4px 18px rgba(15,118,110,0.25), 0 1px 4px rgba(16,185,129,0.12);
+            border-color: rgba(15,118,110,0.25);
+        }
 
         /* ===== RESPONSIVE ===== */
         @media (max-width: 1024px) {
@@ -378,7 +413,6 @@ require_once '../config.php';
 
 <div class="dashboard">
 
-    <!-- ========== SIDEBAR — identical to dashboard ========== -->
     <aside class="sidebar" id="sidebar">
         <div class="logo">
             <img src="../assets/logo/images.png" alt="MCL Logo">
@@ -435,24 +469,20 @@ require_once '../config.php';
         </nav>
     </aside>
 
-    <!-- ========== MAIN ========== -->
     <main class="main">
 
-        <!-- TOPBAR — same as dashboard -->
         <header>
             <button class="menu-btn" id="menuBtn" aria-label="Open menu">
                 <i class="fa-solid fa-bars"></i>
             </button>
             <h1>Security Billing Portal</h1>
-            <label class="theme-toggle" title="Toggle dark mode">
-                <input type="checkbox" id="themeToggle">
-                <span class="slider"></span>
-            </label>
+            <button class="theme-btn" id="themeToggle" title="Toggle dark mode">
+                <i class="fa-solid fa-moon"></i>
+            </button>
         </header>
 
         <div class="content-wrapper">
 
-            <!-- Page Header -->
             <div class="header">
                 <div class="export-buttons">
                     <button class="btn-export btn-excel" onclick="exportToExcel()">
@@ -488,7 +518,6 @@ require_once '../config.php';
                 </div>
             </div>
 
-            <!-- Filters -->
             <div class="filters">
                 <div class="filter-row">
                     <div class="filter-group">
@@ -514,10 +543,8 @@ require_once '../config.php';
                 </div>
             </div>
 
-            <!-- Main Layout -->
             <div class="main-layout">
 
-                <!-- Table Section -->
                 <div class="table-section">
                     <div class="table-header">
                         <h3>Attendance Records</h3>
@@ -554,7 +581,6 @@ require_once '../config.php';
                     </div>
                 </div>
 
-                <!-- Statistics -->
                 <div class="stats-container">
                     <div class="stats-header">
                         <div class="stats-header-row">
@@ -586,8 +612,8 @@ require_once '../config.php';
                     </div>
                 </div>
 
-            </div><!-- /.main-layout -->
-        </div><!-- /.content-wrapper -->
+            </div>
+        </div>
     </main>
 </div>
 
@@ -618,39 +644,30 @@ require_once '../config.php';
 </div>
 
 <script>
-/* ================================================
-   SIDEBAR TOGGLE — same as dashboard
-================================================ */
+/* ── Sidebar ── */
 const menuBtn = document.getElementById('menuBtn');
 const sidebar  = document.getElementById('sidebar');
 const overlay  = document.getElementById('sidebarOverlay');
-
 function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('active');    document.body.style.overflow = 'hidden'; }
 function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('active'); document.body.style.overflow = ''; }
-
 menuBtn.addEventListener('click', () => sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
 overlay.addEventListener('click', closeSidebar);
 document.querySelectorAll('.sidebar .menu').forEach(l => l.addEventListener('click', () => { if (window.innerWidth <= 768) closeSidebar(); }));
 window.addEventListener('resize', () => { if (window.innerWidth > 768) { sidebar.classList.remove('open'); overlay.classList.remove('active'); document.body.style.overflow = ''; } });
 
-/* ================================================
-   THEME TOGGLE
-================================================ */
+/* ── Theme toggle (moon/sun) ── */
 const themeToggle = document.getElementById('themeToggle');
-if (localStorage.getItem('theme') === 'dark') { document.body.classList.add('dark'); themeToggle.checked = true; }
-themeToggle.addEventListener('change', () => {
-    document.body.classList.toggle('dark');
-    localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
-});
+const themeIcon   = themeToggle.querySelector('i');
+function applyTheme(dark) {
+    if (dark) { document.body.classList.add('dark'); themeToggle.classList.add('active'); themeIcon.className = 'fa-solid fa-sun'; }
+    else       { document.body.classList.remove('dark'); themeToggle.classList.remove('active'); themeIcon.className = 'fa-solid fa-moon'; }
+}
+applyTheme(localStorage.getItem('theme') === 'dark');
+themeToggle.addEventListener('click', () => { const d = document.body.classList.contains('dark'); applyTheme(!d); localStorage.setItem('theme', !d ? 'dark' : 'light'); });
 
-/* ================================================
-   ALL ORIGINAL JS — completely unchanged
-================================================ */
+/* ── All original JS unchanged ── */
         let attendanceData = [];
-        let currentStatistics = {
-            total: 0, present: 0, absent: 0, leave: 0, overtime: 0,
-            presentPercent: 0, absentPercent: 0, leavePercent: 0, overtimePercent: 0
-        };
+        let currentStatistics = { total: 0, present: 0, absent: 0, leave: 0, overtime: 0, presentPercent: 0, absentPercent: 0, leavePercent: 0, overtimePercent: 0 };
         let attendanceChart = null;
         let currentUnlockData = null;
 
@@ -663,8 +680,7 @@ themeToggle.addEventListener('change', () => {
                     siteFilter.innerHTML = '<option value="">All Sites</option>';
                     result.data.forEach(site => {
                         const option = document.createElement('option');
-                        option.value = site.code;
-                        option.textContent = site.name;
+                        option.value = site.code; option.textContent = site.name;
                         siteFilter.appendChild(option);
                     });
                 }
@@ -682,15 +698,8 @@ themeToggle.addEventListener('change', () => {
                 const params = new URLSearchParams({ date, status, site, month, year });
                 const response = await fetch(`fetch_attendance.php?${params}`);
                 const result = await response.json();
-                if (result.success) {
-                    attendanceData = result.data;
-                    currentStatistics = result.statistics;
-                    updateStatistics();
-                    updateChart();
-                    renderTable();
-                } else {
-                    showError('Error loading data: ' + (result.error || 'Unknown error'));
-                }
+                if (result.success) { attendanceData = result.data; currentStatistics = result.statistics; updateStatistics(); updateChart(); renderTable(); }
+                else { showError('Error loading data: ' + (result.error || 'Unknown error')); }
             } catch (error) { showError('Error connecting to server: ' + error.message); }
         }
 
@@ -700,18 +709,15 @@ themeToggle.addEventListener('change', () => {
             document.getElementById('leaveCount').textContent = currentStatistics.leave;
             document.getElementById('overtimeCount').textContent = currentStatistics.overtime;
             document.querySelector('.total-records').textContent = currentStatistics.total;
-            const percentageValues = document.querySelectorAll('.percentage-value');
-            percentageValues[0].textContent = currentStatistics.presentPercent + '%';
-            percentageValues[1].textContent = currentStatistics.absentPercent + '%';
-            percentageValues[2].textContent = currentStatistics.leavePercent + '%';
-            percentageValues[3].textContent = currentStatistics.overtimePercent + '%';
+            const pv = document.querySelectorAll('.percentage-value');
+            pv[0].textContent = currentStatistics.presentPercent + '%';
+            pv[1].textContent = currentStatistics.absentPercent + '%';
+            pv[2].textContent = currentStatistics.leavePercent + '%';
+            pv[3].textContent = currentStatistics.overtimePercent + '%';
         }
 
         function updateChart() {
-            if (attendanceChart) {
-                attendanceChart.data.datasets[0].data = [currentStatistics.present, currentStatistics.absent, currentStatistics.leave, currentStatistics.overtime];
-                attendanceChart.update();
-            }
+            if (attendanceChart) { attendanceChart.data.datasets[0].data = [currentStatistics.present, currentStatistics.absent, currentStatistics.leave, currentStatistics.overtime]; attendanceChart.update(); }
         }
 
         function renderTable() {
@@ -720,52 +726,39 @@ themeToggle.addEventListener('change', () => {
             if (attendanceData.length === 0) {
                 const tr = document.createElement('tr');
                 tr.innerHTML = '<td colspan="8" style="text-align:center;padding:40px;color:#6b7280;">No data available for the selected filters</td>';
-                tbody.appendChild(tr);
-                return;
+                tbody.appendChild(tr); return;
             }
             attendanceData.forEach((row) => {
                 const tr = document.createElement('tr');
                 const lockIcon = row.locked == 1 ? 'fa-lock' : 'fa-lock-open';
                 const lockColor = row.locked == 1 ? '#ef4444' : '#10b981';
                 const lockText = row.locked == 1 ? 'Unlock' : 'Lock';
-                let statusHtml = '';
-                if (row.locked == 1) {
-                    statusHtml = `<span class="status-badge status-${row.status} locked" title="Unlock to change status">${row.status}</span>`;
-                } else {
-                    statusHtml = `<select class="status-dropdown" onchange="changeStatus('${row.empId}', '${row.date}', this.value, '${row.name}')" data-current="${row.status}">
+                let statusHtml = row.locked == 1
+                    ? `<span class="status-badge status-${row.status} locked" title="Unlock to change status">${row.status}</span>`
+                    : `<select class="status-dropdown" onchange="changeStatus('${row.empId}','${row.date}',this.value,'${row.name}')" data-current="${row.status}">
                         <option value="present"  ${row.status==='present'  ?'selected':''}>Present</option>
                         <option value="absent"   ${row.status==='absent'   ?'selected':''}>Absent</option>
                         <option value="leave"    ${row.status==='leave'    ?'selected':''}>Leave</option>
                         <option value="overtime" ${row.status==='overtime' ?'selected':''}>Overtime</option>
-                    </select>`;
-                }
+                       </select>`;
                 tr.innerHTML = `
                     <td><input type="checkbox" class="row-checkbox" data-esic="${row.empId}"></td>
-                    <td>${row.id}</td>
-                    <td>${row.empId}</td>
+                    <td>${row.id}</td><td>${row.empId}</td>
                     <td class="employee-name">${row.name}</td>
                     <td class="site-name">${row.site}</td>
                     <td>${row.date}</td>
                     <td>${statusHtml}</td>
-                    <td>
-                        <button class="btn-unlock" onclick="openUnlockModal('${row.empId}', '${row.date}', '${row.name}', ${row.locked})" style="background: ${lockColor}">
-                            <i class="fa-solid ${lockIcon}"></i> ${lockText}
-                        </button>
-                    </td>`;
+                    <td><button class="btn-unlock" onclick="openUnlockModal('${row.empId}','${row.date}','${row.name}',${row.locked})" style="background:${lockColor}"><i class="fa-solid ${lockIcon}"></i> ${lockText}</button></td>`;
                 tbody.appendChild(tr);
             });
         }
 
         async function changeStatus(esicNo, date, newStatus, name) {
-            const dropdown = event.target;
-            const oldStatus = dropdown.dataset.current;
+            const dropdown = event.target; const oldStatus = dropdown.dataset.current;
             if (newStatus === oldStatus) return;
             try {
-                const formData = new FormData();
-                formData.append('esic_no', esicNo);
-                formData.append('date', date);
-                formData.append('new_status', newStatus);
-                const response = await fetch('change_status.php', { method: 'POST', body: formData });
+                const formData = new FormData(); formData.append('esic_no', esicNo); formData.append('date', date); formData.append('new_status', newStatus);
+                const response = await fetch('change_status.php', { method:'POST', body:formData });
                 const result = await response.json();
                 if (result.success) { dropdown.dataset.current = newStatus; loadAttendance(); }
                 else { await Swal.fire({ title:'Error!', text:result.error, icon:'error', confirmButtonColor:'#ef4444' }); dropdown.value = oldStatus; }
@@ -780,29 +773,18 @@ themeToggle.addEventListener('change', () => {
             document.getElementById('unlockReason').value = '';
             document.getElementById('unlockModal').classList.add('active');
         }
-
-        function closeUnlockModal() {
-            document.getElementById('unlockModal').classList.remove('active');
-            currentUnlockData = null;
-        }
+        function closeUnlockModal() { document.getElementById('unlockModal').classList.remove('active'); currentUnlockData = null; }
 
         async function submitUnlock() {
             const reason = document.getElementById('unlockReason').value.trim();
             if (!reason) { await Swal.fire({ title:'Validation Error', text:'Please provide a reason for unlocking.', icon:'warning', confirmButtonColor:'#f59e0b' }); return; }
             if (!currentUnlockData) { await Swal.fire({ title:'Error', text:'Invalid unlock request.', icon:'error', confirmButtonColor:'#ef4444' }); return; }
             try {
-                const formData = new FormData();
-                formData.append('esic_no', currentUnlockData.esicNo);
-                formData.append('date', currentUnlockData.date);
-                formData.append('action', 'unlock');
-                formData.append('reason', reason);
-                const response = await fetch('unlock_attendance.php', { method: 'POST', body: formData });
+                const formData = new FormData(); formData.append('esic_no', currentUnlockData.esicNo); formData.append('date', currentUnlockData.date); formData.append('action','unlock'); formData.append('reason', reason);
+                const response = await fetch('unlock_attendance.php', { method:'POST', body:formData });
                 const result = await response.json();
-                if (result.success) {
-                    closeUnlockModal();
-                    await Swal.fire({ title:'Unlocked!', text:result.message, icon:'success', confirmButtonColor:'#10b981', timer:2000, timerProgressBar:true });
-                    loadAttendance();
-                } else { await Swal.fire({ title:'Error!', text:result.error, icon:'error', confirmButtonColor:'#ef4444' }); }
+                if (result.success) { closeUnlockModal(); await Swal.fire({ title:'Unlocked!', text:result.message, icon:'success', confirmButtonColor:'#10b981', timer:2000, timerProgressBar:true }); loadAttendance(); }
+                else { await Swal.fire({ title:'Error!', text:result.error, icon:'error', confirmButtonColor:'#ef4444' }); }
             } catch (error) { await Swal.fire({ title:'Error!', text:'An error occurred: '+error.message, icon:'error', confirmButtonColor:'#ef4444' }); }
         }
 
@@ -810,83 +792,32 @@ themeToggle.addEventListener('change', () => {
             const result = await Swal.fire({ title:'Lock Attendance?', text:`Are you sure you want to lock attendance for employee ${esicNo} on ${date}?`, icon:'warning', showCancelButton:true, confirmButtonColor:'#ef4444', cancelButtonColor:'#6b7280', confirmButtonText:'Yes, lock it!', cancelButtonText:'Cancel' });
             if (!result.isConfirmed) return;
             try {
-                const formData = new FormData();
-                formData.append('esic_no', esicNo);
-                formData.append('date', date);
-                formData.append('action', 'lock');
-                const response = await fetch('unlock_attendance.php', { method: 'POST', body: formData });
+                const formData = new FormData(); formData.append('esic_no', esicNo); formData.append('date', date); formData.append('action','lock');
+                const response = await fetch('unlock_attendance.php', { method:'POST', body:formData });
                 const res = await response.json();
                 if (res.success) { await Swal.fire({ title:'Locked!', text:res.message, icon:'success', confirmButtonColor:'#ef4444', timer:2000, timerProgressBar:true }); loadAttendance(); }
                 else { await Swal.fire({ title:'Error!', text:res.error, icon:'error', confirmButtonColor:'#ef4444' }); }
             } catch (error) { await Swal.fire({ title:'Error!', text:'An error occurred: '+error.message, icon:'error', confirmButtonColor:'#ef4444' }); }
         }
 
-        function exportToExcel() {
-            const date = document.getElementById('dateFilter').value;
-            const status = document.getElementById('statusFilter').value;
-            const site = document.getElementById('siteFilter').value;
-            const params = new URLSearchParams();
-            if (date) params.append('date', date);
-            if (status && status !== 'All Status') params.append('status', status);
-            if (site && site !== 'All Sites') params.append('site', site);
-            window.location.href = `export_excel.php?${params.toString()}`;
-        }
+        function exportToExcel() { const date=document.getElementById('dateFilter').value; const status=document.getElementById('statusFilter').value; const site=document.getElementById('siteFilter').value; const params=new URLSearchParams(); if(date)params.append('date',date); if(status&&status!=='All Status')params.append('status',status); if(site&&site!=='All Sites')params.append('site',site); window.location.href=`export_excel.php?${params.toString()}`; }
+        function exportToPDF()   { const date=document.getElementById('dateFilter').value; const status=document.getElementById('statusFilter').value; const site=document.getElementById('siteFilter').value; const params=new URLSearchParams(); if(date)params.append('date',date); if(status&&status!=='All Status')params.append('status',status); if(site&&site!=='All Sites')params.append('site',site); window.open(`export_pdf.php?${params.toString()}`,'_blank'); }
+        function showError(message) { document.getElementById('tableBody').innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:#ef4444;">${message}</td></tr>`; }
 
-        function exportToPDF() {
-            const date = document.getElementById('dateFilter').value;
-            const status = document.getElementById('statusFilter').value;
-            const site = document.getElementById('siteFilter').value;
-            const params = new URLSearchParams();
-            if (date) params.append('date', date);
-            if (status && status !== 'All Status') params.append('status', status);
-            if (site && site !== 'All Sites') params.append('site', site);
-            window.open(`export_pdf.php?${params.toString()}`, '_blank');
-        }
-
-        function showError(message) {
-            document.getElementById('tableBody').innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:#ef4444;">${message}</td></tr>`;
-        }
-
-        // Initialize Chart
         const ctx = document.getElementById('attendanceChart').getContext('2d');
         attendanceChart = new Chart(ctx, {
             type: 'doughnut',
-            data: {
-                labels: ['Present', 'Absent', 'Leave', 'Overtime'],
-                datasets: [{ data: [0,0,0,0], backgroundColor: ['#10b981','#ef4444','#f59e0b','#3b82f6'], borderWidth: 0, spacing: 2 }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: true, cutout: '70%',
-                plugins: {
-                    legend: { position: 'bottom', labels: { padding: 15, font: { size: 11 }, usePointStyle: true, pointStyle: 'circle' } },
-                    tooltip: { callbacks: { label: function(context) { const value = context.parsed || 0; const total = context.dataset.data.reduce((a,b) => a+b, 0); const percentage = total > 0 ? ((value/total)*100).toFixed(1) : 0; return `${context.label}: ${value} (${percentage}%)`; } } }
-                }
-            }
+            data: { labels:['Present','Absent','Leave','Overtime'], datasets:[{ data:[0,0,0,0], backgroundColor:['#10b981','#ef4444','#f59e0b','#3b82f6'], borderWidth:0, spacing:2 }] },
+            options: { responsive:true, maintainAspectRatio:true, cutout:'70%', plugins:{ legend:{ position:'bottom', labels:{ padding:15, font:{size:11}, usePointStyle:true, pointStyle:'circle' } }, tooltip:{ callbacks:{ label:function(context){ const value=context.parsed||0; const total=context.dataset.data.reduce((a,b)=>a+b,0); const percentage=total>0?((value/total)*100).toFixed(1):0; return `${context.label}: ${value} (${percentage}%)`; } } } } }
         });
 
-        document.getElementById('selectAll').addEventListener('change', function() {
-            document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = this.checked);
-        });
-
-        document.getElementById('searchInput').addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            document.querySelectorAll('#tableBody tr').forEach(row => {
-                row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
-            });
-        });
-
+        document.getElementById('selectAll').addEventListener('change', function() { document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = this.checked); });
+        document.getElementById('searchInput').addEventListener('input', function(e) { const s=e.target.value.toLowerCase(); document.querySelectorAll('#tableBody tr').forEach(row => { row.style.display = row.textContent.toLowerCase().includes(s) ? '' : 'none'; }); });
         document.getElementById('dateFilter').addEventListener('change', loadAttendance);
         document.getElementById('statusFilter').addEventListener('change', loadAttendance);
         document.getElementById('siteFilter').addEventListener('change', loadAttendance);
-
-        window.onclick = function(event) {
-            if (event.target.classList.contains('modal')) event.target.classList.remove('active');
-        };
-
-        window.addEventListener('DOMContentLoaded', function() {
-            loadSites();
-            loadAttendance();
-        });
+        window.onclick = function(event) { if (event.target.classList.contains('modal')) event.target.classList.remove('active'); };
+        window.addEventListener('DOMContentLoaded', function() { loadSites(); loadAttendance(); });
 </script>
 
 </body>
