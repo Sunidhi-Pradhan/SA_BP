@@ -136,10 +136,6 @@ $totalDuty = $totalWorking + $totalExtra;
             from { opacity: 0; }
             to   { opacity: 1; }
         }
-        @keyframes slideInLeft {
-            from { opacity: 0; transform: translateX(-40px); }
-            to   { opacity: 1; transform: translateX(0); }
-        }
         @keyframes fadeDown {
             from { opacity: 0; transform: translateY(-16px); }
             to   { opacity: 1; transform: translateY(0); }
@@ -161,10 +157,6 @@ $totalDuty = $totalWorking + $totalExtra;
             0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
             50%       { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(239,68,68,0); }
         }
-        @keyframes navItemReveal {
-            from { opacity: 0; transform: translateX(-14px); }
-            to   { opacity: 1; transform: translateX(0); }
-        }
 
         /* SIDEBAR */
         .sidebar {
@@ -175,7 +167,6 @@ $totalDuty = $totalWorking + $totalExtra;
             overflow-y: auto; z-index: 100;
             transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
             display: flex; flex-direction: column;
-            animation: slideInLeft 0.5s cubic-bezier(0.22,1,0.36,1) both;
         }
         .sidebar-close {
             display: none; position: absolute; top: 1rem; right: 1rem;
@@ -194,20 +185,12 @@ $totalDuty = $totalWorking + $totalExtra;
         .mcl-logo-img {
             max-width: 155px; height: auto; display: block;
             background: white; padding: 10px 14px; border-radius: 10px;
-            animation: fadeUp 0.5s 0.15s ease both;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
         .mcl-logo-img:hover { transform: scale(1.04); box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
 
         .sidebar-nav { list-style: none; padding: 1rem 0; flex: 1; }
-        .sidebar-nav li {
-            margin: 0.25rem 1rem;
-            opacity: 0;
-            animation: navItemReveal 0.4s ease forwards;
-        }
-        .sidebar-nav li:nth-child(1) { animation-delay: 0.25s; }
-        .sidebar-nav li:nth-child(2) { animation-delay: 0.35s; }
-        .sidebar-nav li:nth-child(3) { animation-delay: 0.45s; }
+        .sidebar-nav li { margin: 0.25rem 1rem; }
 
         .nav-link {
             display: flex; align-items: center; gap: 0.9rem;
@@ -337,13 +320,13 @@ $totalDuty = $totalWorking + $totalExtra;
 
         /* CARD */
         .card {
-    background: white; border-radius: 14px; padding: 1.5rem;
-    box-shadow: 0 4px 16px rgba(15,118,110,0.12), 0 1px 4px rgba(16,185,129,0.08);
-    border: 1px solid rgba(15,118,110,0.15);
-    animation: fadeUp 0.4s 0.45s ease both;
-    transition: box-shadow 0.2s, border-color 0.2s;
-    margin-top: 1rem;  /* ← add this */
-}
+            background: white; border-radius: 14px; padding: 1.5rem;
+            box-shadow: 0 4px 16px rgba(15,118,110,0.12), 0 1px 4px rgba(16,185,129,0.08);
+            border: 1px solid rgba(15,118,110,0.15);
+            animation: fadeUp 0.4s 0.45s ease both;
+            transition: box-shadow 0.2s, border-color 0.2s;
+            margin-top: 1rem;
+        }
         .card:hover { box-shadow: 0 8px 28px rgba(15,118,110,0.2); border-color: rgba(16,185,129,0.3); }
 
         .table-controls { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem; }
@@ -565,7 +548,7 @@ $totalDuty = $totalWorking + $totalExtra;
         /* RESPONSIVE */
         @media (max-width: 768px) {
             .dashboard-layout { grid-template-columns:1fr; }
-            .sidebar { position:fixed; left:0; top:0; height:100vh; width:var(--sidebar-width); transform:translateX(-100%); animation:none; }
+            .sidebar { position:fixed; left:0; top:0; height:100vh; width:var(--sidebar-width); transform:translateX(-100%); }
             .sidebar.open { transform:translateX(0); box-shadow:8px 0 32px rgba(0,0,0,0.3); }
             .sidebar-close { display:flex; }
             .hamburger-btn { display:flex; }

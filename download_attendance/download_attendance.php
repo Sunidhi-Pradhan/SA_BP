@@ -7,12 +7,210 @@
     <title>Download Attendance</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="../assets/desh.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
+        /* ===== RESET ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Segoe UI", sans-serif; }
+
+        /* ===== THEME VARIABLES ===== */
+        :root {
+            --bg: #f4f6f9;
+            --card: #ffffff;
+            --text: #111827;
+            --subtext: #6b7280;
+            --border: #e5e7eb;
+        }
+        body.dark {
+            --bg: #0b1120;
+            --card: #111827;
+            --text: #e5e7eb;
+            --subtext: #9ca3af;
+            --border: #1f2937;
+        }
+
+        /* ===== DARK MODE — SIDEBAR ===== */
+        body.dark .sidebar { background: #0d1526; box-shadow: 2px 0 12px rgba(0,0,0,0.5); }
+        body.dark .sidebar .menu:hover  { background: rgba(255,255,255,0.06); }
+        body.dark .sidebar .menu.active { background: rgba(255,255,255,0.10); }
+
+        /* ===== DARK MODE — THEME BUTTON ===== */
+        body.dark .theme-btn { background: #1e293b; color: #fbbf24; border-color: #334155; }
+        body.dark .theme-btn:hover { background: #293548; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            transition: background 0.3s, color 0.3s;
+            overflow-x: hidden;
+        }
+
+        /* ===== LAYOUT ===== */
+        .dashboard { display: flex; min-height: 100vh; }
+
+        /* ===== OVERLAY ===== */
+        .sidebar-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 998;
+            backdrop-filter: blur(2px);
+        }
+        .sidebar-overlay.active { display: block; }
+
+        /* ===== SIDEBAR — no animations ===== */
+        .sidebar {
+            width: 240px;
+            min-width: 240px;
+            background: #0f766e;
+            color: #ffffff;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.12);
+            flex-shrink: 0;
+            z-index: 999;
+            overflow-y: auto;
+            position: relative;
+            transition: transform 0.3s ease;
+            /* sidebarSlideIn animation intentionally removed */
+        }
+
+        /* ===== LOGO — no pulse animation ===== */
+        .logo {
+            padding: 20px 15px;
+            margin-bottom: 10px;
+            font-size: inherit;
+            font-weight: inherit;
+        }
+        .logo img {
+            max-width: 160px;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 10px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            /* logoPulse animation intentionally removed */
+        }
+
+        /* ===== NAV — no staggered menuFadeIn ===== */
+        nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            padding: 0 15px;
+            flex: 1;
+        }
+        .menu {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 15px;
+            border-radius: 6px;
+            color: rgba(255,255,255,0.9);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 400;
+            transition: all 0.25s ease;
+            position: relative;
+            margin-bottom: 2px;
+            letter-spacing: 0.1px;
+            white-space: nowrap;
+            /* menuFadeIn animation intentionally removed */
+        }
+        .menu .icon {
+            font-size: 16px;
+            width: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.95;
+            flex-shrink: 0;
+            transition: transform 0.2s ease;
+        }
+        .menu:hover .icon { transform: scale(1.2); }
+        .menu:hover  { background: rgba(255,255,255,0.1); color: #ffffff; }
+        .menu.active { background: rgba(255,255,255,0.15); color: #ffffff; font-weight: 500; }
+        .menu.active::before {
+            content: "";
+            position: absolute;
+            left: -15px; top: 50%;
+            transform: translateY(-50%);
+            width: 4px; height: 70%;
+            background: #ffffff;
+            border-radius: 0 4px 4px 0;
+        }
+        .menu.logout {
+            margin-top: auto;
+            margin-bottom: 15px;
+            border-top: 1px solid rgba(255,255,255,0.15);
+            padding-top: 15px;
+        }
+
+        /* ===== MAIN ===== */
+        .main { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow-x: hidden; }
+
+        /* ===== HEADER / TOPBAR ===== */
+        .topbar {
+            display: flex; align-items: center; gap: 14px;
+            padding: 0 25px; height: 62px;
+            background: var(--card);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            position: sticky; top: 0; z-index: 50;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            animation: headerDrop 0.4s ease both;
+        }
+        @keyframes headerDrop {
+            from { transform: translateY(-100%); opacity: 0; }
+            to   { transform: translateY(0);     opacity: 1; }
+        }
+        .topbar h2 { font-size: 1.5rem; font-weight: 700; color: var(--text); flex: 1; text-align: center; margin: 0; }
+
+        /* ===== HAMBURGER ===== */
+        .menu-btn {
+            background: none; border: none;
+            font-size: 22px; cursor: pointer;
+            color: var(--text); padding: 6px 8px;
+            border-radius: 6px; display: none;
+            align-items: center; justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .menu-btn:hover { background: rgba(0,0,0,0.06); transform: rotate(90deg); }
+
+        /* ===== THEME BUTTON ===== */
+        .theme-btn {
+            width: 44px; height: 44px; border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--card); color: var(--subtext);
+            font-size: 16px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+        }
+        .theme-btn:hover  { background: #f3f4f6; color: var(--text); transform: scale(1.08); }
+        .theme-btn.active { background: #1e293b; color: #a5b4fc; border-color: #334155; }
+
+        /* ===== RESPONSIVE BASE ===== */
+        @media (max-width: 768px) {
+            .menu-btn { display: flex; }
+            .sidebar { position: fixed; top: 0; left: 0; height: 100vh; transform: translateX(-100%); animation: none; }
+            .sidebar.open { transform: translateX(0); }
+            .topbar { padding: 0 16px; }
+            .topbar h2 { font-size: 1.1rem; }
+        }
+        @media (max-width: 480px) { .topbar h2 { font-size: 0.95rem; } }
+
+        /* ══════════════════════════════════════
+           DOWNLOAD ATTENDANCE PAGE — SPECIFIC
+        ══════════════════════════════════════ */
+
         /* ===== KEYFRAMES ===== */
         @keyframes fadeUp {
             from { opacity: 0; transform: translateY(16px); }
@@ -31,50 +229,11 @@
             to   { opacity: 1; transform: scale(1); }
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Segoe UI", sans-serif; }
-
-        :root { --bg: #f4f6f9; --card: #ffffff; --text: #111827; --sidebar: #0f172a; }
-        body.dark { --bg: #0b1120; --card: #111827; --text: #e5e7eb; --sidebar: #020617; }
-        body { background: var(--bg); color: var(--text); transition: 0.3s; }
-
-        .dashboard { display: flex; min-height: 100vh; }
-
-        .sidebar {
-            width: 240px; background: #0f766e; color: #ffffff;
-            padding: 0; display: flex; flex-direction: column;
-            box-shadow: 2px 0 8px rgba(0,0,0,0.1);
-        }
-        nav { display: flex; flex-direction: column; gap: 0; padding: 0 15px; flex: 1; }
-        .menu {
-            display: flex; align-items: center; gap: 12px;
-            padding: 12px 15px; border-radius: 6px;
-            color: rgba(255,255,255,0.9); text-decoration: none;
-            font-size: 14px; font-weight: 400;
-            transition: all 0.25s ease; position: relative;
-            margin-bottom: 2px; letter-spacing: 0.1px;
-        }
-        .menu .icon { font-size: 16px; width: 20px; display: flex; align-items: center; justify-content: center; opacity: 0.95; transition: transform 0.2s; }
-        .menu:hover .icon { transform: scale(1.15); }
-        .menu:hover { background: rgba(255,255,255,0.1); color: #ffffff; }
-        .menu.active { background: rgba(255,255,255,0.15); color: #ffffff; font-weight: 500; }
-        .menu.active::before { content: ""; position: absolute; left: -15px; top: 50%; transform: translateY(-50%); width: 4px; height: 70%; background: #ffffff; border-radius: 0 4px 4px 0; }
-        .menu.logout { margin-top: auto; margin-bottom: 15px; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 15px; }
-
-        .main { flex: 1; display: flex; flex-direction: column; }
-
+        /* ===== MAIN CONTENT ===== */
         .main-content {
             padding: 2rem; overflow-y: auto;
             animation: fadeIn 0.4s 0.15s ease both;
         }
-
-        .topbar {
-            background: var(--card); padding: 1.5rem 2rem;
-            display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            position: relative; height: 62px;
-            animation: fadeIn 0.4s ease both;
-        }
-        .topbar h2 { font-size: 1.5rem; font-weight: 700; color: var(--text); margin: 0; flex: 1; text-align: center; }
 
         /* ===== FILTER SECTION ===== */
         .filter-section {
@@ -86,10 +245,7 @@
             animation: fadeUp 0.4s 0.2s ease both;
             transition: box-shadow 0.2s, border-color 0.2s;
         }
-        .filter-section:hover {
-            box-shadow: 0 8px 28px rgba(15,118,110,0.2);
-            border-color: rgba(16,185,129,0.3);
-        }
+        .filter-section:hover { box-shadow: 0 8px 28px rgba(15,118,110,0.2); border-color: rgba(16,185,129,0.3); }
         .filter-title { display: flex; align-items: center; margin-bottom: 24px; color: #1f2937; font-size: 17px; font-weight: 600; }
         .filter-icon  { margin-right: 10px; font-size: 20px; }
         .filter-row   { display: flex; gap: 16px; margin-bottom: 24px; justify-content: flex-start; }
@@ -128,14 +284,8 @@
             margin-top: 30px; min-height: 300px; display: none;
             transition: box-shadow 0.2s, border-color 0.2s;
         }
-        .preview-section.active {
-            display: block;
-            animation: fadeUp 0.4s ease both;
-        }
-        .preview-section:hover {
-            box-shadow: 0 8px 28px rgba(15,118,110,0.2);
-            border-color: rgba(16,185,129,0.3);
-        }
+        .preview-section.active { display: block; animation: fadeUp 0.4s ease both; }
+        .preview-section:hover { box-shadow: 0 8px 28px rgba(15,118,110,0.2); border-color: rgba(16,185,129,0.3); }
         .preview-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
         .preview-info { flex: 1; }
         .preview-title { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 12px; }
@@ -161,28 +311,25 @@
         tbody tr:hover { background: #f9fafb; }
 
         /* staggered table row animation */
-        tbody tr {
-            opacity: 0;
-            animation: rowSlideIn 0.3s ease forwards;
-        }
-        tbody tr:nth-child(1)  { animation-delay: 0.05s; }
-        tbody tr:nth-child(2)  { animation-delay: 0.10s; }
-        tbody tr:nth-child(3)  { animation-delay: 0.15s; }
-        tbody tr:nth-child(4)  { animation-delay: 0.20s; }
-        tbody tr:nth-child(5)  { animation-delay: 0.25s; }
-        tbody tr:nth-child(6)  { animation-delay: 0.30s; }
-        tbody tr:nth-child(7)  { animation-delay: 0.35s; }
-        tbody tr:nth-child(8)  { animation-delay: 0.40s; }
-        tbody tr:nth-child(9)  { animation-delay: 0.45s; }
-        tbody tr:nth-child(10) { animation-delay: 0.50s; }
+        tbody tr { opacity: 0; animation: rowSlideIn 0.3s ease forwards; }
+        tbody tr:nth-child(1)    { animation-delay: 0.05s; }
+        tbody tr:nth-child(2)    { animation-delay: 0.10s; }
+        tbody tr:nth-child(3)    { animation-delay: 0.15s; }
+        tbody tr:nth-child(4)    { animation-delay: 0.20s; }
+        tbody tr:nth-child(5)    { animation-delay: 0.25s; }
+        tbody tr:nth-child(6)    { animation-delay: 0.30s; }
+        tbody tr:nth-child(7)    { animation-delay: 0.35s; }
+        tbody tr:nth-child(8)    { animation-delay: 0.40s; }
+        tbody tr:nth-child(9)    { animation-delay: 0.45s; }
+        tbody tr:nth-child(10)   { animation-delay: 0.50s; }
         tbody tr:nth-child(n+11) { animation-delay: 0.55s; }
 
         /* ===== STATUS BADGES ===== */
-        .status-present         { background-color: #d1fae5; color: #059669; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-block; }
-        .status-absent          { background-color: #fee2e2; color: #dc2626; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-block; }
-        .status-overtime        { background-color: #dbeafe; color: #2563eb; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-block; }
-        .status-present-overtime{ background-color: #fef3c7; color: #d97706; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-block; }
-        .status-leave           { background-color: #ede9fe; color: #7c3aed; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-block; }
+        .status-present          { background-color: #d1fae5; color: #059669; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-block; }
+        .status-absent           { background-color: #fee2e2; color: #dc2626; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-block; }
+        .status-overtime         { background-color: #dbeafe; color: #2563eb; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-block; }
+        .status-present-overtime { background-color: #fef3c7; color: #d97706; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-block; }
+        .status-leave            { background-color: #ede9fe; color: #7c3aed; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-block; }
 
         /* ===== PAGINATION ===== */
         .pagination { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
@@ -194,7 +341,6 @@
 
         /* ===== STATS CONTAINER ===== */
         .stats-container { width: 280px; display: flex; flex-direction: column; gap: 15px; }
-
         .stat-card {
             background: #f9fafb; border: 1px solid #e5e7eb;
             border-radius: 8px; padding: 20px; text-align: center;
@@ -208,233 +354,242 @@
         .stat-card:nth-child(4) { animation-delay: 0.54s; }
         .stat-card:nth-child(5) { animation-delay: 0.62s; }
         .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(15,118,110,0.15); }
-
         .stat-label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .stat-value { font-size: 32px; font-weight: 700; color: #1f2937; }
         .stat-subtext { font-size: 12px; color: #9ca3af; margin-top: 4px; }
-
         .stat-default  { background: #f9fafb; border: 1px solid #e5e7eb; }
         .stat-present  { background: #ecfdf5; border: 1px solid #10b981; }
-        .stat-present .stat-label, .stat-present .stat-value  { color: #059669; }
+        .stat-present  .stat-label, .stat-present  .stat-value { color: #059669; }
         .stat-overtime { background: #fffbeb; border: 1px solid #f59e0b; }
         .stat-overtime .stat-label, .stat-overtime .stat-value { color: #d97706; }
         .stat-absent   { background: #fef2f2; border: 1px solid #dc2626; }
-        .stat-absent .stat-label, .stat-absent .stat-value   { color: #dc2626; }
+        .stat-absent   .stat-label, .stat-absent   .stat-value { color: #dc2626; }
 
         /* dark mode */
         body.dark .filter-section,
-        body.dark .preview-section {
-            background: var(--card);
-            box-shadow: 0 4px 18px rgba(15,118,110,0.25), 0 1px 4px rgba(16,185,129,0.12);
-            border-color: rgba(15,118,110,0.25);
-        }
+        body.dark .preview-section { background: var(--card); box-shadow: 0 4px 18px rgba(15,118,110,0.25), 0 1px 4px rgba(16,185,129,0.12); border-color: rgba(15,118,110,0.25); }
         body.dark .topbar { background: var(--card); }
+
+        /* ===== PAGE RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .main-content { padding: 1rem; }
+            .filter-row { flex-direction: column; }
+            .filter-group { max-width: 100%; }
+            .filter-content-wrapper { flex-direction: column; gap: 12px; }
+            .preview-content-wrapper { flex-direction: column; }
+            .stats-container { width: 100%; }
+        }
     </style>
 </head>
 
 <body>
-    <div class="dashboard">
 
-        <!-- SIDEBAR -->
-        <aside class="sidebar" id="sidebar">
-            <h2 class="logo">
-                <img src="../assets/logo/images.png" alt="MCL Logo">
-            </h2>
-            <nav>
-                <a href="../dashboard.php" class="menu">
-                    <span class="icon"><i class="fa-solid fa-chart-line"></i></span><span>Dashboard</span>
-                </a>
-                <a href="../user.php" class="menu">
-                    <span class="icon"><i class="fa-solid fa-users"></i></span><span>Add Users</span>
-                </a>
-                <a href="../employees.php" class="menu">
-                    <span class="icon"><i class="fa-solid fa-user-plus"></i></span><span>Add Employee</span>
-                </a>
-                <a href="#" class="menu">
-                    <span class="icon"><i class="fa-solid fa-indian-rupee-sign"></i></span><span>Basic Pay Update</span>
-                </a>
-                <a href="#" class="menu">
-                    <span class="icon"><i class="fa-solid fa-user-clock"></i></span><span>Add Extra Manpower</span>
-                </a>
-                <a href="../unlock/unlock.php" class="menu">
-                    <span class="icon"><i class="fa-solid fa-lock-open"></i></span><span>Unlock Attendance</span>
-                </a>
-                <a href="#" class="menu">
-                    <span class="icon"><i class="fa-solid fa-file-signature"></i></span><span>Attendance Request</span>
-                </a>
-                <a href="#" class="menu active">
-                    <span class="icon"><i class="fa-solid fa-download"></i></span><span>Download Attendance</span>
-                </a>
-                <a href="#" class="menu">
-                    <span class="icon"><i class="fa-solid fa-file-invoice"></i></span><span>Wage Report</span>
-                </a>
-                <a href="#" class="menu">
-                    <span class="icon"><i class="fa-solid fa-calendar-days"></i></span><span>Monthly Attendance</span>
-                </a>
-                <a href="#" class="menu">
-                    <span class="icon"><i class="fa-solid fa-file-pdf"></i></span><span>Download Salary</span>
-                </a>
-                <a href="../logout.php" class="menu logout">
-                    <span class="icon"><i class="fa-solid fa-right-from-bracket"></i></span><span>Logout</span>
-                </a>
-            </nav>
-        </aside>
+<!-- Overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-        <!-- MAIN -->
-        <main class="main">
-            <header class="topbar">
-                <button class="menu-btn" id="menuBtn" aria-label="Open menu" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text);padding:6px 8px;border-radius:6px;display:none;align-items:center;justify-content:center;transition:background 0.2s;">
-                    <i class="fa-solid fa-bars"></i>
-                </button>
-                <h2>Security Billing Portal</h2>
-                <button class="theme-btn" id="themeToggle" title="Toggle dark mode">
-                    <i class="fa-solid fa-moon"></i>
-                </button>
-            </header>
+<div class="dashboard">
 
-            <div class="main-content">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <h2 class="logo">
+            <img src="../assets/logo/images.png" alt="MCL Logo">
+        </h2>
+        <nav>
+            <a href="../dashboard.php" class="menu">
+                <span class="icon"><i class="fa-solid fa-chart-line"></i></span><span>Dashboard</span>
+            </a>
+            <a href="../user.php" class="menu">
+                <span class="icon"><i class="fa-solid fa-users"></i></span><span>Add Users</span>
+            </a>
+            <a href="../employees.php" class="menu">
+                <span class="icon"><i class="fa-solid fa-user-plus"></i></span><span>Add Employee</span>
+            </a>
+            <a href="#" class="menu">
+                <span class="icon"><i class="fa-solid fa-indian-rupee-sign"></i></span><span>Basic Pay Update</span>
+            </a>
+            <a href="#" class="menu">
+                <span class="icon"><i class="fa-solid fa-user-clock"></i></span><span>Add Extra Manpower</span>
+            </a>
+            <a href="../unlock/unlock.php" class="menu">
+                <span class="icon"><i class="fa-solid fa-lock-open"></i></span><span>Unlock Attendance</span>
+            </a>
+            <a href="#" class="menu">
+                <span class="icon"><i class="fa-solid fa-file-signature"></i></span><span>Attendance Request</span>
+            </a>
+            <a href="#" class="menu active">
+                <span class="icon"><i class="fa-solid fa-download"></i></span><span>Download Attendance</span>
+            </a>
+            <a href="#" class="menu">
+                <span class="icon"><i class="fa-solid fa-file-invoice"></i></span><span>Wage Report</span>
+            </a>
+            <a href="#" class="menu">
+                <span class="icon"><i class="fa-solid fa-calendar-days"></i></span><span>Monthly Attendance</span>
+            </a>
+            <a href="#" class="menu">
+                <span class="icon"><i class="fa-solid fa-file-pdf"></i></span><span>Download Salary</span>
+            </a>
+            <a href="../logout.php" class="menu logout">
+                <span class="icon"><i class="fa-solid fa-right-from-bracket"></i></span><span>Logout</span>
+            </a>
+        </nav>
+    </aside>
 
-                <!-- Filter Section -->
-                <div class="filter-section">
-                    <div class="filter-title">
-                        <span class="filter-icon">📋</span>
-                        Employee Attendance Report
-                        <span class="status-badge success" style="margin-left: auto;">Period: Current period</span>
+    <!-- MAIN -->
+    <main class="main">
+        <header class="topbar">
+            <button class="menu-btn" id="menuBtn" aria-label="Open menu">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <h2>Security Billing Portal</h2>
+            <button class="theme-btn" id="themeToggle" title="Toggle dark mode">
+                <i class="fa-solid fa-moon"></i>
+            </button>
+        </header>
+
+        <div class="main-content">
+
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-title">
+                    <span class="filter-icon">📋</span>
+                    Employee Attendance Report
+                    <span class="status-badge success" style="margin-left: auto;">Period: Current period</span>
+                </div>
+                <div class="filter-content-wrapper">
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label class="filter-label">EMPLOYEE ID</label>
+                            <input type="text" class="filter-input" id="employeeId" placeholder="Enter Employee ID">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">FROM DATE</label>
+                            <input type="date" class="filter-input" id="fromDate" value="2026-01-31">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">TO DATE</label>
+                            <input type="date" class="filter-input" id="toDate" value="2026-02-12">
+                        </div>
                     </div>
-                    <div class="filter-content-wrapper">
-                        <div class="filter-row">
-                            <div class="filter-group">
-                                <label class="filter-label">EMPLOYEE ID</label>
-                                <input type="text" class="filter-input" id="employeeId" placeholder="Enter Employee ID">
-                            </div>
-                            <div class="filter-group">
-                                <label class="filter-label">FROM DATE</label>
-                                <input type="date" class="filter-input" id="fromDate" value="2026-01-31">
-                            </div>
-                            <div class="filter-group">
-                                <label class="filter-label">TO DATE</label>
-                                <input type="date" class="filter-input" id="toDate" value="2026-02-12">
-                            </div>
-                        </div>
-                        <div class="action-buttons">
-                            <button class="btn btn-secondary" onclick="resetFilters()">
-                                <i class="fa-solid fa-rotate-right"></i> Reset
-                            </button>
-                            <button class="btn btn-primary" onclick="previewReport()">
-                                <i class="fa-solid fa-eye"></i> Preview
-                            </button>
-                        </div>
+                    <div class="action-buttons">
+                        <button class="btn btn-secondary" onclick="resetFilters()">
+                            <i class="fa-solid fa-rotate-right"></i> Reset
+                        </button>
+                        <button class="btn btn-primary" onclick="previewReport()">
+                            <i class="fa-solid fa-eye"></i> Preview
+                        </button>
                     </div>
                 </div>
-
-                <!-- Preview Section -->
-                <div class="preview-section" id="previewSection">
-                    <div class="preview-header">
-                        <div class="preview-info">
-                            <h3 class="preview-title">📋 Employee Attendance Report</h3>
-                            <div class="employee-details">
-                                <div class="employee-detail-row">
-                                    <i class="fa-solid fa-user"></i>
-                                    <span class="detail-label">Employee Name:</span>
-                                    <span class="detail-value" id="displayEmployeeName"></span>
-                                </div>
-                                <div class="employee-detail-row">
-                                    <i class="fa-solid fa-id-card"></i>
-                                    <span class="detail-label">Employee ID:</span>
-                                    <span class="detail-value" id="displayEmployeeId"></span>
-                                </div>
-                                <div class="employee-detail-row">
-                                    <i class="fa-solid fa-location-dot"></i>
-                                    <span class="detail-label">Site Location:</span>
-                                    <span class="detail-value" id="displaySiteLocation"></span>
-                                </div>
-                                <div class="employee-detail-row">
-                                    <i class="fa-solid fa-calendar"></i>
-                                    <span class="detail-label">Period:</span>
-                                    <span class="detail-value" id="displayPeriod"></span>
-                                </div>
-                            </div>
-                            <p class="period-info">
-                                <span class="total-records" id="totalRecordsText"></span>
-                            </p>
-                        </div>
-                        <div class="action-buttons-preview">
-                            <button class="btn" style="background:#10b981;color:white;" onclick="downloadExcel()">
-                                <i class="fa-solid fa-file-excel"></i> Excel
-                            </button>
-                            <button class="btn" style="background:#dc2626;color:white;" onclick="downloadPDF()">
-                                <i class="fa-solid fa-file-pdf"></i> PDF Report
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="preview-content-wrapper">
-                        <div class="table-container">
-                            <table id="attendanceTable">
-                                <thead>
-                                    <tr>
-                                        <th>S.NO</th>
-                                        <th>DATE</th>
-                                        <th>DAY</th>
-                                        <th>STATUS</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tableBody"></tbody>
-                            </table>
-                            <div class="pagination">
-                                <span class="pagination-text">Showing 1 to 6 of 6 entries</span>
-                                <button disabled>Previous</button>
-                                <button class="active">1</button>
-                                <button disabled>Next</button>
-                            </div>
-                        </div>
-
-                        <div class="stats-container">
-                            <div class="stat-card stat-default">
-                                <div class="stat-label"><i class="fa-solid fa-calendar-check"></i> TOTAL DAYS IN PERIOD</div>
-                                <div class="stat-value" id="totalDaysValue"></div>
-                                <div class="stat-subtext">Calendar days</div>
-                            </div>
-                            <div class="stat-card stat-default">
-                                <div class="stat-label"><i class="fa-solid fa-database"></i> DAYS RECORDED</div>
-                                <div class="stat-value" id="daysRecordedValue"></div>
-                                <div class="stat-subtext">Attendance marked</div>
-                            </div>
-                            <div class="stat-card stat-present">
-                                <div class="stat-label"><i class="fa-solid fa-check-circle"></i> PRESENT</div>
-                                <div class="stat-value" id="presentValue"></div>
-                                <div class="stat-subtext">Days present</div>
-                            </div>
-                            <div class="stat-card stat-overtime">
-                                <div class="stat-label"><i class="fa-solid fa-clock"></i> OVERTIME DAYS</div>
-                                <div class="stat-value" id="overtimeValue"></div>
-                                <div class="stat-subtext">Extra hours</div>
-                            </div>
-                            <div class="stat-card stat-absent">
-                                <div class="stat-label"><i class="fa-solid fa-times-circle"></i> ABSENT</div>
-                                <div class="stat-value" id="absentValue"></div>
-                                <div class="stat-subtext">Days absent</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
             </div>
-        </main>
-    </div>
 
-   <script>
-    /* ── Sidebar ── */
+            <!-- Preview Section -->
+            <div class="preview-section" id="previewSection">
+                <div class="preview-header">
+                    <div class="preview-info">
+                        <h3 class="preview-title">📋 Employee Attendance Report</h3>
+                        <div class="employee-details">
+                            <div class="employee-detail-row">
+                                <i class="fa-solid fa-user"></i>
+                                <span class="detail-label">Employee Name:</span>
+                                <span class="detail-value" id="displayEmployeeName"></span>
+                            </div>
+                            <div class="employee-detail-row">
+                                <i class="fa-solid fa-id-card"></i>
+                                <span class="detail-label">Employee ID:</span>
+                                <span class="detail-value" id="displayEmployeeId"></span>
+                            </div>
+                            <div class="employee-detail-row">
+                                <i class="fa-solid fa-location-dot"></i>
+                                <span class="detail-label">Site Location:</span>
+                                <span class="detail-value" id="displaySiteLocation"></span>
+                            </div>
+                            <div class="employee-detail-row">
+                                <i class="fa-solid fa-calendar"></i>
+                                <span class="detail-label">Period:</span>
+                                <span class="detail-value" id="displayPeriod"></span>
+                            </div>
+                        </div>
+                        <p class="period-info">
+                            <span class="total-records" id="totalRecordsText"></span>
+                        </p>
+                    </div>
+                    <div class="action-buttons-preview">
+                        <button class="btn" style="background:#10b981;color:white;" onclick="downloadExcel()">
+                            <i class="fa-solid fa-file-excel"></i> Excel
+                        </button>
+                        <button class="btn" style="background:#dc2626;color:white;" onclick="downloadPDF()">
+                            <i class="fa-solid fa-file-pdf"></i> PDF Report
+                        </button>
+                    </div>
+                </div>
+
+                <div class="preview-content-wrapper">
+                    <div class="table-container">
+                        <table id="attendanceTable">
+                            <thead>
+                                <tr>
+                                    <th>S.NO</th>
+                                    <th>DATE</th>
+                                    <th>DAY</th>
+                                    <th>STATUS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody"></tbody>
+                        </table>
+                        <div class="pagination">
+                            <span class="pagination-text">Showing 1 to 6 of 6 entries</span>
+                            <button disabled>Previous</button>
+                            <button class="active">1</button>
+                            <button disabled>Next</button>
+                        </div>
+                    </div>
+
+                    <div class="stats-container">
+                        <div class="stat-card stat-default">
+                            <div class="stat-label"><i class="fa-solid fa-calendar-check"></i> TOTAL DAYS IN PERIOD</div>
+                            <div class="stat-value" id="totalDaysValue"></div>
+                            <div class="stat-subtext">Calendar days</div>
+                        </div>
+                        <div class="stat-card stat-default">
+                            <div class="stat-label"><i class="fa-solid fa-database"></i> DAYS RECORDED</div>
+                            <div class="stat-value" id="daysRecordedValue"></div>
+                            <div class="stat-subtext">Attendance marked</div>
+                        </div>
+                        <div class="stat-card stat-present">
+                            <div class="stat-label"><i class="fa-solid fa-check-circle"></i> PRESENT</div>
+                            <div class="stat-value" id="presentValue"></div>
+                            <div class="stat-subtext">Days present</div>
+                        </div>
+                        <div class="stat-card stat-overtime">
+                            <div class="stat-label"><i class="fa-solid fa-clock"></i> OVERTIME DAYS</div>
+                            <div class="stat-value" id="overtimeValue"></div>
+                            <div class="stat-subtext">Extra hours</div>
+                        </div>
+                        <div class="stat-card stat-absent">
+                            <div class="stat-label"><i class="fa-solid fa-times-circle"></i> ABSENT</div>
+                            <div class="stat-value" id="absentValue"></div>
+                            <div class="stat-subtext">Days absent</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<script>
+    /* ── Sidebar toggle ── */
     const menuBtn = document.getElementById('menuBtn');
     const sidebar  = document.getElementById('sidebar');
     const overlay  = document.getElementById('sidebarOverlay');
-    if (menuBtn) {
-        menuBtn.style.display = 'flex';
-        menuBtn.addEventListener('click', () => {
-            sidebar.classList.toggle('open');
-            if (overlay) overlay.classList.toggle('active');
-        });
-    }
+
+    function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('active');    document.body.style.overflow = 'hidden'; }
+    function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('active'); document.body.style.overflow = ''; }
+
+    menuBtn.addEventListener('click', () => sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
+    overlay.addEventListener('click', closeSidebar);
+    document.querySelectorAll('.sidebar .menu').forEach(l => l.addEventListener('click', () => { if (window.innerWidth <= 768) closeSidebar(); }));
+    window.addEventListener('resize', () => { if (window.innerWidth > 768) { sidebar.classList.remove('open'); overlay.classList.remove('active'); document.body.style.overflow = ''; } });
 
     /* ── Theme toggle (moon/sun) ── */
     const themeToggle = document.getElementById('themeToggle');
@@ -458,7 +613,7 @@
         currentReportData = {};
     }
 
-   async function previewReport() {
+    async function previewReport() {
         const employeeId = document.getElementById('employeeId').value;
         const fromDate   = document.getElementById('fromDate').value;
         const toDate     = document.getElementById('toDate').value;
@@ -482,11 +637,11 @@
             let tableHTML = '';
             result.attendanceData.forEach(row => {
                 let statusClass = '';
-                if      (row.status === 'Present')           statusClass = 'status-present';
-                else if (row.status === 'Absent')            statusClass = 'status-absent';
+                if      (row.status === 'Present')            statusClass = 'status-present';
+                else if (row.status === 'Absent')             statusClass = 'status-absent';
                 else if (row.status === 'Present + Overtime') statusClass = 'status-present-overtime';
-                else if (row.status === 'Overtime')          statusClass = 'status-overtime';
-                else if (row.status === 'Leave')             statusClass = 'status-leave';
+                else if (row.status === 'Overtime')           statusClass = 'status-overtime';
+                else if (row.status === 'Leave')              statusClass = 'status-leave';
                 tableHTML += `<tr><td>${row.sno}</td><td>${row.date}</td><td>${row.day}</td><td><span class="${statusClass}">${row.status}</span></td></tr>`;
             });
             document.getElementById('tableBody').innerHTML = tableHTML;

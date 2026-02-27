@@ -143,10 +143,6 @@ $totalDuty = $totalWorking + $totalExtra;
             from { opacity: 0; }
             to   { opacity: 1; }
         }
-        @keyframes slideInLeft {
-            from { opacity: 0; transform: translateX(-14px); }
-            to   { opacity: 1; transform: translateX(0); }
-        }
         @keyframes cardPop {
             from { opacity: 0; transform: translateY(14px) scale(0.97); }
             to   { opacity: 1; transform: translateY(0) scale(1); }
@@ -163,8 +159,9 @@ $totalDuty = $totalWorking + $totalExtra;
             0%, 100% { transform: scale(1); opacity: 1; }
             50%       { transform: scale(1.15); opacity: 0.8; }
         }
+        /* slideInLeft and sidebarSlideIn intentionally removed */
 
-        /* SIDEBAR */
+        /* ===== SIDEBAR — no animations ===== */
         .sidebar {
             background: linear-gradient(180deg,#0f766e 0%,#0a5c55 100%);
             color: white; padding: 0;
@@ -173,17 +170,25 @@ $totalDuty = $totalWorking + $totalExtra;
             overflow-y: auto; z-index: 100;
             transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
             display: flex; flex-direction: column;
-            animation: slideInLeft 0.4s ease both;
+            /* slideInLeft animation intentionally removed */
         }
         .sidebar-close { display: none; position: absolute; top: 1rem; right: 1rem; background: rgba(255,255,255,0.12); border: none; color: white; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 1rem; align-items: center; justify-content: center; z-index: 2; transition: background 0.2s, transform 0.2s; }
         .sidebar-close:hover { background: rgba(255,255,255,0.22); transform: rotate(90deg); }
         .sidebar-logo { padding: 1.4rem 1.5rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; }
-        .mcl-logo-img { max-width: 155px; height: auto; display: block; background: white; padding: 10px 14px; border-radius: 10px; animation: popIn 0.4s 0.2s ease both; }
+
+        /* ===== LOGO — no pulse/pop animation ===== */
+        .mcl-logo-img {
+            max-width: 155px; height: auto; display: block;
+            background: white; padding: 10px 14px;
+            border-radius: 10px;
+            /* popIn animation intentionally removed */
+        }
+
+        /* ===== NAV — no staggered slideInLeft ===== */
         .sidebar-nav { list-style: none; padding: 1rem 0; flex: 1; }
-        .sidebar-nav li { margin: 0.25rem 1rem; opacity: 0; animation: slideInLeft 0.35s ease forwards; }
-        .sidebar-nav li:nth-child(1) { animation-delay: 0.15s; }
-        .sidebar-nav li:nth-child(2) { animation-delay: 0.22s; }
-        .sidebar-nav li:nth-child(3) { animation-delay: 0.29s; }
+        .sidebar-nav li { margin: 0.25rem 1rem; }
+        /* opacity: 0 and animation removed from nav items */
+
         .nav-link { display: flex; align-items: center; gap: 0.9rem; padding: 0.85rem 1.1rem; color: rgba(255,255,255,0.88); text-decoration: none; border-radius: 12px; transition: all 0.2s; font-weight: 500; font-size: 0.95rem; }
         .nav-link:hover  { background: rgba(255,255,255,0.15); color: #fff; }
         .nav-link.active { background: rgba(255,255,255,0.22); color: #fff; font-weight: 600; }
@@ -246,13 +251,13 @@ $totalDuty = $totalWorking + $totalExtra;
 
         /* CARD */
         .card {
-    background: white; border-radius: 14px; padding: 1.5rem;
-    box-shadow: 0 4px 16px rgba(15,118,110,0.12), 0 1px 4px rgba(16,185,129,0.08);
-    border: 1px solid rgba(15,118,110,0.15);
-    animation: fadeUp 0.4s 0.45s ease both;
-    transition: box-shadow 0.2s, border-color 0.2s;
-    margin-top: 1rem;  /* ← add this */
-}
+            background: white; border-radius: 14px; padding: 1.5rem;
+            box-shadow: 0 4px 16px rgba(15,118,110,0.12), 0 1px 4px rgba(16,185,129,0.08);
+            border: 1px solid rgba(15,118,110,0.15);
+            animation: fadeUp 0.4s 0.45s ease both;
+            transition: box-shadow 0.2s, border-color 0.2s;
+            margin-top: 1rem;
+        }
         .card:hover { box-shadow: 0 8px 28px rgba(15,118,110,0.2); border-color: rgba(16,185,129,0.3); }
 
         .table-controls { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem; }
@@ -298,7 +303,6 @@ $totalDuty = $totalWorking + $totalExtra;
         .attendance-table tbody tr:nth-child(even) td.col-working { background:#bfdbfe; }
         .attendance-table tbody tr:nth-child(even) td.col-extra   { background:#fde68a; }
         .attendance-table tbody tr:nth-child(even) td.col-total   { background:#a7f3d0; }
-
         .attendance-table thead th.day-col,.attendance-table tbody td.day-col { min-width:36px; width:36px; }
 
         /* staggered row animation */
@@ -307,16 +311,16 @@ $totalDuty = $totalWorking + $totalExtra;
             opacity: 0;
             animation: rowSlideIn 0.3s ease forwards;
         }
-        .attendance-table tbody tr:nth-child(1)  { animation-delay: 0.05s; }
-        .attendance-table tbody tr:nth-child(2)  { animation-delay: 0.10s; }
-        .attendance-table tbody tr:nth-child(3)  { animation-delay: 0.15s; }
-        .attendance-table tbody tr:nth-child(4)  { animation-delay: 0.20s; }
-        .attendance-table tbody tr:nth-child(5)  { animation-delay: 0.25s; }
-        .attendance-table tbody tr:nth-child(6)  { animation-delay: 0.30s; }
-        .attendance-table tbody tr:nth-child(7)  { animation-delay: 0.35s; }
-        .attendance-table tbody tr:nth-child(8)  { animation-delay: 0.40s; }
-        .attendance-table tbody tr:nth-child(9)  { animation-delay: 0.45s; }
-        .attendance-table tbody tr:nth-child(10) { animation-delay: 0.50s; }
+        .attendance-table tbody tr:nth-child(1)    { animation-delay: 0.05s; }
+        .attendance-table tbody tr:nth-child(2)    { animation-delay: 0.10s; }
+        .attendance-table tbody tr:nth-child(3)    { animation-delay: 0.15s; }
+        .attendance-table tbody tr:nth-child(4)    { animation-delay: 0.20s; }
+        .attendance-table tbody tr:nth-child(5)    { animation-delay: 0.25s; }
+        .attendance-table tbody tr:nth-child(6)    { animation-delay: 0.30s; }
+        .attendance-table tbody tr:nth-child(7)    { animation-delay: 0.35s; }
+        .attendance-table tbody tr:nth-child(8)    { animation-delay: 0.40s; }
+        .attendance-table tbody tr:nth-child(9)    { animation-delay: 0.45s; }
+        .attendance-table tbody tr:nth-child(10)   { animation-delay: 0.50s; }
         .attendance-table tbody tr:nth-child(n+11) { animation-delay: 0.55s; }
 
         .attendance-table tbody tr:hover { background:#f0fdf9; }

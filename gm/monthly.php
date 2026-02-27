@@ -873,10 +873,10 @@ $totalDuty = $totalWorking + $totalExtra;
                         <select><option>10</option><option>25</option><option>50</option><option>100</option></select>
                         <label>entries</label>
                     </div>
-                    <div class="export-buttons">
+                    <!-- <div class="export-buttons">
                         <button class="btn-export btn-excel"><i class="fa-solid fa-file-excel"></i> Excel</button>
                         <button class="btn-export btn-pdf"><i class="fa-solid fa-file-pdf"></i> PDF</button>
-                    </div>
+                    </div> -->
                     <input type="text" class="search-input" placeholder="Search">
                 </div>
 
