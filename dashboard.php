@@ -1,5 +1,6 @@
 <?php
 session_start();
+require 'config.php';
 if (!isset($_SESSION["user"])) {
     header("Location: login.php");
     exit;
@@ -69,11 +70,11 @@ if (!isset($_SESSION["user"])) {
                 <span class="icon"><i class="fa-solid fa-user-plus"></i></span>
                 <span>Add Employee</span>
             </a>
-            <a href="#" class="menu">
+            <a href="admin/basic_pay_update.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-indian-rupee-sign"></i></span>
                 <span>Basic Pay Update</span>
             </a>
-            <a href="#" class="menu">
+            <a href="admin/add_extra_manpower.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-user-clock"></i></span>
                 <span>Add Extra Manpower</span>
             </a>
@@ -93,7 +94,7 @@ if (!isset($_SESSION["user"])) {
                 <span class="icon"><i class="fa-solid fa-file-invoice"></i></span>
                 <span>Wage Report</span>
             </a>
-            <a href="monthly_att/monthly_attendance.php" class="menu">
+            <a href="admin/monthly_attendance.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-calendar-days"></i></span>
                 <span>Monthly Attendance</span>
             </a>

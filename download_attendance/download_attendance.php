@@ -416,13 +416,13 @@
             <a href="#" class="menu">
                 <span class="icon"><i class="fa-solid fa-file-signature"></i></span><span>Attendance Request</span>
             </a>
-            <a href="#" class="menu active">
+            <a href="../download_attendance/download_attendance.php" class="menu active">
                 <span class="icon"><i class="fa-solid fa-download"></i></span><span>Download Attendance</span>
             </a>
             <a href="#" class="menu">
                 <span class="icon"><i class="fa-solid fa-file-invoice"></i></span><span>Wage Report</span>
             </a>
-            <a href="#" class="menu">
+            <a href="../admin/monthly_attendance.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-calendar-days"></i></span><span>Monthly Attendance</span>
             </a>
             <a href="#" class="menu">

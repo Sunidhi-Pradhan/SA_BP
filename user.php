@@ -592,7 +592,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <span class="icon"><i class="fa-solid fa-file-invoice"></i></span>
                 <span>Wage Report</span>
             </a>
-            <a href="monthly_att/monthly_attendance.php" class="menu">
+            <a href="admin/monthly_attendance.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-calendar-days"></i></span>
                 <span>Monthly Attendance</span>
             </a>
