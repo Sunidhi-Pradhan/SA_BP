@@ -82,7 +82,7 @@ if (!isset($_SESSION["user"])) {
                 <span class="icon"><i class="fa-solid fa-lock-open"></i></span>
                 <span>Unlock Attendance</span>
             </a>
-            <a href="#" class="menu">
+            <a href="admin/attendance_request.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-file-signature"></i></span>
                 <span>Attendance Request</span>
             </a>
