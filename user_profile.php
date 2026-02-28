@@ -13,7 +13,6 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute([$_SESSION["user"]]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -21,227 +20,472 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
     <title>User Profile</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="assets/useratt.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    /* ============================================================
+       KEYFRAMES (same as dashboard)
+    ============================================================ */
+    @keyframes slideInLeft {
+        from { opacity: 0; transform: translateX(-44px); }
+        to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes logoFadeUp {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes navReveal {
+        from { opacity: 0; transform: translateX(-18px); }
+        to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes fadeDown {
+        from { opacity: 0; transform: translateY(-14px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
 
-        body {
-            background: #f4f6f8;
-            font-family: 'Segoe UI', sans-serif;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 40px 20px;
-        }
+    /* ============================================================
+       SIDEBAR ENHANCEMENTS (same as dashboard)
+    ============================================================ */
+    .sidebar {
+        box-shadow: 4px 0 22px rgba(13,95,88,0.32);
+        animation: slideInLeft 0.5s cubic-bezier(0.22,1,0.36,1) both;
+    }
 
-        .profile-page {
-            max-width: 900px;
-            width: 100%;
-            background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-            padding: 40px;
-        }
+    .sidebar .logo {
+        padding-bottom: 22px;
+        border-bottom: 1px solid rgba(255,255,255,0.15);
+        margin-bottom: 26px !important;
+        font-size: unset !important;
+        font-weight: unset !important;
+    }
 
-        /* TOP SECTION */
-        .profile-top {
-            display: flex;
-            gap: 25px;
-            align-items: center;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 25px;
-        }
+    .sidebar .logo img {
+        max-width: 140px;
+        height: auto;
+        display: block;
+        margin: 0 auto;
+        background: #fff;
+        padding: 10px 14px;
+        border-radius: 10px;
+        animation: logoFadeUp 0.5s 0.1s ease both;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
 
-        .profile-avatar {
-            width: 90px;
-            height: 90px;
-            background: #0f766e;
-            color: #fff;
-            border-radius: 50%;
-            font-size: 36px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
+    .sidebar .logo img:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+    }
 
-        .profile-name h2 {
-            font-size: 24px;
-            color: #1a1a1a;
-            margin-bottom: 4px;
-        }
+    .sidebar ul li {
+        opacity: 0;
+        animation: navReveal 0.4s ease forwards;
+        display: flex;
+        align-items: center;
+        padding: 0 !important;
+        border-radius: 10px !important;
+        transition: background 0.22s ease, box-shadow 0.22s ease, transform 0.2s ease;
+    }
+    .sidebar ul li:nth-child(1) { animation-delay: 0.30s; }
+    .sidebar ul li:nth-child(2) { animation-delay: 0.42s; }
+    .sidebar ul li:nth-child(3) { animation-delay: 0.54s; }
+    .sidebar ul li:nth-child(4) { animation-delay: 0.66s; }
 
-        .profile-name p {
-            color: #666;
-            font-size: 15px;
-            margin-bottom: 8px;
-        }
+    .sidebar ul li:hover {
+        background: rgba(255,255,255,0.15) !important;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.13);
+        transform: translateX(4px);
+    }
+    .sidebar ul li.active {
+        background: rgba(255,255,255,0.22) !important;
+        transform: translateX(4px);
+    }
 
-        .role-badge {
-            display: inline-block;
-            background: #16a34a;
-            color: #fff;
-            font-size: 12px;
-            font-weight: 600;
-            padding: 4px 14px;
-            border-radius: 14px;
-        }
+    .sidebar ul li a {
+        display: flex !important;
+        align-items: center !important;
+        gap: 13px !important;
+        padding: 13px 16px !important;
+        color: rgba(255,255,255,0.85) !important;
+        font-size: 0.95rem !important;
+        font-weight: 500 !important;
+        border-radius: 10px !important;
+        width: 100%;
+        transition: color 0.2s ease !important;
+    }
 
-        /* INFO GRID */
-        .profile-info {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-            margin-top: 30px;
-        }
+    .sidebar ul li:hover a,
+    .sidebar ul li.active a {
+        color: #fff !important;
+        font-weight: 600 !important;
+    }
 
-        .info-box {
-            background: #f9fafb;
-            border-radius: 10px;
-            padding: 20px;
-        }
+    .sidebar ul li a i {
+        font-size: 1rem;
+        width: 20px;
+        text-align: center;
+        flex-shrink: 0;
+        opacity: 0.80;
+        transition: transform 0.28s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s ease;
+    }
 
-        .info-box h4 {
+    .sidebar ul li:hover a i  { transform: scale(1.28) rotate(-6deg); opacity: 1; }
+    .sidebar ul li.active a i { transform: scale(1.18); opacity: 1; }
+
+    .sidebar ul li:last-child {
+        margin-top: 10px !important;
+        border-top: 1px solid rgba(255,255,255,0.12) !important;
+        padding-top: 6px !important;
+    }
+    .sidebar ul li:last-child a       { color: rgba(255,255,255,0.58) !important; }
+    .sidebar ul li:last-child:hover   { background: rgba(239,68,68,0.18) !important; }
+    .sidebar ul li:last-child:hover a { color: #fca5a5 !important; }
+    .sidebar ul li:last-child:hover a i {
+        color: #fca5a5;
+        transform: scale(1.18) translateX(3px) !important;
+    }
+
+    /* ============================================================
+       TOPBAR (same as dashboard)
+    ============================================================ */
+    .topbar {
+        animation: fadeDown 0.4s 0.3s ease both;
+        position: relative;
+        height: 80px;
+    }
+    .topbar h2 {
+        position: absolute;
+        left: 50%; transform: translateX(-50%);
+        margin: 0;
+        white-space: nowrap;
+    }
+    .main { animation: fadeIn 0.4s 0.35s ease both; }
+
+    /* ============================================================
+       PROFILE CARD
+    ============================================================ */
+    .profile-wrapper {
+        display: flex;
+        justify-content: center;
+        padding: 10px 0 40px;
+    }
+
+    .profile-page {
+        width: 100%;
+        max-width: 820px;
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.10);
+        padding: 36px;
+        animation: fadeIn 0.45s 0.4s ease both;
+        opacity: 0;
+    }
+
+    /* ── Top section ── */
+    .profile-top {
+        display: flex;
+        gap: 24px;
+        align-items: center;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 24px;
+        flex-wrap: wrap;
+    }
+
+    .profile-avatar {
+        width: 88px;
+        height: 88px;
+        background: linear-gradient(135deg, #0f766e, #0d9488);
+        color: #fff;
+        border-radius: 50%;
+        font-size: 34px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 4px 16px rgba(15,118,110,0.35);
+        letter-spacing: 1px;
+    }
+
+    .profile-name h2 {
+        font-size: 22px;
+        color: #1a1a1a;
+        margin-bottom: 4px;
+    }
+
+    .profile-name .sub {
+        color: #666;
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+
+    .role-badge {
+        display: inline-block;
+        background: #16a34a;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 14px;
+        border-radius: 14px;
+        letter-spacing: 0.4px;
+    }
+
+    /* ── Info grid ── */
+    .profile-info {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        margin-top: 28px;
+    }
+
+    .info-box {
+        background: #f9fafb;
+        border-radius: 10px;
+        padding: 18px 20px;
+        border-left: 3px solid #0f766e;
+        transition: transform 0.18s, box-shadow 0.18s;
+    }
+
+    .info-box:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    }
+
+    .info-box h4 {
+        font-size: 12px;
+        color: #888;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        margin-bottom: 6px;
+    }
+
+    .info-box p {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1a1a1a;
+        word-break: break-word;
+    }
+
+    /* ── Actions ── */
+    .profile-actions {
+        margin-top: 32px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        padding: 11px 22px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.18s, box-shadow 0.18s;
+        border: none;
+        white-space: nowrap;
+    }
+
+    .action-btn.primary {
+        background: #0f766e;
+        color: #fff;
+    }
+
+    .action-btn.primary:hover {
+        background: #0d9488;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(15,118,110,0.3);
+    }
+
+    /* ============================================================
+       TOPBAR MOBILE FIX
+    ============================================================ */
+    @media (max-width: 600px) {
+        .topbar h2 {
+            position: static;
+            transform: none;
             font-size: 14px;
-            color: #888;
-            font-weight: 400;
-            margin-bottom: 8px;
+            text-align: center;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .info-box p {
-            font-size: 17px;
-            font-weight: 600;
-            color: #1a1a1a;
-        }
+        .profile-page  { padding: 22px 16px; }
+        .profile-top   { flex-direction: column; text-align: center; }
+        .profile-avatar { margin: 0 auto; }
 
-        /* EDIT BUTTON */
-        .profile-actions {
-            margin-top: 35px;
-            text-align: right;
-        }
+        .profile-info  { grid-template-columns: 1fr; }
 
-        .edit-btn {
-            background: #2563eb;
-            color: #fff;
-            padding: 12px 24px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-size: 15px;
-            font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            transition: background 0.2s;
-        }
-
-        .edit-btn:hover {
-            background: #1d4ed8;
-        }
-
-        /* BACK BUTTON */
-        .back-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: #666;
-            text-decoration: none;
-            font-size: 15px;
-            margin-bottom: 20px;
-            transition: color 0.2s;
-        }
-
-        .back-btn:hover {
-            color: #1a1a1a;
-        }
-
-        .back-btn svg {
-            width: 18px;
-            height: 18px;
-        }
-
-        /* RESPONSIVE */
-        @media (max-width: 600px) {
-            .profile-page {
-                padding: 25px 20px;
-            }
-
-            .profile-top {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .profile-info {
-                grid-template-columns: 1fr;
-            }
-
-            .profile-actions {
-                text-align: center;
-            }
-        }
+        .profile-actions { justify-content: center; }
+        .action-btn { width: 100%; justify-content: center; }
+    }
     </style>
 </head>
 <body>
 
-<!-- <a href="user_dashboard.php" class="back-btn" style="position: absolute; top: 30px; left: 30px;">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="19" y1="12" x2="5" y2="12"/>
-        <polyline points="12 19 5 12 12 5"/>
-    </svg>
-    Back to Dashboard
-</a> -->
+<!-- Mobile overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-<div class="profile-page">
+<div class="container">
 
-    <!-- TOP -->
-    <div class="profile-top">
-        <div class="profile-avatar">
-            <?= strtoupper(substr($user['name'] ?? 'U', 0, 1)) ?>
+    <!-- ===================================================
+         SIDEBAR
+    =================================================== -->
+    <aside class="sidebar" id="sidebar">
+
+        <button class="sidebar-close" id="sidebarClose">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        <!-- Logo -->
+        <div class="logo">
+            <img src="assets/logo/images.png" alt="MCL Logo">
         </div>
 
-        <div class="profile-name">
-            <h2><?= htmlspecialchars($user['name'] ?? 'N/A') ?></h2>
-            <p>Emp ID: <?= htmlspecialchars($user['id'] ?? 'N/A') ?></p>
-            <span class="role-badge"><?= htmlspecialchars($user['role'] ?? 'N/A') ?></span>
+        <!-- Nav — no item is "active" here since profile isn't in the nav,
+             but Dashboard is highlighted to keep context clear -->
+        <ul>
+            <li>
+                <a href="user_dashboard.php">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    Dashboard
+                </a>
+            </li>
+            <li>
+                <a href="user_attendance.php">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    Upload Attendance
+                </a>
+            </li>
+            <li>
+                <a href="user_update_attendance.php">
+                    <i class="fa-solid fa-calendar-check"></i>
+                    Update Attendance
+                </a>
+            </li>
+            <li>
+                <a href="logout.php">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    Logout
+                </a>
+            </li>
+        </ul>
+
+    </aside>
+
+    <!-- ===================================================
+         MAIN
+    =================================================== -->
+    <main class="main">
+
+        <!-- Topbar -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="hamburger-btn" id="hamburgerBtn" aria-label="Open menu">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
+            <h2>Security Management Portal</h2>
+            <div class="topbar-right">
+                <div class="user-icon">
+                    <a href="user_profile.php" aria-label="Profile">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                             stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="8" r="4"/>
+                        </svg>
+                    </a>
+                </div>
+                <a href="logout.php" class="logout">Logout</a>
+            </div>
+        </header>
+
+        <!-- Profile Content -->
+        <div class="profile-wrapper">
+            <div class="profile-page">
+
+                <!-- Top -->
+                <div class="profile-top">
+                    <div class="profile-avatar">
+                        <?= strtoupper(substr($user['name'] ?? 'U', 0, 2)) ?>
+                    </div>
+                    <div class="profile-name">
+                        <h2><?= htmlspecialchars($user['name'] ?? 'N/A') ?></h2>
+                        <p class="sub">Employee ID: <?= htmlspecialchars($user['id'] ?? 'N/A') ?></p>
+                        <span class="role-badge"><?= htmlspecialchars($user['role'] ?? 'N/A') ?></span>
+                    </div>
+                </div>
+
+                <!-- Info Grid -->
+                <div class="profile-info">
+                    <div class="info-box">
+                        <h4><i class="fa-solid fa-envelope" style="margin-right:5px;color:#0f766e;"></i>Email</h4>
+                        <p><?= htmlspecialchars($user['email'] ?? 'N/A') ?></p>
+                    </div>
+                    <div class="info-box">
+                        <h4><i class="fa-solid fa-location-dot" style="margin-right:5px;color:#0f766e;"></i>Area / Site</h4>
+                        <p><?= htmlspecialchars($user['site'] ?? 'N/A') ?></p>
+                    </div>
+                    <div class="info-box">
+                        <h4><i class="fa-solid fa-user-shield" style="margin-right:5px;color:#0f766e;"></i>Role</h4>
+                        <p><?= htmlspecialchars($user['role'] ?? 'N/A') ?></p>
+                    </div>
+                    <div class="info-box">
+                        <h4><i class="fa-solid fa-calendar" style="margin-right:5px;color:#0f766e;"></i>Account Created</h4>
+                        <p><?= date('d-m-Y H:i', strtotime($user['created_at'])) ?></p>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="profile-actions">
+                    <a href="user_dashboard.php" class="action-btn primary">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        Back to Dashboard
+                    </a>
+                </div>
+
+            </div>
         </div>
-    </div>
 
-    <!-- DETAILS -->
-    <div class="profile-info">
-        <div class="info-box">
-            <h4>Email</h4>
-            <p><?= htmlspecialchars($user['email'] ?? 'N/A') ?></p>
-        </div>
+        <footer>© 2026 MCL — All Rights Reserved</footer>
 
-        <div class="info-box">
-            <h4>Area / Site</h4>
-            <p><?= htmlspecialchars($user['site'] ?? 'N/A') ?></p>
-        </div>
-
-        <div class="info-box">
-            <h4>Role</h4>
-            <p><?= htmlspecialchars($user['role'] ?? 'N/A') ?></p>
-        </div>
-
-        <div class="info-box">
-            <h4>Account Created</h4>
-            <p><?= date('d-m-Y H:i', strtotime($user['created_at'])) ?></p>
-        </div>
-    </div>
-
-    <!-- ACTIONS -->
-    <div class="profile-actions">
-        <a href="user_dashboard.php" class="edit-btn">
-            <i class="fa-solid fa-arrow-left"></i>
-             Back to Dashboard
-        </a>
-    </div>
-
+    </main>
 </div>
+
+<script>
+    /* ── Mobile sidebar ── */
+    const sidebar   = document.getElementById('sidebar');
+    const overlay   = document.getElementById('sidebarOverlay');
+    const hamburger = document.getElementById('hamburgerBtn');
+    const closeBtn  = document.getElementById('sidebarClose');
+
+    function openSidebar() {
+        sidebar.classList.add('open');
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeSidebar() {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    hamburger && hamburger.addEventListener('click', openSidebar);
+    closeBtn  && closeBtn.addEventListener('click', closeSidebar);
+    overlay.addEventListener('click', closeSidebar);
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) closeSidebar();
+    });
+</script>
 
 </body>
 </html>
