@@ -1,23 +1,201 @@
 <?php
 session_start();
 if (!isset($_SESSION["user"])) { header("Location: login.php"); exit; }
+
 require "../config.php";
 
-$success = $error = '';
+$success = "";
+$error   = "";
+
+echo "<pre>";
+print_r($_FILES);
+exit;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Handle form submission — adjust to your schema
-    $site_code  = $_POST['site_code']  ?? '';
-    $designation= $_POST['designation']?? '';
-    $count      = (int)($_POST['count'] ?? 0);
-    $efile_no   = trim($_POST['efile_no'] ?? '');
 
-    // TODO: insert into DB, handle file uploads, etc.
-    $success = "Extra manpower assigned successfully.";
+    $site_code   = $_POST['site_code'] ?? '';
+    $designation = $_POST['designation'] ?? '';
+    $count       = (int)($_POST['count'] ?? 0);
+    $efile_no    = trim($_POST['efile_no'] ?? '');
+    $uploaded_by = $_SESSION['user'];
+
+    if (!$site_code || !$designation || !$count || !$efile_no) {
+        $error = "Please fill all required fields.";
+    } else {
+
+        /* ========= Upload PDF ========= */
+
+        $pdf_path = '';
+
+        if (!empty($_FILES['pdf_doc']['name'])) {
+
+            $upload_dir = "../uploads/pdf/";
+
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+
+            $pdf_name = time() . "_" . basename($_FILES['pdf_doc']['name']);
+            $pdf_path = $upload_dir . $pdf_name;
+
+            move_uploaded_file($_FILES['pdf_doc']['tmp_name'], $pdf_path);
+        }
+
+
+        /* ========= Read Excel / CSV + Check ESIC duplicates ========= */
+
+        $employees = [];
+        $esic_list = [];
+
+        if (!empty($_FILES['csv_data']['tmp_name']) && !empty($_FILES['csv_data']['name'])) {
+
+            $originalName = strtolower($_FILES['csv_data']['name']);
+            $tmpPath      = $_FILES['csv_data']['tmp_name'];
+            $ext          = pathinfo($originalName, PATHINFO_EXTENSION);
+
+            // ── Route by file extension ──────────────────────────────
+            if ($ext === 'csv') {
+
+                // ── Plain CSV (fgetcsv) ──────────────────────────────
+                $handle = fopen($tmpPath, "r");
+
+                if ($handle !== FALSE) {
+
+                    $headers = fgetcsv($handle);
+
+                    if ($headers) {
+                        // Strip UTF-8 BOM and whitespace
+                        $headers[0] = ltrim($headers[0], "\xEF\xBB\xBF");
+                        $headers    = array_map('trim', $headers);
+                    }
+
+                    while (($row = fgetcsv($handle)) !== FALSE) {
+
+                        if (count($row) !== count($headers)) continue;
+
+                        $data = array_combine($headers, $row);
+                        $esic = trim($data['ESIC_NO'] ?? '');
+
+                        if (!$esic) continue;
+
+                        if (in_array($esic, $esic_list)) {
+                            $error = "Duplicate ESIC_NO found: " . $esic;
+                            break;
+                        }
+
+                        $esic_list[] = $esic;
+                        $employees[] = $data;
+                    }
+
+                    fclose($handle);
+                }
+
+            } elseif (in_array($ext, ['xlsx', 'xls'])) {
+
+                // ── Excel via PhpSpreadsheet ─────────────────────────
+                $autoloaderPath = __DIR__ . '/../../vendor/autoload.php';
+
+                if (!file_exists($autoloaderPath)) {
+                    $error = "PhpSpreadsheet is not installed. Run: composer require phpoffice/phpspreadsheet";
+                } else {
+
+                    require_once $autoloaderPath;
+
+                    try {
+                        $reader      = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($tmpPath);
+                        $reader->setReadDataOnly(true);
+                        $spreadsheet = $reader->load($tmpPath);
+                        $sheet       = $spreadsheet->getActiveSheet();
+                        $rows        = $sheet->toArray(null, true, true, false);
+
+                        // First row = headers
+                        $headers = array_map('trim', $rows[0] ?? []);
+
+                        // Remove null/empty header columns
+                        $headers = array_filter($headers, fn($h) => $h !== null && $h !== '');
+                        $colCount = count($headers);
+
+                        foreach (array_slice($rows, 1) as $row) {
+
+                            // Trim to number of valid header columns
+                            $row = array_slice($row, 0, $colCount);
+
+                            // Skip fully empty rows
+                            if (empty(array_filter($row, fn($v) => $v !== null && $v !== ''))) {
+                                continue;
+                            }
+
+                            // Pad row if shorter than headers
+                            while (count($row) < $colCount) {
+                                $row[] = '';
+                            }
+
+                            $data = array_combine(array_values($headers), $row);
+                            $esic = trim((string)($data['ESIC_NO'] ?? ''));
+
+                            if (!$esic) continue;
+
+                            if (in_array($esic, $esic_list)) {
+                                $error = "Duplicate ESIC_NO found: " . $esic;
+                                break;
+                            }
+
+                            $esic_list[] = $esic;
+                            $employees[] = $data;
+                        }
+
+                    } catch (\Exception $e) {
+                        $error = "Failed to read Excel file: " . $e->getMessage();
+                    }
+                }
+
+            } else {
+                $error = "Unsupported file type. Please upload a .csv, .xlsx, or .xls file.";
+            }
+        }
+
+
+        /* ========= Insert only if no error ========= */
+
+        if (!$error) {
+
+            $employee_json = json_encode($employees, JSON_UNESCAPED_UNICODE);
+
+            try {
+
+                $stmt = $pdo->prepare("
+                    INSERT INTO extra_manpower_assign
+                    (site_code, designation, manpower_count, eoffice_file_no, supporting_pdf, employee_json, uploaded_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ");
+
+                $stmt->execute([
+                    $site_code,
+                    $designation,
+                    $count,
+                    $efile_no,
+                    $pdf_path,
+                    $employee_json,
+                    $uploaded_by
+                ]);
+
+                $success = "Extra manpower assigned successfully.";
+
+            } catch (Exception $e) {
+
+                $error = "Database error: " . $e->getMessage();
+
+            }
+        }
+    }
 }
 
-// Fetch sites
-$sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteName")->fetchAll(PDO::FETCH_ASSOC);
+/* Fetch sites */
+$sites = $pdo->query("
+    SELECT SiteCode, SiteName 
+    FROM site_master 
+    ORDER BY SiteName
+")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -26,6 +204,7 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
     <title>Extra Manpower – Security Billing Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.10.5/sweetalert2.min.css">
     <style>
         /* ===== RESET ===== */
         * { margin:0; padding:0; box-sizing:border-box; font-family:"Segoe UI",sans-serif; }
@@ -282,9 +461,7 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
         }
 
         /* PDF drop zone – compact single row */
-        .drop-zone.pdf-zone {
-            padding:14px 18px;
-        }
+        .drop-zone.pdf-zone { padding:14px 18px; }
         .drop-zone.pdf-zone .dz-icon {
             width:36px; height:36px; border-radius:8px;
             background:#fee2e2; color:#ef4444;
@@ -300,15 +477,9 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
             padding:40px 24px; gap:12px; min-height:160px;
             text-align:center;
         }
-        .drop-zone.csv-zone .dz-icon-big {
-            font-size:2.4rem; color:var(--teal); line-height:1;
-        }
-        .drop-zone.csv-zone .dz-title {
-            font-size:.92rem; font-weight:600; color:var(--text);
-        }
-        .drop-zone.csv-zone .dz-hint {
-            font-size:.78rem; color:var(--subtext);
-        }
+        .drop-zone.csv-zone .dz-icon-big { font-size:2.4rem; color:var(--teal); line-height:1; }
+        .drop-zone.csv-zone .dz-title    { font-size:.92rem; font-weight:600; color:var(--text); }
+        .drop-zone.csv-zone .dz-hint     { font-size:.78rem; color:var(--subtext); }
 
         /* File name display */
         .file-name {
@@ -382,7 +553,7 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
         .btn-submit:hover { background:var(--teal-dark); transform:translateY(-2px); box-shadow:0 6px 20px rgba(15,118,110,.38); }
         .btn-submit:active { background:var(--teal-deep); transform:scale(.97) translateY(0); box-shadow:0 2px 8px rgba(15,118,110,.2); }
 
-        /* Floating submit (bottom-right, visible on scroll) */
+        /* Floating submit */
         .btn-submit-float {
             position:fixed; bottom:24px; right:24px; z-index:200;
             display:flex; align-items:center; justify-content:center; gap:.45rem;
@@ -551,11 +722,7 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
 
         <div class="page-content">
 
-            <?php if ($success): ?>
-            <div class="alert alert-success"><i class="fa-solid fa-circle-check"></i><?= htmlspecialchars($success) ?></div>
-            <?php elseif ($error): ?>
-            <div class="alert alert-error"><i class="fa-solid fa-circle-xmark"></i><?= htmlspecialchars($error) ?></div>
-            <?php endif; ?>
+            <?php /* Success/error shown via SweetAlert2 below */ ?>
 
             <!-- Page title -->
             <div class="page-title-row">
@@ -584,7 +751,10 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
                                 <select class="form-control" name="site_code" required>
                                     <option value="">Select Site</option>
                                     <?php foreach ($sites as $s): ?>
-                                    <option value="<?= htmlspecialchars($s['SiteCode']) ?>"><?= htmlspecialchars($s['SiteName']) ?></option>
+                                    <option value="<?= htmlspecialchars($s['SiteCode']) ?>"
+                                        <?= (isset($_POST['site_code']) && $_POST['site_code'] === $s['SiteCode']) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($s['SiteName']) ?>
+                                    </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -593,24 +763,28 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
                                 <label class="form-label">Designation <span class="req">*</span></label>
                                 <select class="form-control" name="designation" required>
                                     <option value="">Select Designation</option>
-                                    <option>Security Guard</option>
-                                    <option>Security Supervisor</option>
-                                    <option>Head Guard</option>
-                                    <option>Fire Guard</option>
-                                    <option>Lady Guard</option>
-                                    <option>Dog Handler</option>
-                                    <option>Driver cum Guard</option>
+                                    <?php
+                                    $designations = ['Security Guard','Security Supervisor','Gun Man','Fire Guard','Lady Guard','Dog Handler','Driver cum Guard'];
+                                    foreach ($designations as $d):
+                                    ?>
+                                    <option <?= (isset($_POST['designation']) && $_POST['designation'] === $d) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($d) ?>
+                                    </option>
+                                    <?php endforeach; ?>
                                 </select>
                             </div>
 
                             <div class="form-group">
                                 <label class="form-label">Additional Manpower Count <span class="req">*</span></label>
-                                <input class="form-control" type="number" name="count" min="1" value="0" required>
+                                <input class="form-control" type="number" name="count" min="1"
+                                    value="<?= htmlspecialchars($_POST['count'] ?? '0') ?>" required>
                             </div>
 
                             <div class="form-group">
                                 <label class="form-label">E-office File No. <span class="req">*</span></label>
-                                <input class="form-control" type="text" name="efile_no" placeholder="File reference" required>
+                                <input class="form-control" type="text" name="efile_no"
+                                    placeholder="File reference"
+                                    value="<?= htmlspecialchars($_POST['efile_no'] ?? '') ?>" required>
                             </div>
 
                         </div><!-- /.form-grid-4 -->
@@ -642,7 +816,7 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
                             </div>
 
                             <!-- Sample CSV button -->
-                            <a class="sample-btn" href="sample_employee.csv" download>
+                            <a class="sample-btn" href="../assets/samplecsv.xlsx" download>
                                 <i class="fa-solid fa-arrow-down-to-line"></i>
                                 Sample CSV
                             </a>
@@ -655,7 +829,7 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
                         <button type="reset" class="btn-reset" onclick="resetFiles()">
                             <i class="fa-solid fa-rotate-left"></i> Reset
                         </button>
-                        <button type="submit" class="btn-submit">
+                        <button type="button" class="btn-submit" onclick="confirmSubmit()">
                             <i class="fa-solid fa-circle-check"></i> Submit
                         </button>
                     </div>
@@ -667,10 +841,11 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
 </div>
 
 <!-- Floating submit -->
-<button class="btn-submit-float" id="floatSubmit" onclick="document.getElementById('empForm').requestSubmit()">
+<button class="btn-submit-float" id="floatSubmit" onclick="confirmSubmit()">
     <i class="fa-solid fa-circle-check"></i> Submit
 </button>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.10.5/sweetalert2.all.min.js"></script>
 <script>
 /* ── Sidebar ── */
 const menuBtn = document.getElementById('menuBtn');
@@ -720,7 +895,6 @@ function bindFileInput(inputId, zoneId, nameId) {
         e.preventDefault(); zone.classList.remove('dragover');
         const dt = e.dataTransfer;
         if (dt.files.length) {
-            // Create a DataTransfer to assign to input
             try {
                 const dtz = new DataTransfer();
                 dtz.items.add(dt.files[0]);
@@ -739,13 +913,156 @@ function resetFiles() {
     ['pdfName','csvName'].forEach(id => { const el=document.getElementById(id); el.textContent=''; el.classList.remove('visible'); });
 }
 
-/* ── Floating submit button (shows when form footer scrolls off screen) ── */
+/* ── Floating submit button ── */
 const floatBtn   = document.getElementById('floatSubmit');
 const formFooter = document.querySelector('.form-footer');
 const io = new IntersectionObserver(entries => {
     floatBtn.classList.toggle('show', !entries[0].isIntersecting);
 }, { threshold:0 });
 io.observe(formFooter);
+
+/* ── SweetAlert2 Confirm Submit ── */
+function confirmSubmit() {
+    const form = document.getElementById('empForm');
+
+    // Run native HTML5 validation first
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    // Collect summary values for the confirm dialog
+    const site        = document.querySelector('[name="site_code"] option:checked')?.text  || '—';
+    const designation = document.querySelector('[name="designation"] option:checked')?.text || '—';
+    const count       = document.querySelector('[name="count"]')?.value   || '—';
+    const efile       = document.querySelector('[name="efile_no"]')?.value || '—';
+    const pdfFile     = document.getElementById('pdfInput')?.files[0]?.name  || '<span style="color:#ef4444">Not selected</span>';
+    const csvFile     = document.getElementById('csvInput')?.files[0]?.name  || '<span style="color:#ef4444">Not selected</span>';
+
+    const isDark = document.body.classList.contains('dark');
+
+    Swal.fire({
+        title: 'Confirm Submission',
+        html: `
+            <div style="text-align:left;font-size:0.9rem;line-height:1.9;">
+                <table style="width:100%;border-collapse:collapse;">
+                    <tr>
+                        <td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">📍 Site</td>
+                        <td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${site}</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">🎖️ Designation</td>
+                        <td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${designation}</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">👥 Manpower</td>
+                        <td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${count}</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">📁 E-File No.</td>
+                        <td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${efile}</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">📄 PDF Doc</td>
+                        <td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${pdfFile}</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">📊 CSV/Excel</td>
+                        <td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${csvFile}</td>
+                    </tr>
+                </table>
+                <p style="margin-top:14px;font-size:0.8rem;color:#6b7280;text-align:center;">
+                    Please review the details above before confirming.
+                </p>
+            </div>
+        `,
+        icon: 'question',
+        iconColor: '#0f766e',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fa-solid fa-circle-check"></i> Yes, Submit',
+        cancelButtonText:  '<i class="fa-solid fa-xmark"></i> Cancel',
+        confirmButtonColor: '#0f766e',
+        cancelButtonColor:  '#6b7280',
+        reverseButtons: true,
+        focusConfirm: false,
+        background: isDark ? '#111827' : '#ffffff',
+        color:      isDark ? '#e5e7eb' : '#111827',
+        customClass: {
+            popup:         'swal-popup-custom',
+            confirmButton: 'swal-confirm-btn',
+            cancelButton:  'swal-cancel-btn',
+            title:         'swal-title-custom',
+        },
+        showClass: {
+            popup: 'animate__animated animate__fadeInDown animate__faster'
+        },
+        hideClass: {
+            popup: 'animate__animated animate__fadeOutUp animate__faster'
+        }
+    }).then(result => {
+        if (result.isConfirmed) {
+            // Show loading state
+            Swal.fire({
+                title: 'Submitting...',
+                html: 'Please wait while we process your request.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+            form.submit();
+        }
+    });
+}
+
+/* ── SweetAlert2 for PHP success/error messages ── */
+<?php if ($success): ?>
+Swal.fire({
+    icon: 'success',
+    title: 'Success!',
+    text: '<?= addslashes($success) ?>',
+    confirmButtonColor: '#0f766e',
+    confirmButtonText: 'Great!',
+    background: document.body.classList.contains('dark') ? '#111827' : '#ffffff',
+    color:      document.body.classList.contains('dark') ? '#e5e7eb' : '#111827',
+    iconColor: '#0f766e',
+    timer: 4000,
+    timerProgressBar: true,
+});
+<?php elseif ($error): ?>
+Swal.fire({
+    icon: 'error',
+    title: 'Oops!',
+    text: '<?= addslashes($error) ?>',
+    confirmButtonColor: '#ef4444',
+    confirmButtonText: 'Fix & Retry',
+    background: document.body.classList.contains('dark') ? '#111827' : '#ffffff',
+    color:      document.body.classList.contains('dark') ? '#e5e7eb' : '#111827',
+});
+<?php endif; ?>
 </script>
+
+<style>
+/* ── SweetAlert2 custom tweaks ── */
+.swal-popup-custom {
+    border-radius: 16px !important;
+    padding: 28px 24px !important;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.18) !important;
+    font-family: "Segoe UI", sans-serif !important;
+}
+.swal-title-custom {
+    font-size: 1.2rem !important;
+    font-weight: 800 !important;
+}
+.swal-confirm-btn, .swal-cancel-btn {
+    border-radius: 10px !important;
+    font-size: 0.88rem !important;
+    font-weight: 700 !important;
+    padding: 10px 22px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 7px !important;
+}
+.swal2-timer-progress-bar { background: #0f766e !important; }
+</style>
 </body>
 </html>

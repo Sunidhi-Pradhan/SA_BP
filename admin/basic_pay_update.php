@@ -6,11 +6,59 @@ require "../config.php";
 $success = $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
     $basic_vda   = trim($_POST['basic_vda']   ?? '');
     $site_code   = trim($_POST['site_code']   ?? '');
     $designation = trim($_POST['designation'] ?? '');
-    // TODO: update DB, handle file upload
-    $success = "Basic+VDA Pay updated successfully.";
+
+    if (!$basic_vda || !$site_code || !$designation) {
+        $error = "Please fill all required fields.";
+    } else {
+
+        /* ========= Upload Supporting PDF ========= */
+        $doc_path = '';
+
+        if (!empty($_FILES['support_doc']['name'])) {
+            $upload_dir = "../uploads/pdf/";
+
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+
+            $ext      = strtolower(pathinfo($_FILES['support_doc']['name'], PATHINFO_EXTENSION));
+            $allowed  = ['pdf'];
+
+            if (!in_array($ext, $allowed)) {
+                $error = "Only PDF files are allowed for the supporting document.";
+            } else {
+                $doc_name = time() . "_" . basename($_FILES['support_doc']['name']);
+                $doc_path = $upload_dir . $doc_name;
+                move_uploaded_file($_FILES['support_doc']['tmp_name'], $doc_path);
+            }
+        }
+
+        /* ========= Insert into emp_grade ========= */
+        if (!$error) {
+            try {
+                $stmt = $pdo->prepare("
+                    INSERT INTO emp_grade (designation, SiteCode, basic_vda, supporting_doc, created_at)
+                    VALUES (?, ?, ?, ?, NOW())
+                ");
+
+                $stmt->execute([
+                    $designation,
+                    $site_code,
+                    $basic_vda,
+                    $doc_path,
+                ]);
+
+                $success = "Basic+VDA Pay updated successfully for {$designation} at site {$site_code}.";
+
+            } catch (Exception $e) {
+                $error = "Database error: " . $e->getMessage();
+            }
+        }
+    }
 }
 
 $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteName")->fetchAll(PDO::FETCH_ASSOC);
@@ -22,6 +70,7 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
     <title>Basic Pay Update – Security Billing Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.10.5/sweetalert2.min.css">
     <style>
         /* ===== RESET ===== */
         *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; font-family:"Segoe UI",sans-serif; }
@@ -200,7 +249,6 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
         /* ===== FORM BODY ===== */
         .form-body { padding:26px 28px 22px; display:flex; flex-direction:column; gap:20px; }
 
-        /* 3-column grid for the inputs */
         .fields-grid {
             display:grid;
             grid-template-columns:1fr 1fr 1fr;
@@ -237,7 +285,6 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
             text-transform:uppercase; letter-spacing:.55px;
         }
 
-        /* Drop zone */
         .drop-zone {
             border:2px dashed var(--border); border-radius:12px;
             background:rgba(15,118,110,.03);
@@ -282,18 +329,6 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
             display:none; word-break:break-all; margin-top:2px;
         }
         .file-name.visible { display:block; }
-
-        /* ===== ALERTS ===== */
-        .alert {
-            padding:.85rem 1.1rem; border-radius:10px;
-            font-size:.87rem; font-weight:600;
-            display:flex; align-items:center; gap:.6rem;
-            animation:fadeUp .35s ease both;
-        }
-        .alert-success { background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; }
-        .alert-error   { background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; }
-        body.dark .alert-success { background:#064e3b; color:#6ee7b7; border-color:#065f46; }
-        body.dark .alert-error   { background:#450a0a; color:#f87171; border-color:#991b1b; }
 
         /* ===== FORM FOOTER ===== */
         .form-footer {
@@ -346,8 +381,6 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
         .btn-submit-float:active { transform:scale(.96); }
 
         /* ===== RESPONSIVE ===== */
-
-        /* Tablet ≤992px */
         @media (max-width:992px) {
             .sidebar { width:210px; min-width:210px; }
             .menu { font-size:13px; padding:11px 12px; }
@@ -358,7 +391,6 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
             .fields-grid { grid-template-columns:1fr 1fr; }
         }
 
-        /* Mobile ≤768px */
         @media (max-width:768px) {
             .menu-btn { display:flex; }
             .sidebar {
@@ -382,7 +414,6 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
             .dz-icon-cloud { width:44px; height:44px; font-size:1.1rem; }
         }
 
-        /* Mobile portrait ≤480px */
         @media (max-width:480px) {
             header { padding:0 10px; height:52px; }
             header h1 { font-size:.92rem; }
@@ -404,7 +435,6 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
             .btn-submit-float { padding:.6rem 1.1rem; font-size:.82rem; min-height:42px; right:12px; bottom:12px; }
         }
 
-        /* Very small ≤360px */
         @media (max-width:360px) {
             header h1 { font-size:.82rem; }
             .page-content { padding:10px 8px 60px; }
@@ -412,6 +442,25 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
             .form-footer { padding:10px 12px 14px; }
             .btn-reset, .btn-submit { font-size:.8rem; min-height:40px; }
         }
+
+        /* ===== SWEETALERT2 CUSTOM ===== */
+        .swal-popup-custom {
+            border-radius: 16px !important;
+            padding: 28px 24px !important;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.18) !important;
+            font-family: "Segoe UI", sans-serif !important;
+        }
+        .swal-title-custom { font-size: 1.2rem !important; font-weight: 800 !important; }
+        .swal-confirm-btn, .swal-cancel-btn {
+            border-radius: 10px !important;
+            font-size: 0.88rem !important;
+            font-weight: 700 !important;
+            padding: 10px 22px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 7px !important;
+        }
+        .swal2-timer-progress-bar { background: #0f766e !important; }
     </style>
 </head>
 <body>
@@ -438,7 +487,7 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
                 <span class="icon"><i class="fa-solid fa-user-plus"></i></span>
                 <span>Add Employee</span>
             </a>
-            <a href="basic_pay.php" class="menu active">
+            <a href="basic_pay_update.php" class="menu active">
                 <span class="icon"><i class="fa-solid fa-indian-rupee-sign"></i></span>
                 <span>Basic Pay Update</span>
             </a>
@@ -492,11 +541,7 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
 
         <div class="page-content">
 
-            <?php if ($success): ?>
-            <div class="alert alert-success"><i class="fa-solid fa-circle-check"></i><?= htmlspecialchars($success) ?></div>
-            <?php elseif ($error): ?>
-            <div class="alert alert-error"><i class="fa-solid fa-circle-xmark"></i><?= htmlspecialchars($error) ?></div>
-            <?php endif; ?>
+            <?php /* Success/error shown via SweetAlert2 below */ ?>
 
             <!-- Page title -->
             <div class="page-title-row">
@@ -525,10 +570,11 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
                                 <select class="form-control" name="basic_vda" required>
                                     <option value="">Enter Basic+VDA Amount</option>
                                     <?php
-                                    // Example amounts — replace with DB query if needed
                                     $amounts = ['8000','9000','10000','11000','12000','13000','14000','15000','16000','17000','18000','20000'];
                                     foreach ($amounts as $a): ?>
-                                    <option value="<?= $a ?>">₹<?= number_format((int)$a) ?></option>
+                                    <option value="<?= $a ?>" <?= (isset($_POST['basic_vda']) && $_POST['basic_vda'] == $a) ? 'selected' : '' ?>>
+                                        ₹<?= number_format((int)$a) ?>
+                                    </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -538,7 +584,10 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
                                 <select class="form-control" name="site_code" required>
                                     <option value="">-- Select Site --</option>
                                     <?php foreach ($sites as $s): ?>
-                                    <option value="<?= htmlspecialchars($s['SiteCode']) ?>"><?= htmlspecialchars($s['SiteName']) ?></option>
+                                    <option value="<?= htmlspecialchars($s['SiteCode']) ?>"
+                                        <?= (isset($_POST['site_code']) && $_POST['site_code'] === $s['SiteCode']) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($s['SiteName']) ?>
+                                    </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -547,13 +596,13 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
                                 <label class="form-label">Designation <span class="req">*</span></label>
                                 <select class="form-control" name="designation" required>
                                     <option value="">-- Select Designation --</option>
-                                    <option>Security Guard</option>
-                                    <option>Security Supervisor</option>
-                                    <option>Head Guard</option>
-                                    <option>Fire Guard</option>
-                                    <option>Lady Guard</option>
-                                    <option>Dog Handler</option>
-                                    <option>Driver cum Guard</option>
+                                    <?php
+                                    $designations = ['Security Guard','Security Supervisor','Head Guard','Fire Guard','Lady Guard','Dog Handler','Driver cum Guard'];
+                                    foreach ($designations as $d): ?>
+                                    <option <?= (isset($_POST['designation']) && $_POST['designation'] === $d) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($d) ?>
+                                    </option>
+                                    <?php endforeach; ?>
                                 </select>
                             </div>
 
@@ -580,7 +629,7 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
                         <button type="reset" class="btn-reset" onclick="resetFile()">
                             <i class="fa-solid fa-rotate-left"></i> Reset
                         </button>
-                        <button type="submit" class="btn-submit">
+                        <button type="button" class="btn-submit" onclick="confirmSubmit()">
                             <i class="fa-solid fa-circle-check"></i> Submit
                         </button>
                     </div>
@@ -592,10 +641,11 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
 </div>
 
 <!-- Floating submit -->
-<button class="btn-submit-float" id="floatSubmit" onclick="document.getElementById('payForm').requestSubmit()">
+<button class="btn-submit-float" id="floatSubmit" onclick="confirmSubmit()">
     <i class="fa-solid fa-circle-check"></i> Submit
 </button>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.10.5/sweetalert2.all.min.js"></script>
 <script>
 /* ── Sidebar ── */
 const menuBtn = document.getElementById('menuBtn');
@@ -629,8 +679,8 @@ themeToggle.addEventListener('click', () => {
 });
 
 /* ── File upload / drag-drop ── */
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
+const dropZone   = document.getElementById('dropZone');
+const fileInput  = document.getElementById('fileInput');
 const fileNameEl = document.getElementById('fileName');
 
 function setFile(file) {
@@ -665,6 +715,110 @@ const formFooter = document.querySelector('.form-footer');
 new IntersectionObserver(entries => {
     floatBtn.classList.toggle('show', !entries[0].isIntersecting);
 }, { threshold:0 }).observe(formFooter);
+
+/* ── SweetAlert2 Confirm Submit ── */
+function confirmSubmit() {
+    const form = document.getElementById('payForm');
+
+    // Run HTML5 native validation first
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const amount      = document.querySelector('[name="basic_vda"] option:checked')?.text  || '—';
+    const site        = document.querySelector('[name="site_code"] option:checked')?.text  || '—';
+    const designation = document.querySelector('[name="designation"] option:checked')?.text || '—';
+    const docFile     = fileInput?.files[0]?.name || '<span style="color:#6b7280;font-style:italic;">No file selected (optional)</span>';
+    const isDark      = document.body.classList.contains('dark');
+
+    Swal.fire({
+        title: 'Confirm Submission',
+        html: `
+            <div style="text-align:left;font-size:0.9rem;line-height:1.9;">
+                <table style="width:100%;border-collapse:collapse;">
+                    <tr>
+                        <td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">💰 Amount</td>
+                        <td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${amount}</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">📍 Site</td>
+                        <td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${site}</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">🎖️ Designation</td>
+                        <td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${designation}</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">📄 Document</td>
+                        <td style="font-weight:600;color:${isDark?'#e5e7eb':'#111827'}">${docFile}</td>
+                    </tr>
+                </table>
+                <p style="margin-top:14px;font-size:0.8rem;color:#6b7280;text-align:center;">
+                    Please review the details above before confirming.
+                </p>
+            </div>
+        `,
+        icon: 'question',
+        iconColor: '#0f766e',
+        showCancelButton: true,
+        confirmButtonText: '<i class="fa-solid fa-circle-check"></i> Yes, Submit',
+        cancelButtonText:  '<i class="fa-solid fa-xmark"></i> Cancel',
+        confirmButtonColor: '#0f766e',
+        cancelButtonColor:  '#6b7280',
+        reverseButtons: true,
+        focusConfirm: false,
+        background: isDark ? '#111827' : '#ffffff',
+        color:      isDark ? '#e5e7eb' : '#111827',
+        customClass: {
+            popup:         'swal-popup-custom',
+            confirmButton: 'swal-confirm-btn',
+            cancelButton:  'swal-cancel-btn',
+            title:         'swal-title-custom',
+        }
+    }).then(result => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Submitting...',
+                html: 'Please wait while we save the data.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => Swal.showLoading()
+            });
+            form.submit();
+        }
+    });
+}
+
+/* ── SweetAlert2 for PHP success / error ── */
+<?php if ($success): ?>
+window.addEventListener('DOMContentLoaded', () => {
+    Swal.fire({
+        icon: 'success',
+        title: 'Saved!',
+        text: '<?= addslashes($success) ?>',
+        confirmButtonColor: '#0f766e',
+        confirmButtonText: 'Great!',
+        background: document.body.classList.contains('dark') ? '#111827' : '#ffffff',
+        color:      document.body.classList.contains('dark') ? '#e5e7eb' : '#111827',
+        iconColor: '#0f766e',
+        timer: 4000,
+        timerProgressBar: true,
+    });
+});
+<?php elseif ($error): ?>
+window.addEventListener('DOMContentLoaded', () => {
+    Swal.fire({
+        icon: 'error',
+        title: 'Oops!',
+        text: '<?= addslashes($error) ?>',
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Fix & Retry',
+        background: document.body.classList.contains('dark') ? '#111827' : '#ffffff',
+        color:      document.body.classList.contains('dark') ? '#e5e7eb' : '#111827',
+    });
+});
+<?php endif; ?>
 </script>
 </body>
 </html>
