@@ -6,15 +6,10 @@ require "../config.php";
 // Handle AJAX data load
 if (isset($_GET['fetch']) && $_GET['fetch'] === '1') {
     $month = $_GET['month'] ?? date('Y-m');
-    // Example query — adjust to your schema
-    $stmt = $pdo->prepare("
-        SELECT COUNT(*) as total
-        FROM attendance
-        WHERE DATE_FORMAT(att_date, '%Y-%m') = ?
-    ");
-    $stmt->execute([$month]);
+    [$year, $mon] = explode('-', $month);
+    $stmt = $pdo->query("SELECT COUNT(*) as total FROM employee_master");
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    echo json_encode(['count' => $row['total'] ?? 0]);
+    echo json_encode(['count' => (int)($row['total'] ?? 0)]);
     exit;
 }
 ?>

@@ -142,7 +142,7 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
         .menu .icon {
             font-size:16px; width:20px; display:flex;
             align-items:center; justify-content:center;
-            opacity:.95; flex-shrink:0; transition:transform .2s ease;
+            opacity:.95; flex-shrink:0; transition:transform .2s ease;color:#ffffff;
         }
         .menu:hover .icon { transform:scale(1.2); }
         .menu:hover  { background:rgba(255,255,255,.1); color:#fff; }
@@ -475,35 +475,35 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
             <img src="../assets/logo/images.png" alt="MCL Logo">
         </div>
         <nav>
-            <a href="dashboard.php" class="menu">
+            <a href="../dashboard.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-chart-line"></i></span>
                 <span>Dashboard</span>
             </a>
-            <a href="user.php" class="menu">
+            <a href="../user.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-users"></i></span>
                 <span>Add Users</span>
             </a>
-            <a href="employees.php" class="menu">
+            <a href="../employees.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-user-plus"></i></span>
                 <span>Add Employee</span>
             </a>
-            <a href="basic_pay_update.php" class="menu active">
+            <a href="../admin/basic_pay_update.php" class="menu active">
                 <span class="icon"><i class="fa-solid fa-indian-rupee-sign"></i></span>
                 <span>Basic Pay Update</span>
             </a>
-            <a href="extra_manpower.php" class="menu">
+            <a href="../admin/extra_manpower.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-user-clock"></i></span>
                 <span>Add Extra Manpower</span>
             </a>
-            <a href="unlock/unlock.php" class="menu">
+            <a href="../unlock/unlock.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-lock-open"></i></span>
                 <span>Unlock Attendance</span>
             </a>
-            <a href="#" class="menu">
+            <a href="../admin/attendance_request.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-file-signature"></i></span>
                 <span>Attendance Request</span>
             </a>
-            <a href="download_attendance/download_attendance.php" class="menu">
+            <a href="../admin/download_attendance.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-download"></i></span>
                 <span>Download Attendance</span>
             </a>
@@ -511,7 +511,7 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
                 <span class="icon"><i class="fa-solid fa-file-invoice"></i></span>
                 <span>Wage Report</span>
             </a>
-            <a href="monthly_att/monthly_attendance.php" class="menu">
+            <a href="../monthly_att/monthly_attendance.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-calendar-days"></i></span>
                 <span>Monthly Attendance</span>
             </a>

@@ -25,6 +25,8 @@ if ($u['role'] !== 'user') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="assets/useratt.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
 
     /* ============================================================
@@ -528,6 +530,51 @@ if ($u['role'] !== 'user') {
     /* ============================================================
        RESPONSIVE
     ============================================================ */
+
+    /* ---- Preview table ---- */
+    .preview-section {
+        display: none;
+        margin: 18px 0;
+        animation: fadeUp 0.4s ease both;
+    }
+    .preview-section.active { display: block; }
+    .preview-header {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 10px;
+    }
+    .preview-header h5 {
+        font-size: 0.9rem; font-weight: 700; color: #1f2937;
+        display: flex; align-items: center; gap: 6px;
+    }
+    .preview-header h5 i { color: #0f766e; }
+    .preview-header .preview-count {
+        font-size: 0.78rem; background: #f0fdfa; color: #0f766e;
+        padding: 3px 10px; border-radius: 20px; font-weight: 600;
+    }
+    .preview-table-wrap {
+        overflow-x: auto; border-radius: 8px;
+        border: 1px solid #e5e7eb; max-height: 300px; overflow-y: auto;
+    }
+    .preview-table {
+        width: 100%; border-collapse: collapse;
+        font-size: 0.82rem; min-width: 500px;
+    }
+    .preview-table thead { position: sticky; top: 0; z-index: 1; }
+    .preview-table thead th {
+        padding: 9px 12px; background: #f0fdfa; color: #0f766e;
+        font-weight: 700; text-align: left; font-size: 0.76rem;
+        text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #e5e7eb;
+    }
+    .preview-table tbody td {
+        padding: 8px 12px; border-bottom: 1px solid #f0f0f0; color: #374151;
+    }
+    .preview-table tbody tr:hover td { background: #f0fdf9; }
+    .preview-table .status-pp { color: #2563eb; font-weight: 700; }
+    .preview-table .status-p  { color: #16a34a; font-weight: 700; }
+    .preview-table .status-a  { color: #dc2626; font-weight: 700; }
+    .preview-table .status-l  { color: #d97706; font-weight: 700; }
+    .preview-row-error td { background: #fef2f2 !important; }
+    .preview-row-error .error-msg { color: #dc2626; font-size: 0.75rem; font-weight: 600; }
     @media (max-width: 1100px) {
         .page-body { grid-template-columns: 1fr 1.2fr !important; gap: 18px !important; }
         .edit-panel, .history-panel { padding: 22px !important; }
@@ -706,9 +753,32 @@ if ($u['role'] !== 'user') {
                 <!-- Drop Zone -->
                 <div class="upload-drop-zone" id="dropZone" onclick="document.getElementById('csvFile').click()">
                     <i class="fa-solid fa-cloud-arrow-up"></i>
-                    <p id="dropText">Select CSV File</p>
+                    <p id="dropText">Select Excel / CSV File</p>
                     <span id="dropSubText">Click to browse your computer</span>
-                    <input type="file" id="csvFile" accept=".csv" />
+                    <input type="file" id="csvFile" accept=".xlsx,.xls,.csv" />
+                </div>
+
+                <!-- Preview table -->
+                <div class="preview-section" id="previewSection">
+                    <div class="preview-header">
+                        <h5><i class="fa-solid fa-table-list"></i> File Preview</h5>
+                        <span class="preview-count" id="previewCount">0 rows</span>
+                    </div>
+                    <div class="preview-table-wrap">
+                        <table class="preview-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Emp Code</th>
+                                    <th>Emp Name</th>
+                                    <th>Attendance Date</th>
+                                    <th>New Status</th>
+                                    <th>Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody id="previewTableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- Spinner -->
@@ -841,6 +911,7 @@ if ($u['role'] !== 'user') {
             dropSub.textContent  = 'File selected — click Upload & Process to continue';
             dropZone.style.borderColor = '#0f766e';
             dropZone.style.background  = '#f0fdfa';
+            parseAndPreview(this.files[0]);
         }
     });
 
@@ -859,7 +930,8 @@ if ($u['role'] !== 'user') {
     dropZone.addEventListener('drop', e => {
         e.preventDefault();
         const file = e.dataTransfer.files[0];
-        if (file && file.name.endsWith('.csv')) {
+        const validExts = ['.csv', '.xlsx', '.xls'];
+        if (file && validExts.some(ext => file.name.toLowerCase().endsWith(ext))) {
             const dt = new DataTransfer();
             dt.items.add(file);
             csvFile.files = dt.files;
@@ -867,42 +939,149 @@ if ($u['role'] !== 'user') {
             dropSub.textContent  = 'File selected — click Upload & Process to continue';
             dropZone.style.borderColor = '#0f766e';
             dropZone.style.background  = '#f0fdfa';
+            parseAndPreview(file);
         }
     });
+
+    /* ── Excel preview parser ── */
+    function parseAndPreview(file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                const previewSection = document.getElementById('previewSection');
+                const tbody = document.getElementById('previewTableBody');
+                const countEl = document.getElementById('previewCount');
+
+                if (rows.length <= 1) {
+                    previewSection.classList.remove('active');
+                    return;
+                }
+
+                const dataRows = rows.slice(1).filter(r => r.some(c => c !== null && c !== undefined && String(c).trim() !== ''));
+                countEl.textContent = dataRows.length + ' row' + (dataRows.length !== 1 ? 's' : '');
+
+                const statusLabels = { 'p': 'Present', 'a': 'Absent', 'pp': 'Present With Extra', 'l': 'Leave' };
+
+                tbody.innerHTML = dataRows.map((row, i) => {
+                    const empcode = String(row[0] ?? '').trim();
+                    const empname = String(row[1] ?? '').trim();
+                    const dateVal = row[2] ?? '';
+                    const statusRaw = String(row[3] ?? '').trim().toLowerCase().replace(/[^a-z]/g, '');
+                    const reason  = String(row[4] ?? '').trim();
+
+                    let dateStr = dateVal;
+                    if (typeof dateVal === 'number') {
+                        const d = XLSX.SSF.parse_date_code(dateVal);
+                        if (d) dateStr = `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+                    }
+
+                    const statusCls = statusRaw === 'pp' ? 'status-pp' : statusRaw === 'p' ? 'status-p' : statusRaw === 'a' ? 'status-a' : statusRaw === 'l' ? 'status-l' : '';
+                    const statusLabel = statusLabels[statusRaw] || String(row[3] ?? '');
+
+                    let hasError = !empcode || !empname || !dateStr || !statusRaw || !reason;
+
+                    return `<tr class="${hasError ? 'preview-row-error' : ''}">
+                        <td>${i + 1}</td>
+                        <td style="font-weight:600;">${empcode || '<span class="error-msg">Missing</span>'}</td>
+                        <td>${empname || '<span class="error-msg">Missing</span>'}</td>
+                        <td style="white-space:nowrap;">${dateStr || '<span class="error-msg">Missing</span>'}</td>
+                        <td class="${statusCls}">${statusLabel || '<span class="error-msg">Missing</span>'}</td>
+                        <td>${reason || '<span class="error-msg">Missing</span>'}</td>
+                    </tr>`;
+                }).join('');
+
+                previewSection.classList.add('active');
+            } catch (err) {
+                console.error('Preview parse error:', err);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
 
     /* ── Upload & process ── */
     function processFile() {
         if (!csvFile.files.length) {
-            showNotif('error', '⚠️ Please select a CSV file first.');
+            Swal.fire({ icon: 'warning', title: 'No File Selected', text: 'Please select an Excel or CSV file first.' });
             return;
         }
-        const btn     = document.getElementById('uploadBtn');
-        const spinner = document.getElementById('spinnerWrap');
 
-        btn.disabled = true;
-        spinner.classList.add('active');
-        hideNotif();
+        const previewRows = document.querySelectorAll('#previewTableBody tr');
+        if (previewRows.length === 0) {
+            Swal.fire({ icon: 'warning', title: 'Empty File', text: 'The selected file has no data rows.' });
+            return;
+        }
 
-        const formData = new FormData();
-        formData.append('edit_file', csvFile.files[0]);
+        Swal.fire({
+            title: 'Submit Attendance Requests?',
+            html: `<p>You are about to submit <strong>${previewRows.length} row(s)</strong> for admin approval.</p>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#0f766e',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: '<i class="fa-solid fa-paper-plane"></i> Submit',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true
+        }).then((result) => {
+            if (!result.isConfirmed) return;
 
-        fetch('process_edit_attendance.php', { method: 'POST', body: formData })
-            .then(r => r.json())
-            .then(data => {
-                spinner.classList.remove('active');
-                btn.disabled = false;
-                if (data.success) {
-                    showNotif('success', `✓ ${data.message}`);
-                    loadHistory();
-                } else {
-                    showNotif('error', `❌ ${data.message}`);
-                }
-            })
-            .catch(err => {
-                spinner.classList.remove('active');
-                btn.disabled = false;
-                showNotif('error', '❌ Upload failed: ' + err.message);
-            });
+            const btn     = document.getElementById('uploadBtn');
+            const spinner = document.getElementById('spinnerWrap');
+
+            btn.disabled = true;
+            spinner.classList.add('active');
+
+            const formData = new FormData();
+            formData.append('edit_file', csvFile.files[0]);
+
+            fetch('process_edit_attendance.php', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                    spinner.classList.remove('active');
+                    btn.disabled = false;
+                    if (data.success) {
+                        let errHtml = '';
+                        if (data.errors && data.errors.length) {
+                            errHtml = '<br><div style="text-align:left;max-height:150px;overflow-y:auto;font-size:.82rem;margin-top:10px;padding:10px;background:#fff8f0;border-radius:6px;border:1px solid #fed7aa;">' +
+                                '<strong style="color:#92400e;">Warnings:</strong><br>' + data.errors.join('<br>') + '</div>';
+                        }
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Submitted!',
+                            html: `<p>${data.message}</p>${errHtml}`,
+                            confirmButtonColor: '#0f766e'
+                        });
+                        document.getElementById('previewSection').classList.remove('active');
+                        csvFile.value = '';
+                        dropText.textContent = 'Select Excel / CSV File';
+                        dropSub.textContent = 'Click to browse your computer';
+                        dropZone.style.borderColor = '#cbd5e1';
+                        dropZone.style.background = '#f9fafb';
+                        loadHistory();
+                    } else {
+                        let errHtml = '';
+                        if (data.errors && data.errors.length) {
+                            errHtml = '<br><div style="text-align:left;max-height:200px;overflow-y:auto;font-size:.82rem;margin-top:10px;padding:10px;background:#fef2f2;border-radius:6px;border:1px solid #fca5a5;">' +
+                                '<strong style="color:#991b1b;">Errors:</strong><br>' + data.errors.join('<br>') + '</div>';
+                        }
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Upload Failed',
+                            html: `<p>${data.message}</p>${errHtml}`,
+                            confirmButtonColor: '#dc2626'
+                        });
+                    }
+                })
+                .catch(err => {
+                    spinner.classList.remove('active');
+                    btn.disabled = false;
+                    Swal.fire({ icon: 'error', title: 'Upload Error', text: err.message });
+                });
+        });
     }
 
     /* ── Tab state ── */
@@ -918,18 +1097,6 @@ if ($u['role'] !== 'user') {
         loadHistory();
     }
 
-    /* ── Dummy data ── */
-    const dummyPending = [];
-
-    const dummyProcessed = [
-        { esic_no: '4405731279', employee_name: 'JUDHISTHIR SAHU',  date: '05-02-2026', from_status: 'Present',            to_status: 'Present', reason: 'Forgot to punch', status: 'REJECTED'  },
-        { esic_no: '4405731431', employee_name: 'HIMANSU PRADHAN',  date: '05-02-2026', from_status: 'Leave',              to_status: 'Leave',   reason: 'Double shift',    status: 'REJECTED'  },
-        { esic_no: '4405731279', employee_name: 'JUDHISTHIR SAHU',  date: '05-02-2026', from_status: 'Present',            to_status: 'Present', reason: 'Forgot to punch', status: 'APPROVED'  },
-        { esic_no: '4405731431', employee_name: 'HIMANSU PRADHAN',  date: '05-02-2026', from_status: 'Leave',              to_status: 'Leave',   reason: 'Double shift',    status: 'APPROVED'  },
-        { esic_no: '4405731279', employee_name: 'JUDHISTHIR SAHU',  date: '05-02-2026', from_status: 'Present With Extra', to_status: 'Present', reason: 'Forgot to punch', status: 'APPROVED'  },
-        { esic_no: '4405731431', employee_name: 'HIMANSU PRADHAN',  date: '05-02-2026', from_status: 'Leave',              to_status: 'Leave',   reason: 'Double shift',    status: 'APPROVED'  },
-    ];
-
     /* ── Status helpers ── */
     function statusColor(s) {
         const map = {
@@ -942,6 +1109,7 @@ if ($u['role'] !== 'user') {
     }
 
     function statusPill(s) {
+        if (!s || s === 'N/A') return '<span style="color:#9ca3af;font-size:0.78rem;">N/A</span>';
         const c = statusColor(s);
         return `<span style="display:inline-flex;align-items:center;gap:5px;background:${c.bg};color:${c.color};
                     padding:4px 10px;border-radius:6px;font-size:0.78rem;font-weight:600;white-space:nowrap;">
@@ -957,11 +1125,27 @@ if ($u['role'] !== 'user') {
                 </div>`;
     }
 
-    /* ── Load history ── */
+    /* ── Load history from database ── */
     function loadHistory() {
-        allRows = currentTab === 'pending' ? dummyPending : dummyProcessed;
-        document.getElementById('pendingCount').textContent = dummyPending.length;
-        renderTable();
+        fetch('fetch_edit_requests.php?tab=' + currentTab)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    allRows = data.data.map(r => ({
+                        esic_no:       r.empcode,
+                        employee_name: r.empname,
+                        date:          r.attendance_date,
+                        from_status:   r.current_status || 'N/A',
+                        to_status:     r.new_status_name || r.new_status,
+                        reason:        r.reason_for_update,
+                        status:        r.status ? r.status.toUpperCase() : 'PENDING'
+                    }));
+                    document.getElementById('pendingCount').textContent = data.pending_count;
+                    currentPage = 1;
+                    renderTable();
+                }
+            })
+            .catch(err => console.error('Error loading history:', err));
     }
 
     /* ── Render table with row stagger ── */

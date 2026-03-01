@@ -1,3 +1,13 @@
+<?php
+session_start();
+require "../config.php";
+
+// Role check
+if (!isset($_SESSION['user'])) {
+    header("Location: ../login.php");
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,6 +16,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="assets/fontawesome/css/all.min.css"
           onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css'">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; font-family:"Segoe UI",sans-serif; }
 
@@ -369,7 +380,7 @@
                 <span class="icon"><i class="fa-solid fa-lock-open"></i></span>
                 <span>Unlock Attendance</span>
             </a>
-            <a href="attendance_request.html" class="menu active">
+            <a href="attendance_request.php" class="menu active">
                 <span class="icon"><i class="fa-solid fa-file-signature"></i></span>
                 <span>Attendance Request</span>
             </a>
@@ -513,22 +524,10 @@
 
 <script>
 /* ═══════════════════════════════════════
-   DUMMY DATA
+   DATA (loaded from API)
 ═══════════════════════════════════════ */
-const PENDING_DATA = [
-    { id:101, req_date:'10-Feb-2026 09:15', employee:'RAMESH KUMAR',    esic:'44067312210', att_date:'10-02-2026', from:'Present',          to:'Leave' },
-    { id:102, req_date:'11-Feb-2026 11:30', employee:'SUNITA DEVI',     esic:'44067219834', att_date:'11-02-2026', from:'Absent',           to:'Present' },
-    { id:103, req_date:'12-Feb-2026 14:05', employee:'PRADEEP SINGH',   esic:'44067401122', att_date:'12-02-2026', from:'Present With Extra',to:'Present' },
-];
-
-const PROCESSED_DATA = [
-    { id:201, proc_date:'05-Feb-2026 16:52', employee:'JUDHISTHIR SAHU',  esic:'44067231379', att_date:'05-02-2026', from:'Present',           to:'Present',  result:'REJECTED' },
-    { id:202, proc_date:'05-Feb-2026 17:22', employee:'JUDHISTHIR SAHU',  esic:'44067231379', att_date:'05-02-2026', from:'Present',           to:'Present',  result:'APPROVED' },
-    { id:203, proc_date:'05-Feb-2026 17:13', employee:'JUDHISTHIR SAHU',  esic:'44067231379', att_date:'05-02-2026', from:'Present With Extra', to:'Present', result:'APPROVED' },
-    { id:204, proc_date:'06-Feb-2026 16:52', employee:'HIMANSU PRADHAN',  esic:'44067231421', att_date:'05-02-2026', from:'Leave',             to:'Leave',    result:'REJECTED' },
-    { id:205, proc_date:'06-Feb-2026 17:22', employee:'HIMANSU PRADHAN',  esic:'44067231421', att_date:'06-02-2026', from:'Leave',             to:'Leave',    result:'APPROVED' },
-    { id:206, proc_date:'06-Feb-2026 17:13', employee:'HIMANSU PRADHAN',  esic:'44067231421', att_date:'06-02-2026', from:'Leave',             to:'Leave',    result:'APPROVED' },
-];
+let PENDING_DATA = [];
+let PROCESSED_DATA = [];
 
 /* ═══════════════════════════════════════
    STATE
@@ -544,13 +543,62 @@ const ST = {
 function attTag(label) {
     const map = {
         'Present':'att-present', 'Leave':'att-leave', 'Absent':'att-absent',
-        'Present With Extra':'att-extra', 'Half Day':'att-halfday'
+        'Present With Extra':'att-extra', 'Half Day':'att-halfday', 'N/A':''
     };
+    if (!label || label === 'N/A') return '<span style="color:#9ca3af;font-size:.78rem;">N/A</span>';
     const cls = map[label] || 'att-present';
     return `<span class="att-tag ${cls}">${label}</span>`;
 }
 function changeFlow(from, to) {
     return `<div class="change-flow">${attTag(from)}<span class="att-arrow"><i class="fa-solid fa-arrow-right"></i></span>${attTag(to)}</div>`;
+}
+
+/* ═══════════════════════════════════════
+   LOAD DATA FROM API
+═══════════════════════════════════════ */
+function loadData() {
+    // Load pending
+    fetch('fetch_attendance_requests.php?tab=pending')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                PENDING_DATA = data.data.map(r => ({
+                    id:       r.id,
+                    req_date: r.request_time || '',
+                    employee: r.empname || '',
+                    esic:     r.empcode || '',
+                    att_date: r.attendance_date || '',
+                    from:     r.current_status_name || 'N/A',
+                    to:       r.new_status_name || r.new_status || '',
+                    reason:   r.reason_for_update || ''
+                }));
+                document.getElementById('badgePending').textContent = data.pending_count;
+                document.getElementById('badgeProcessed').textContent = data.processed_count;
+                render('pending');
+            }
+        })
+        .catch(err => console.error('Error loading pending:', err));
+
+    // Load processed
+    fetch('fetch_attendance_requests.php?tab=processed')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                PROCESSED_DATA = data.data.map(r => ({
+                    id:        r.id,
+                    proc_date: r.approved_time || '',
+                    employee:  r.empname || '',
+                    esic:      r.empcode || '',
+                    att_date:  r.attendance_date || '',
+                    from:      r.current_status_name || 'N/A',
+                    to:        r.new_status_name || r.new_status || '',
+                    result:    r.status ? r.status.toUpperCase() : '',
+                    reason:    r.reason_for_update || ''
+                }));
+                render('processed');
+            }
+        })
+        .catch(err => console.error('Error loading processed:', err));
 }
 
 /* ═══════════════════════════════════════
@@ -607,7 +655,7 @@ function render(type) {
                     <td><div class="action-btns">
                         <button class="btn-act btn-approve" title="Approve" onclick="processRow(${r.id},'approved')"><i class="fa-solid fa-check"></i></button>
                         <button class="btn-act btn-reject"  title="Reject"  onclick="processRow(${r.id},'rejected')"><i class="fa-solid fa-xmark"></i></button>
-                        <button class="btn-act btn-view"    title="View"><i class="fa-solid fa-eye"></i></button>
+                        <button class="btn-act btn-view"    title="Reason: ${(r.reason||'').replace(/'/g, '&#39;')}"><i class="fa-solid fa-eye"></i></button>
                     </div></td>
                 </tr>`;
             } else {
@@ -683,24 +731,55 @@ function checkAll(type) {
 }
 
 /* ═══════════════════════════════════════
-   PROCESS (demo)
+   PROCESS (approve/reject via API)
 ═══════════════════════════════════════ */
 function processRow(id, action) {
-    const row = PENDING_DATA.find(r=>r.id===id);
+    const row = PENDING_DATA.find(r=>r.id==id);
     if (!row) return;
-    if (!confirm(`${action==='approved'?'Approve':'Reject'} request for ${row.employee}?`)) return;
-    // Move to processed
-    PROCESSED_DATA.unshift({
-        id: Date.now(), proc_date: new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+' '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}),
-        employee:row.employee, esic:row.esic, att_date:row.att_date,
-        from:row.from, to:row.to, result:action.toUpperCase()
+
+    const isApprove = action === 'approved';
+    Swal.fire({
+        title: isApprove ? 'Approve Request?' : 'Reject Request?',
+        html: `<div style="text-align:left;font-size:.9rem;">
+            <p><strong>Employee:</strong> ${row.employee}</p>
+            <p><strong>ESIC:</strong> ${row.esic}</p>
+            <p><strong>Date:</strong> ${row.att_date}</p>
+            <p><strong>Reason:</strong> ${row.reason || 'N/A'}</p>
+        </div>`,
+        icon: isApprove ? 'question' : 'warning',
+        showCancelButton: true,
+        confirmButtonColor: isApprove ? '#059669' : '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: isApprove ? '<i class="fa-solid fa-check"></i> Yes, Approve' : '<i class="fa-solid fa-xmark"></i> Yes, Reject',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+
+        Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        fetch('process_attendance_action.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id, action: action })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: isApprove ? 'Approved!' : 'Rejected!',
+                    text: data.message,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                loadData();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: data.message });
+            }
+        })
+        .catch(err => Swal.fire({ icon: 'error', title: 'Network Error', text: err.message }));
     });
-    const idx = PENDING_DATA.indexOf(row);
-    PENDING_DATA.splice(idx,1);
-    document.getElementById('badgePending').textContent  = PENDING_DATA.length;
-    document.getElementById('badgeProcessed').textContent = PROCESSED_DATA.length;
-    render('pending');
-    render('processed');
 }
 
 /* ═══════════════════════════════════════
@@ -718,7 +797,7 @@ function switchTab(tab) {
         document.getElementById('tabProcessed').classList.remove('btn-tab-teal');
         document.getElementById('tabProcessed').classList.add('btn-tab-white');
     } else {
-        document.getElementById('tabProcessed').classList.add('btn-tab-white','active');
+        document.getElementById('tabProcessed').classList.add('active');
         document.getElementById('tabPending').classList.remove('btn-tab-teal');
         document.getElementById('tabPending').classList.add('btn-tab-white');
         document.getElementById('tabProcessed').classList.remove('btn-tab-white');
@@ -752,8 +831,7 @@ themeToggle.addEventListener('click',()=>{const d=!document.body.classList.conta
 /* ═══════════════════════════════════════
    INIT
 ═══════════════════════════════════════ */
-render('pending');
-render('processed');
+loadData();
 </script>
 </body>
 </html>
