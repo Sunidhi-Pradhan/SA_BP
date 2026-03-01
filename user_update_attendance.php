@@ -690,8 +690,8 @@ if ($u['role'] !== 'user') {
 
                 <div class="edit-panel-header">
                     <h4><i class="fa-solid fa-pen-to-square"></i> Edit Attendance</h4>
-                    <a href="sample_edit.csv" download class="sample-link">
-                        <i class="fa-solid fa-file-csv"></i> Sample CSV
+                    <a href="user/update_sample.xlsx" download class="sample-link">
+                        <i class="fa-solid fa-file-csv"></i> Sample Excel
                     </a>
                 </div>
 
