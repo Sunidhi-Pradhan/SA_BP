@@ -57,10 +57,12 @@ VALUES (
     :backup_attendance_json
 )
 ON DUPLICATE KEY UPDATE
-    attendance_year  = VALUES(attendance_year),
-    attendance_month = VALUES(attendance_month),
-    attendance_json  = VALUES(attendance_json),
-    backup_attendance_json = VALUES(backup_attendance_json)
+attendance_year  = VALUES(attendance_year),
+attendance_month = VALUES(attendance_month),
+attendance_json  = JSON_MERGE_PATCH(
+    IFNULL(attendance_json,'{}'),
+    VALUES(attendance_json)
+)
 ";
 $stmt = $pdo->prepare($sql);
 
@@ -179,12 +181,12 @@ foreach ($monthlyBuffer as $key => $attendanceJson) {
 
     try {
         $stmt->execute([
-            ":esic_no" => $esic,
-            ":attendance_year" => $year,
-            ":attendance_month" => $month,
-            ":attendance_json" => $jsonFinal,
-            ":backup_attendance_json" => $jsonFinal
-        ]);
+    ":esic_no" => $esic,
+    ":attendance_year" => $year,
+    ":attendance_month" => $month,
+    ":attendance_json" => $jsonFinal,
+    ":backup_attendance_json" => null
+]);
         $processed++;
     } catch (Exception $e) {
         $errorLog[] = "DB error for ESIC $esic ($month-$year): ".$e->getMessage();
