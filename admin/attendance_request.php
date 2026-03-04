@@ -570,7 +570,9 @@ function loadData() {
                     att_date: r.attendance_date || '',
                     from:     r.current_status_name || 'N/A',
                     to:       r.new_status_name || r.new_status || '',
-                    reason:   r.reason_for_update || ''
+                    reason:   r.reason_for_update || '',
+                    req_by_name: r.request_by_name || '',
+                    req_by_role: r.request_by_role || ''
                 }));
                 document.getElementById('badgePending').textContent = data.pending_count;
                 document.getElementById('badgeProcessed').textContent = data.processed_count;
@@ -593,7 +595,11 @@ function loadData() {
                     from:      r.current_status_name || 'N/A',
                     to:        r.new_status_name || r.new_status || '',
                     result:    r.status ? r.status.toUpperCase() : '',
-                    reason:    r.reason_for_update || ''
+                    reason:    r.reason_for_update || '',
+                    req_by_name:  r.request_by_name || '',
+                    req_by_role:  r.request_by_role || '',
+                    appr_by_name: r.approved_by_name || '',
+                    appr_by_role: r.approved_by_role || ''
                 }));
                 render('processed');
             }
@@ -648,7 +654,7 @@ function render(type) {
             if (type === 'pending') {
                 return `<tr style="opacity:0;animation:fadeUp .3s ${i*.05}s ease forwards">
                     <td><input type="checkbox" class="rc-pending"></td>
-                    <td>${r.req_date}</td>
+                    <td><div>${r.req_date}</div><div style="font-size:.72rem;color:#6b7280;margin-top:2px;">By: ${r.req_by_name} <span style="background:#e0f2fe;color:#0369a1;padding:1px 6px;border-radius:4px;font-size:.68rem;font-weight:600;">${r.req_by_role}</span></div></td>
                     ${empCell}
                     <td><strong>${r.att_date}</strong></td>
                     <td>${changeFlow(r.from, r.to)}</td>

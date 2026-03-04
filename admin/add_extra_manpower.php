@@ -7,10 +7,6 @@ require "../config.php";
 $success = "";
 $error   = "";
 
-echo "<pre>";
-print_r($_FILES);
-exit;
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $site_code   = $_POST['site_code'] ?? '';
@@ -24,76 +20,105 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
 
         /* ========= Upload PDF ========= */
-
         $pdf_path = '';
 
         if (!empty($_FILES['pdf_doc']['name'])) {
-
             $upload_dir = "../uploads/pdf/";
-
             if (!is_dir($upload_dir)) {
                 mkdir($upload_dir, 0777, true);
             }
-
             $pdf_name = time() . "_" . basename($_FILES['pdf_doc']['name']);
             $pdf_path = $upload_dir . $pdf_name;
-
             move_uploaded_file($_FILES['pdf_doc']['tmp_name'], $pdf_path);
         }
 
+        /* ========= Helper: normalize a header string ========= */
+        // Converts "ESIC NO", "esic_no", "Esic No.", "  ESIC_NO  " → "ESIC_NO"
+        function normalizeHeader($h) {
+            $h = trim($h);
+            // Remove UTF-8 BOM if present
+            $h = ltrim($h, "\xEF\xBB\xBF");
+            // Strip non-alphanumeric except spaces/underscores
+            $h = preg_replace('/[^a-zA-Z0-9_ ]/', '', $h);
+            // Replace spaces with underscore
+            $h = preg_replace('/\s+/', '_', $h);
+            // Uppercase
+            return strtoupper(trim($h, '_'));
+        }
 
         /* ========= Read Excel / CSV + Check ESIC duplicates ========= */
-
         $employees = [];
         $esic_list = [];
 
         if (!empty($_FILES['csv_data']['tmp_name']) && !empty($_FILES['csv_data']['name'])) {
 
-            $originalName = strtolower($_FILES['csv_data']['name']);
+            $originalName = strtolower(trim($_FILES['csv_data']['name']));
             $tmpPath      = $_FILES['csv_data']['tmp_name'];
             $ext          = pathinfo($originalName, PATHINFO_EXTENSION);
 
             // ── Route by file extension ──────────────────────────────
             if ($ext === 'csv') {
 
-                // ── Plain CSV (fgetcsv) ──────────────────────────────
+                // ── Plain CSV ────────────────────────────────────────
                 $handle = fopen($tmpPath, "r");
 
-                if ($handle !== FALSE) {
+                if ($handle !== false) {
 
-                    $headers = fgetcsv($handle);
+                    $rawHeaders = fgetcsv($handle);
 
-                    if ($headers) {
-                        // Strip UTF-8 BOM and whitespace
-                        $headers[0] = ltrim($headers[0], "\xEF\xBB\xBF");
-                        $headers    = array_map('trim', $headers);
+                    if ($rawHeaders) {
+                        $headers = array_map('normalizeHeader', $rawHeaders);
+                    } else {
+                        $error = "CSV file appears to be empty or unreadable.";
+                        $headers = [];
                     }
 
-                    while (($row = fgetcsv($handle)) !== FALSE) {
-
-                        if (count($row) !== count($headers)) continue;
-
-                        $data = array_combine($headers, $row);
-                        $esic = trim($data['ESIC_NO'] ?? '');
-
-                        if (!$esic) continue;
-
-                        if (in_array($esic, $esic_list)) {
-                            $error = "Duplicate ESIC_NO found: " . $esic;
-                            break;
+                    if (!$error) {
+                        // Check ESIC_NO column exists
+                        if (!in_array('ESIC_NO', $headers)) {
+                            $error = "Column 'ESIC_NO' not found in CSV. Found columns: " . implode(', ', $headers);
                         }
+                    }
 
-                        $esic_list[] = $esic;
-                        $employees[] = $data;
+                    if (!$error) {
+                        $rowNum = 1;
+                        while (($row = fgetcsv($handle)) !== false) {
+                            $rowNum++;
+
+                            // Skip completely empty rows
+                            if (empty(array_filter($row, fn($v) => trim((string)$v) !== ''))) {
+                                continue;
+                            }
+
+                            // Pad or trim row to match header count
+                            $colCount = count($headers);
+                            while (count($row) < $colCount) $row[] = '';
+                            $row = array_slice($row, 0, $colCount);
+
+                            $data = array_combine($headers, $row);
+                            $esic = trim((string)($data['ESIC_NO'] ?? ''));
+
+                            if (!$esic) continue; // skip rows with no ESIC
+
+                            if (in_array($esic, $esic_list)) {
+                                $error = "Duplicate ESIC_NO found: " . $esic . " (row $rowNum)";
+                                break;
+                            }
+
+                            $esic_list[] = $esic;
+                            $employees[] = $data;
+                        }
                     }
 
                     fclose($handle);
+                } else {
+                    $error = "Could not open the uploaded CSV file.";
                 }
 
             } elseif (in_array($ext, ['xlsx', 'xls'])) {
 
                 // ── Excel via PhpSpreadsheet ─────────────────────────
-                $autoloaderPath = __DIR__ . '/../../vendor/autoload.php';
+                $autoloaderPath = __DIR__ . '/../employee_import/vendor/autoload.php';
 
                 if (!file_exists($autoloaderPath)) {
                     $error = "PhpSpreadsheet is not installed. Run: composer require phpoffice/phpspreadsheet";
@@ -108,40 +133,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $sheet       = $spreadsheet->getActiveSheet();
                         $rows        = $sheet->toArray(null, true, true, false);
 
-                        // First row = headers
-                        $headers = array_map('trim', $rows[0] ?? []);
+                        // Remove trailing completely-null rows from the end
+                        while (!empty($rows) && empty(array_filter((array)end($rows), fn($v) => $v !== null && trim((string)$v) !== ''))) {
+                            array_pop($rows);
+                        }
 
-                        // Remove null/empty header columns
-                        $headers = array_filter($headers, fn($h) => $h !== null && $h !== '');
-                        $colCount = count($headers);
+                        if (empty($rows)) {
+                            $error = "The Excel file appears to be empty.";
+                        } else {
 
-                        foreach (array_slice($rows, 1) as $row) {
+                            // First row = headers — normalize them
+                            $rawHeaders = array_map(fn($h) => (string)($h ?? ''), $rows[0]);
+                            $headers    = array_map('normalizeHeader', $rawHeaders);
 
-                            // Trim to number of valid header columns
-                            $row = array_slice($row, 0, $colCount);
+                            // Remove empty header columns (keep track of valid indices)
+                            $validIndices = [];
+                            $cleanHeaders = [];
+                            foreach ($headers as $i => $h) {
+                                if ($h !== '') {
+                                    $validIndices[] = $i;
+                                    $cleanHeaders[] = $h;
+                                }
+                            }
+                            $colCount = count($cleanHeaders);
 
-                            // Skip fully empty rows
-                            if (empty(array_filter($row, fn($v) => $v !== null && $v !== ''))) {
-                                continue;
+                            // Check ESIC_NO column exists
+                            if (!in_array('ESIC_NO', $cleanHeaders)) {
+                                $error = "Column 'ESIC_NO' not found in Excel. Found columns: " . implode(', ', $cleanHeaders);
                             }
 
-                            // Pad row if shorter than headers
-                            while (count($row) < $colCount) {
-                                $row[] = '';
+                            if (!$error) {
+                                $rowNum = 1;
+                                foreach (array_slice($rows, 1) as $rawRow) {
+                                    $rowNum++;
+
+                                    // Extract only valid-index columns
+                                    $row = [];
+                                    foreach ($validIndices as $idx) {
+                                        $row[] = isset($rawRow[$idx]) ? trim((string)$rawRow[$idx]) : '';
+                                    }
+
+                                    // Skip fully empty rows
+                                    if (empty(array_filter($row, fn($v) => $v !== ''))) {
+                                        continue;
+                                    }
+
+                                    // Pad if shorter
+                                    while (count($row) < $colCount) $row[] = '';
+
+                                    $data = array_combine($cleanHeaders, $row);
+                                    $esic = trim((string)($data['ESIC_NO'] ?? ''));
+
+                                    if (!$esic) continue;
+
+                                    if (in_array($esic, $esic_list)) {
+                                        $error = "Duplicate ESIC_NO found: " . $esic . " (row $rowNum)";
+                                        break;
+                                    }
+
+                                    $esic_list[] = $esic;
+                                    $employees[] = $data;
+                                }
                             }
-
-                            $data = array_combine(array_values($headers), $row);
-                            $esic = trim((string)($data['ESIC_NO'] ?? ''));
-
-                            if (!$esic) continue;
-
-                            if (in_array($esic, $esic_list)) {
-                                $error = "Duplicate ESIC_NO found: " . $esic;
-                                break;
-                            }
-
-                            $esic_list[] = $esic;
-                            $employees[] = $data;
                         }
 
                     } catch (\Exception $e) {
@@ -150,19 +203,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
             } else {
-                $error = "Unsupported file type. Please upload a .csv, .xlsx, or .xls file.";
+                $error = "Unsupported file type '$ext'. Please upload a .csv, .xlsx, or .xls file.";
+            }
+
+            // If no error but also no employees parsed, warn the admin
+            if (!$error && empty($employees)) {
+                $error = "No employee records were found in the uploaded file. Please check the file content and ensure 'ESIC_NO' column exists with data.";
             }
         }
 
-
         /* ========= Insert only if no error ========= */
-
         if (!$error) {
 
             $employee_json = json_encode($employees, JSON_UNESCAPED_UNICODE);
 
             try {
-
                 $stmt = $pdo->prepare("
                     INSERT INTO extra_manpower_assign
                     (site_code, designation, manpower_count, eoffice_file_no, supporting_pdf, employee_json, uploaded_by)
@@ -179,12 +234,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $uploaded_by
                 ]);
 
-                $success = "Extra manpower assigned successfully.";
+                $success = "Extra manpower assigned successfully. " . count($employees) . " employee record(s) saved.";
 
             } catch (Exception $e) {
-
                 $error = "Database error: " . $e->getMessage();
-
             }
         }
     }
@@ -316,7 +369,6 @@ $sites = $pdo->query("
         }
         header h1 { font-size:1.5rem; font-weight:700; color:var(--text); flex:1; text-align:center; }
 
-        /* Hamburger */
         .menu-btn {
             background:none; border:none; font-size:22px; cursor:pointer;
             color:var(--text); padding:6px 8px; border-radius:6px;
@@ -325,7 +377,6 @@ $sites = $pdo->query("
         }
         .menu-btn:hover { background:rgba(0,0,0,0.06); transform:rotate(90deg); }
 
-        /* Theme btn */
         .theme-btn {
             width:44px; height:44px; border-radius:12px;
             border:1px solid var(--border); background:var(--card);
@@ -349,7 +400,6 @@ $sites = $pdo->query("
             to   { opacity:1; transform:translateY(0); }
         }
 
-        /* ===== PAGE TITLE ROW ===== */
         .page-title-row {
             display:flex; align-items:center; gap:14px;
             animation:fadeUp .4s .2s ease both; opacity:0;
@@ -393,7 +443,6 @@ $sites = $pdo->query("
         /* ===== FORM BODY ===== */
         .form-body { padding:24px 28px 20px; }
 
-        /* Grid: 4 columns desktop, responsive */
         .form-grid-4 {
             display:grid;
             grid-template-columns:repeat(4,1fr);
@@ -420,7 +469,6 @@ $sites = $pdo->query("
             font-size:.9rem; color:var(--text);
             background:var(--bg); font-family:inherit; outline:none;
             transition:border-color .2s,box-shadow .2s,background .2s;
-            -webkit-tap-highlight-color:transparent;
             width:100%;
         }
         .form-control:focus {
@@ -432,7 +480,6 @@ $sites = $pdo->query("
 
         /* ===== UPLOAD ZONES ===== */
         .upload-section { margin-top:20px; display:flex; flex-direction:column; gap:16px; }
-
         .upload-group { display:flex; flex-direction:column; gap:.35rem; }
         .upload-label {
             font-size:.7rem; font-weight:700; color:var(--subtext);
@@ -447,8 +494,6 @@ $sites = $pdo->query("
             display:flex; align-items:center; gap:14px;
             cursor:pointer; transition:border-color .2s,background .2s,transform .15s;
             position:relative; overflow:hidden;
-            -webkit-tap-highlight-color:transparent;
-            touch-action:manipulation;
         }
         .drop-zone:hover, .drop-zone.dragover {
             border-color:var(--teal);
@@ -460,7 +505,6 @@ $sites = $pdo->query("
             position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;
         }
 
-        /* PDF drop zone – compact single row */
         .drop-zone.pdf-zone { padding:14px 18px; }
         .drop-zone.pdf-zone .dz-icon {
             width:36px; height:36px; border-radius:8px;
@@ -471,22 +515,43 @@ $sites = $pdo->query("
         .drop-zone.pdf-zone .dz-text { font-size:.87rem; color:var(--subtext); font-weight:500; }
         .drop-zone.pdf-zone .dz-text span { color:var(--teal); font-weight:700; }
 
-        /* CSV/Excel drop zone – tall centred */
         .drop-zone.csv-zone {
             flex-direction:column; align-items:center; justify-content:center;
-            padding:40px 24px; gap:12px; min-height:160px;
-            text-align:center;
+            padding:40px 24px; gap:12px; min-height:160px; text-align:center;
         }
         .drop-zone.csv-zone .dz-icon-big { font-size:2.4rem; color:var(--teal); line-height:1; }
         .drop-zone.csv-zone .dz-title    { font-size:.92rem; font-weight:600; color:var(--text); }
         .drop-zone.csv-zone .dz-hint     { font-size:.78rem; color:var(--subtext); }
 
-        /* File name display */
         .file-name {
             font-size:.8rem; color:var(--teal); font-weight:600;
             margin-top:4px; display:none; word-break:break-all;
         }
         .file-name.visible { display:block; }
+
+        /* ===== COLUMN PREVIEW ===== */
+        .col-preview {
+            background: rgba(15,118,110,0.05);
+            border: 1px solid rgba(15,118,110,0.2);
+            border-radius: 10px;
+            padding: 10px 14px;
+            display: none;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .col-preview.visible { display: flex; }
+        .col-preview-label {
+            font-size: .68rem; font-weight: 700; color: var(--subtext);
+            text-transform: uppercase; letter-spacing: .5px;
+            width: 100%; margin-bottom: 2px;
+        }
+        .col-tag {
+            font-size: .74rem; font-weight: 600;
+            padding: 3px 9px; border-radius: 999px;
+            background: var(--teal); color: #fff;
+        }
+        .col-tag.missing { background: #ef4444; }
 
         /* ===== SAMPLE CSV BTN ===== */
         .sample-btn {
@@ -497,24 +562,9 @@ $sites = $pdo->query("
             font-size:.82rem; font-weight:700;
             cursor:pointer; font-family:inherit; text-decoration:none;
             transition:background .2s,transform .15s,box-shadow .15s;
-            -webkit-tap-highlight-color:transparent;
-            touch-action:manipulation;
             align-self:center;
         }
         .sample-btn:hover { background:#eff6ff; transform:translateY(-1px); box-shadow:0 2px 8px rgba(37,99,235,.12); }
-        .sample-btn:active { transform:scale(.97); }
-
-        /* ===== ALERT MESSAGES ===== */
-        .alert {
-            padding:.85rem 1.1rem; border-radius:10px;
-            font-size:.87rem; font-weight:600;
-            display:flex; align-items:center; gap:.6rem;
-            animation:fadeUp .35s ease both;
-        }
-        .alert-success { background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; }
-        .alert-error   { background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; }
-        body.dark .alert-success { background:#064e3b; color:#6ee7b7; border-color:#065f46; }
-        body.dark .alert-error   { background:#450a0a; color:#f87171; border-color:#991b1b; }
 
         /* ===== FORM FOOTER ===== */
         .form-footer {
@@ -524,7 +574,6 @@ $sites = $pdo->query("
             flex-wrap:wrap;
         }
 
-        /* Reset btn */
         .btn-reset {
             display:flex; align-items:center; justify-content:center; gap:.4rem;
             padding:.65rem 1.3rem; min-height:44px;
@@ -533,12 +582,9 @@ $sites = $pdo->query("
             font-size:.88rem; font-weight:600;
             cursor:pointer; font-family:inherit;
             transition:background .2s,transform .15s;
-            -webkit-tap-highlight-color:transparent; touch-action:manipulation;
         }
         .btn-reset:hover { background:var(--border); transform:translateY(-1px); }
-        .btn-reset:active { transform:scale(.97); }
 
-        /* Submit btn */
         .btn-submit {
             display:flex; align-items:center; justify-content:center; gap:.45rem;
             padding:.68rem 1.8rem; min-height:44px;
@@ -548,12 +594,10 @@ $sites = $pdo->query("
             cursor:pointer; font-family:inherit;
             box-shadow:0 3px 12px rgba(15,118,110,.28);
             transition:background .2s,transform .15s,box-shadow .2s;
-            -webkit-tap-highlight-color:transparent; touch-action:manipulation;
         }
         .btn-submit:hover { background:var(--teal-dark); transform:translateY(-2px); box-shadow:0 6px 20px rgba(15,118,110,.38); }
-        .btn-submit:active { background:var(--teal-deep); transform:scale(.97) translateY(0); box-shadow:0 2px 8px rgba(15,118,110,.2); }
+        .btn-submit:active { background:var(--teal-deep); transform:scale(.97); }
 
-        /* Floating submit */
         .btn-submit-float {
             position:fixed; bottom:24px; right:24px; z-index:200;
             display:flex; align-items:center; justify-content:center; gap:.45rem;
@@ -564,27 +608,16 @@ $sites = $pdo->query("
             cursor:pointer; font-family:inherit;
             box-shadow:0 4px 18px rgba(15,118,110,.4);
             transition:background .2s,transform .15s,box-shadow .2s,opacity .2s;
-            -webkit-tap-highlight-color:transparent; touch-action:manipulation;
             opacity:0; pointer-events:none;
         }
         .btn-submit-float.show { opacity:1; pointer-events:auto; }
-        .btn-submit-float:hover { background:var(--teal-dark); transform:translateY(-3px); box-shadow:0 8px 26px rgba(15,118,110,.45); }
-        .btn-submit-float:active { transform:scale(.96); }
+        .btn-submit-float:hover { background:var(--teal-dark); transform:translateY(-3px); }
 
         /* ===== RESPONSIVE ===== */
-
-        /* Tablet */
         @media (max-width:992px) {
             .sidebar { width:210px; min-width:210px; }
-            .menu { font-size:13px; padding:11px 12px; }
-            header h1 { font-size:1.3rem; }
-            .page-content { padding:22px 20px 40px; }
-            .form-body { padding:20px 22px 16px; }
-            .form-footer { padding:14px 22px 18px; }
             .form-grid-4 { grid-template-columns:repeat(2,1fr); }
         }
-
-        /* Mobile ≤768px */
         @media (max-width:768px) {
             .menu-btn { display:flex; }
             .sidebar {
@@ -596,51 +629,16 @@ $sites = $pdo->query("
             .sidebar.open { transform:translateX(0); }
             header { padding:0 14px; height:56px; }
             header h1 { font-size:1.1rem; }
-            .theme-btn { width:38px; height:38px; font-size:14px; }
             .page-content { padding:16px 12px 60px; gap:14px; }
             .form-body { padding:16px 16px 14px; }
             .form-grid-4 { grid-template-columns:1fr 1fr; gap:12px; }
             .form-grid-2 { grid-template-columns:1fr; gap:12px; margin-top:12px; }
             .form-footer { padding:12px 16px 16px; }
-            .btn-reset  { flex:1; }
-            .btn-submit { flex:1; }
-            .btn-submit-float { bottom:16px; right:16px; padding:.65rem 1.3rem; font-size:.85rem; }
-            .drop-zone.csv-zone { min-height:130px; padding:28px 16px; }
-            .drop-zone.csv-zone .dz-icon-big { font-size:2rem; }
+            .btn-reset, .btn-submit { flex:1; }
         }
-
-        /* Mobile portrait ≤480px */
         @media (max-width:480px) {
-            header { padding:0 10px; height:52px; }
-            header h1 { font-size:.92rem; }
-            .menu-btn { font-size:19px; }
-            .theme-btn { width:34px; height:34px; font-size:13px; border-radius:8px; }
-            .page-content { padding:12px 10px 60px; gap:12px; }
-            .page-title-icon { width:40px; height:40px; font-size:1rem; }
-            .page-title-text h2 { font-size:1.1rem; }
-            .form-card { border-radius:12px; }
-            .form-body { padding:14px 14px 12px; }
             .form-grid-4 { grid-template-columns:1fr; gap:10px; }
-            .form-grid-2 { grid-template-columns:1fr; gap:10px; margin-top:10px; }
             .form-control { font-size:.85rem; min-height:42px; }
-            .form-footer { padding:12px 14px 16px; gap:.5rem; }
-            .btn-reset  { font-size:.83rem; min-height:42px; padding:.6rem .9rem; }
-            .btn-submit { font-size:.83rem; min-height:42px; padding:.6rem 1.2rem; }
-            .drop-zone.pdf-zone { padding:12px 14px; }
-            .drop-zone.csv-zone { min-height:115px; padding:22px 12px; gap:8px; }
-            .drop-zone.csv-zone .dz-icon-big { font-size:1.8rem; }
-            .drop-zone.csv-zone .dz-title { font-size:.85rem; }
-            .drop-zone.csv-zone .dz-hint  { font-size:.74rem; }
-            .btn-submit-float { padding:.6rem 1.1rem; font-size:.82rem; min-height:42px; right:12px; bottom:12px; }
-        }
-
-        /* Very small ≤360px */
-        @media (max-width:360px) {
-            header h1 { font-size:.82rem; }
-            .page-content { padding:10px 8px 60px; }
-            .form-body { padding:12px 12px 10px; }
-            .form-footer { padding:10px 12px 14px; }
-            .btn-reset, .btn-submit { font-size:.8rem; min-height:40px; }
         }
     </style>
 </head>
@@ -722,14 +720,12 @@ $sites = $pdo->query("
 
         <div class="page-content">
 
-            <?php /* Success/error shown via SweetAlert2 below */ ?>
-
             <!-- Page title -->
             <div class="page-title-row">
                 <div class="page-title-icon"><i class="fa-solid fa-user-clock"></i></div>
                 <div class="page-title-text">
                     <h2>Assign Extra Manpower</h2>
-                    <p>Add extra manpower</p>
+                    <p>Upload employee data with a valid CSV or Excel file containing an <strong>ESIC_NO</strong> column.</p>
                 </div>
             </div>
 
@@ -805,20 +801,29 @@ $sites = $pdo->query("
 
                             <!-- CSV/Excel upload -->
                             <div class="upload-group">
-                                <div class="upload-label">Upload Employee Data In (Excel / CSV) <span class="req">*</span></div>
+                                <div class="upload-label">Upload Employee Data (Excel / CSV) <span class="req">*</span></div>
                                 <div class="drop-zone csv-zone" id="csvZone">
                                     <input type="file" name="csv_data" accept=".csv,.xlsx,.xls" id="csvInput">
                                     <div class="dz-icon-big"><i class="fa-solid fa-upload"></i></div>
                                     <div class="dz-title">Upload Employee Master Excel / CSV</div>
-                                    <div class="dz-hint">Upload employee data in the provided sample format (Excel/CSV)</div>
+                                    <div class="dz-hint">
+                                        File must contain an <strong>ESIC_NO</strong> column.<br>
+                                        Header variations like "esic no", "Esic_No", "ESIC NO" are all accepted.
+                                    </div>
                                 </div>
                                 <div class="file-name" id="csvName"></div>
+
+                                <!-- Column preview shown after file pick -->
+                                <div class="col-preview" id="colPreview">
+                                    <div class="col-preview-label">Detected columns in your file:</div>
+                                    <!-- tags injected by JS -->
+                                </div>
                             </div>
 
                             <!-- Sample CSV button -->
                             <a class="sample-btn" href="../assets/samplecsv.xlsx" download>
                                 <i class="fa-solid fa-arrow-down-to-line"></i>
-                                Sample CSV
+                                Download Sample CSV / Excel
                             </a>
 
                         </div><!-- /.upload-section -->
@@ -826,7 +831,7 @@ $sites = $pdo->query("
                     </div><!-- /.form-body -->
 
                     <div class="form-footer">
-                        <button type="reset" class="btn-reset" onclick="resetFiles()">
+                        <button type="reset" class="btn-reset" id="resetBtn">
                             <i class="fa-solid fa-rotate-left"></i> Reset
                         </button>
                         <button type="button" class="btn-submit" onclick="confirmSubmit()">
@@ -851,10 +856,8 @@ $sites = $pdo->query("
 const menuBtn = document.getElementById('menuBtn');
 const sidebar  = document.getElementById('sidebar');
 const overlay  = document.getElementById('sidebarOverlay');
-
 const openSidebar  = () => { sidebar.classList.add('open');    overlay.classList.add('active');    document.body.style.overflow='hidden'; };
 const closeSidebar = () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); document.body.style.overflow=''; };
-
 menuBtn.addEventListener('click', () => sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
 overlay.addEventListener('click', closeSidebar);
 document.querySelectorAll('.sidebar .menu').forEach(l => l.addEventListener('click', () => { if (window.innerWidth<=768) closeSidebar(); }));
@@ -874,7 +877,62 @@ themeToggle.addEventListener('click', () => {
     applyTheme(d); localStorage.setItem('theme', d?'dark':'light');
 });
 
-/* ── File inputs ── */
+/* ── Normalize header (mirrors PHP logic) ── */
+function normalizeHeader(h) {
+    h = h.trim().replace(/^\uFEFF/, '');          // strip BOM
+    h = h.replace(/[^a-zA-Z0-9_ ]/g, '');        // strip special chars
+    h = h.replace(/\s+/g, '_');                   // spaces → underscore
+    return h.toUpperCase().replace(/^_+|_+$/g,''); // uppercase, trim underscores
+}
+
+/* ── CSV column preview ── */
+function previewCSVColumns(file) {
+    const preview  = document.getElementById('colPreview');
+    const ext      = file.name.split('.').pop().toLowerCase();
+
+    // Only preview CSV client-side (Excel needs server)
+    if (ext !== 'csv') {
+        preview.innerHTML = '<div class="col-preview-label">Column preview available after upload (Excel file)</div>';
+        preview.classList.add('visible');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text    = e.target.result;
+        const lines   = text.split(/\r?\n/);
+        const rawCols = lines[0]?.split(',') || [];
+        const cols    = rawCols.map(normalizeHeader).filter(Boolean);
+
+        preview.innerHTML = '<div class="col-preview-label">Detected columns (' + cols.length + '):</div>';
+
+        const hasEsic = cols.includes('ESIC_NO');
+
+        cols.forEach(col => {
+            const tag = document.createElement('span');
+            tag.className = 'col-tag' + (col === 'ESIC_NO' ? '' : '');
+            tag.textContent = col;
+            preview.appendChild(tag);
+        });
+
+        if (!hasEsic) {
+            const warn = document.createElement('div');
+            warn.style.cssText = 'width:100%;font-size:.75rem;color:#ef4444;font-weight:700;margin-top:4px;';
+            warn.innerHTML = '⚠️ ESIC_NO column not found! The file must have an ESIC_NO column.';
+            preview.appendChild(warn);
+        } else {
+            const ok = document.createElement('div');
+            ok.style.cssText = 'width:100%;font-size:.75rem;color:#059669;font-weight:700;margin-top:4px;';
+            ok.innerHTML = '✓ ESIC_NO column detected.';
+            preview.appendChild(ok);
+        }
+
+        preview.classList.add('visible');
+    };
+    reader.readAsText(file);
+}
+
+/* ── File input binding ── */
 function bindFileInput(inputId, zoneId, nameId) {
     const input = document.getElementById(inputId);
     const zone  = document.getElementById(zoneId);
@@ -885,6 +943,7 @@ function bindFileInput(inputId, zoneId, nameId) {
         zone.classList.add('has-file');
         label.textContent = '📎 ' + file.name;
         label.classList.add('visible');
+        if (inputId === 'csvInput') previewCSVColumns(file);
     }
 
     input.addEventListener('change', () => setFile(input.files[0]));
@@ -908,12 +967,15 @@ function bindFileInput(inputId, zoneId, nameId) {
 bindFileInput('pdfInput', 'pdfZone', 'pdfName');
 bindFileInput('csvInput', 'csvZone', 'csvName');
 
-function resetFiles() {
-    ['pdfZone','csvZone'].forEach(id => { document.getElementById(id).classList.remove('has-file','dragover'); });
+/* ── Reset ── */
+document.getElementById('resetBtn').addEventListener('click', function() {
+    ['pdfZone','csvZone'].forEach(id => document.getElementById(id).classList.remove('has-file','dragover'));
     ['pdfName','csvName'].forEach(id => { const el=document.getElementById(id); el.textContent=''; el.classList.remove('visible'); });
-}
+    const prev = document.getElementById('colPreview');
+    prev.innerHTML = ''; prev.classList.remove('visible');
+});
 
-/* ── Floating submit button ── */
+/* ── Floating submit ── */
 const floatBtn   = document.getElementById('floatSubmit');
 const formFooter = document.querySelector('.form-footer');
 const io = new IntersectionObserver(entries => {
@@ -924,14 +986,8 @@ io.observe(formFooter);
 /* ── SweetAlert2 Confirm Submit ── */
 function confirmSubmit() {
     const form = document.getElementById('empForm');
+    if (!form.checkValidity()) { form.reportValidity(); return; }
 
-    // Run native HTML5 validation first
-    if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-    }
-
-    // Collect summary values for the confirm dialog
     const site        = document.querySelector('[name="site_code"] option:checked')?.text  || '—';
     const designation = document.querySelector('[name="designation"] option:checked')?.text || '—';
     const count       = document.querySelector('[name="count"]')?.value   || '—';
@@ -946,34 +1002,14 @@ function confirmSubmit() {
         html: `
             <div style="text-align:left;font-size:0.9rem;line-height:1.9;">
                 <table style="width:100%;border-collapse:collapse;">
-                    <tr>
-                        <td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">📍 Site</td>
-                        <td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${site}</td>
-                    </tr>
-                    <tr>
-                        <td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">🎖️ Designation</td>
-                        <td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${designation}</td>
-                    </tr>
-                    <tr>
-                        <td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">👥 Manpower</td>
-                        <td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${count}</td>
-                    </tr>
-                    <tr>
-                        <td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">📁 E-File No.</td>
-                        <td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${efile}</td>
-                    </tr>
-                    <tr>
-                        <td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">📄 PDF Doc</td>
-                        <td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${pdfFile}</td>
-                    </tr>
-                    <tr>
-                        <td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">📊 CSV/Excel</td>
-                        <td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${csvFile}</td>
-                    </tr>
+                    <tr><td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">📍 Site</td><td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${site}</td></tr>
+                    <tr><td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">🎖️ Designation</td><td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${designation}</td></tr>
+                    <tr><td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">👥 Manpower</td><td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${count}</td></tr>
+                    <tr><td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">📁 E-File No.</td><td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${efile}</td></tr>
+                    <tr><td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">📄 PDF Doc</td><td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${pdfFile}</td></tr>
+                    <tr><td style="color:#6b7280;padding:4px 8px 4px 0;white-space:nowrap;font-weight:600;">📊 CSV/Excel</td><td style="font-weight:700;color:${isDark?'#e5e7eb':'#111827'}">${csvFile}</td></tr>
                 </table>
-                <p style="margin-top:14px;font-size:0.8rem;color:#6b7280;text-align:center;">
-                    Please review the details above before confirming.
-                </p>
+                <p style="margin-top:14px;font-size:0.8rem;color:#6b7280;text-align:center;">Please review the details above before confirming.</p>
             </div>
         `,
         icon: 'question',
@@ -987,26 +1023,13 @@ function confirmSubmit() {
         focusConfirm: false,
         background: isDark ? '#111827' : '#ffffff',
         color:      isDark ? '#e5e7eb' : '#111827',
-        customClass: {
-            popup:         'swal-popup-custom',
-            confirmButton: 'swal-confirm-btn',
-            cancelButton:  'swal-cancel-btn',
-            title:         'swal-title-custom',
-        },
-        showClass: {
-            popup: 'animate__animated animate__fadeInDown animate__faster'
-        },
-        hideClass: {
-            popup: 'animate__animated animate__fadeOutUp animate__faster'
-        }
+        customClass: { popup:'swal-popup-custom', confirmButton:'swal-confirm-btn', cancelButton:'swal-cancel-btn', title:'swal-title-custom' },
     }).then(result => {
         if (result.isConfirmed) {
-            // Show loading state
             Swal.fire({
                 title: 'Submitting...',
                 html: 'Please wait while we process your request.',
-                allowOutsideClick: false,
-                allowEscapeKey: false,
+                allowOutsideClick: false, allowEscapeKey: false,
                 didOpen: () => { Swal.showLoading(); }
             });
             form.submit();
@@ -1014,7 +1037,7 @@ function confirmSubmit() {
     });
 }
 
-/* ── SweetAlert2 for PHP success/error messages ── */
+/* ── PHP success/error ── */
 <?php if ($success): ?>
 Swal.fire({
     icon: 'success',
@@ -1025,16 +1048,16 @@ Swal.fire({
     background: document.body.classList.contains('dark') ? '#111827' : '#ffffff',
     color:      document.body.classList.contains('dark') ? '#e5e7eb' : '#111827',
     iconColor: '#0f766e',
-    timer: 4000,
+    timer: 5000,
     timerProgressBar: true,
 });
 <?php elseif ($error): ?>
 Swal.fire({
     icon: 'error',
-    title: 'Oops!',
-    text: '<?= addslashes($error) ?>',
+    title: 'Upload Error',
+    html: `<div style="text-align:left;font-size:.9rem;line-height:1.7;"><?= addslashes(htmlspecialchars($error)) ?></div>`,
     confirmButtonColor: '#ef4444',
-    confirmButtonText: 'Fix & Retry',
+    confirmButtonText: 'Fix &amp; Retry',
     background: document.body.classList.contains('dark') ? '#111827' : '#ffffff',
     color:      document.body.classList.contains('dark') ? '#e5e7eb' : '#111827',
 });
@@ -1042,27 +1065,10 @@ Swal.fire({
 </script>
 
 <style>
-/* ── SweetAlert2 custom tweaks ── */
-.swal-popup-custom {
-    border-radius: 16px !important;
-    padding: 28px 24px !important;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.18) !important;
-    font-family: "Segoe UI", sans-serif !important;
-}
-.swal-title-custom {
-    font-size: 1.2rem !important;
-    font-weight: 800 !important;
-}
-.swal-confirm-btn, .swal-cancel-btn {
-    border-radius: 10px !important;
-    font-size: 0.88rem !important;
-    font-weight: 700 !important;
-    padding: 10px 22px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 7px !important;
-}
-.swal2-timer-progress-bar { background: #0f766e !important; }
+.swal-popup-custom { border-radius:16px !important; padding:28px 24px !important; box-shadow:0 20px 60px rgba(0,0,0,0.18) !important; font-family:"Segoe UI",sans-serif !important; }
+.swal-title-custom { font-size:1.2rem !important; font-weight:800 !important; }
+.swal-confirm-btn, .swal-cancel-btn { border-radius:10px !important; font-size:.88rem !important; font-weight:700 !important; padding:10px 22px !important; display:inline-flex !important; align-items:center !important; gap:7px !important; }
+.swal2-timer-progress-bar { background:#0f766e !important; }
 </style>
 </body>
 </html>
