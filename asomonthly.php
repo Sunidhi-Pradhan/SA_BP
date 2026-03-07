@@ -3,8 +3,8 @@ session_start();
 require "config.php";
 
 $siteCode = "003";
-$year     = 2026;
-$month    = 1;
+$year     = (int) date('Y', strtotime('first day of last month'));
+$month    = (int) date('n', strtotime('first day of last month'));
 
 /* ---------------------------
    FETCH ATTENDANCE DATA
@@ -17,10 +17,9 @@ $stmt = $pdo->prepare("
     FROM attendance a
     LEFT JOIN employee_master e 
         ON a.esic_no = e.esic_no
-    WHERE a.attendance_year  = :year
-      AND a.attendance_month = :month
+    WHERE a.attendance_year = :year
 ");
-$stmt->execute([':year' => $year, ':month' => $month]);
+$stmt->execute([':year' => $year]);
 $attendanceRows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?? [];
 
 /* ---------------------------
@@ -439,8 +438,9 @@ $totalDuty = $totalWorking + $totalExtra;
 
             <div class="attendance-header">
                 <h1>MONTHLY ATTENDANCE REPORT</h1>
-                <p>Attendance Period: January 2026 &nbsp;|&nbsp; Working Days: 22 (Weekends Excluded) &nbsp;|&nbsp; Site: <strong><?= htmlspecialchars($siteCode) ?></strong></p>
-            </div>
+                <p>Attendance Period: <?= date('F Y', strtotime('first day of last month')) ?> 
+&nbsp;|&nbsp; Working Days: 22 (Weekends Excluded) 
+&nbsp;|&nbsp; Site: <strong><?= htmlspecialchars($siteCode) ?></strong></p>
 
             <?php if ($alreadyApproved): ?>
             <div class="already-approved-banner">
@@ -497,7 +497,14 @@ $totalDuty = $totalWorking + $totalExtra;
                         <tbody>
                         <?php
                         $sn   = 1;
-                        $days = [1,2,5,6,7,8,9,12,13,14,15,16,19,20,21,22,23,26,27,28,29,30];
+                        $days = [];
+$daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+for ($d = 1; $d <= $daysInMonth; $d++) {
+    $dayOfWeek = date('N', mktime(0,0,0,$month,$d,$year));
+    if ($dayOfWeek < 6) { // 6=Saturday, 7=Sunday
+        $days[] = $d;
+    }
+}
                         foreach ($attendanceRows as $row):
                             $attendanceData = json_decode($row['attendance_json'], true) ?? [];
                             $working = 0; $extra = 0;

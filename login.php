@@ -24,7 +24,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     // 🔐 Store temp user ID
     $_SESSION["temp_user_id"] = $user["id"];
 
-    // 🔍 CHECK: Google Authenticator setup hai ya nahi
+    // 🔍 CHECK: Google Authenticator setup 
     if ($user["google_secret"] == NULL) {
         // ❗ First-time user → setup required
         header("Location: setup_2fa.php");

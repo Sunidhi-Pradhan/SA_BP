@@ -654,15 +654,15 @@ $sites = $pdo->query("
             <img src="../assets/logo/images.png" alt="MCL Logo">
         </div>
         <nav>
-            <a href="dashboard.php" class="menu">
+            <a href="../dashboard.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-chart-line"></i></span>
                 <span>Dashboard</span>
             </a>
-            <a href="user.php" class="menu">
+            <a href="../user.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-users"></i></span>
                 <span>Add Users</span>
             </a>
-            <a href="employees.php" class="menu">
+            <a href="../employees.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-user-plus"></i></span>
                 <span>Add Employee</span>
             </a>
@@ -674,7 +674,7 @@ $sites = $pdo->query("
                 <span class="icon"><i class="fa-solid fa-user-clock"></i></span>
                 <span>Add Extra Manpower</span>
             </a>
-            <a href="unlock/unlock.php" class="menu">
+            <a href="../unlock/unlock.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-lock-open"></i></span>
                 <span>Unlock Attendance</span>
             </a>
