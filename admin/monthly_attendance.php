@@ -412,7 +412,7 @@ if (isset($_GET['fetch']) && $_GET['fetch'] === '1') {
                 <span class="icon"><i class="fa-solid fa-user-plus"></i></span>
                 <span>Add Employee</span>
             </a>
-            <a href="../admin/basic_pay_update.php" class="menu active">
+            <a href="../admin/basic_pay_update.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-indian-rupee-sign"></i></span>
                 <span>Basic Pay Update</span>
             </a>
@@ -436,7 +436,7 @@ if (isset($_GET['fetch']) && $_GET['fetch'] === '1') {
                 <span class="icon"><i class="fa-solid fa-file-invoice"></i></span>
                 <span>Wage Report</span>
             </a>
-            <a href="../admin/monthly_attendance.php" class="menu">
+            <a href="../admin/monthly_attendance.php" class="menu active">
                 <span class="icon"><i class="fa-solid fa-calendar-days"></i></span>
                 <span>Monthly Attendance</span>
             </a>

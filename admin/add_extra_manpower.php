@@ -666,11 +666,11 @@ $sites = $pdo->query("
                 <span class="icon"><i class="fa-solid fa-user-plus"></i></span>
                 <span>Add Employee</span>
             </a>
-            <a href="../admin/basic_pay_update.php" class="menu active">
+            <a href="../admin/basic_pay_update.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-indian-rupee-sign"></i></span>
                 <span>Basic Pay Update</span>
             </a>
-            <a href="../admin/extra_manpower.php" class="menu">
+            <a href="../admin/extra_manpower.php" class="menu active">
                 <span class="icon"><i class="fa-solid fa-user-clock"></i></span>
                 <span>Add Extra Manpower</span>
             </a>
