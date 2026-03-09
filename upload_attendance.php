@@ -57,10 +57,12 @@ VALUES (
     :backup_attendance_json
 )
 ON DUPLICATE KEY UPDATE
-attendance_year  = VALUES(attendance_year),
-attendance_month = VALUES(attendance_month),
-attendance_json  = JSON_MERGE_PATCH(
+attendance_json = JSON_MERGE_PATCH(
     IFNULL(attendance_json,'{}'),
+    VALUES(attendance_json)
+),
+backup_attendance_json = JSON_MERGE_PATCH(
+    IFNULL(backup_attendance_json,'{}'),
     VALUES(attendance_json)
 )
 ";
@@ -185,7 +187,7 @@ foreach ($monthlyBuffer as $key => $attendanceJson) {
     ":attendance_year" => $year,
     ":attendance_month" => $month,
     ":attendance_json" => $jsonFinal,
-    ":backup_attendance_json" => null
+    ":backup_attendance_json" => $jsonFinal
 ]);
         $processed++;
     } catch (Exception $e) {

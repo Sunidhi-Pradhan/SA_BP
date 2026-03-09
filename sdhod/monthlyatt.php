@@ -518,7 +518,8 @@ if ($workflow) {
         </div>
         <ul class="sidebar-nav">
             <li><a href="dashboard.php" class="nav-link"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a></li>
-            <li><a href="sdhod_monthly.php" class="nav-link active"><i class="fa-solid fa-calendar-days"></i><span>Monthly Attendance</span></a></li>
+            <li><a href="monthlyatt.php" class="nav-link active"><i class="fa-solid fa-calendar-days"></i><span>Monthly Attendance</span></a></li>
+            <li><a href="monthlylpp.php" class="nav-link"><i class="fa-solid fa-file-lines"></i><span>MonthlyLPP</span></a></li>
             <li><a href="../logout.php" class="nav-link logout-link"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></a></li>
         </ul>
     </aside>
