@@ -428,7 +428,7 @@ if (isset($_GET['fetch']) && $_GET['fetch'] === '1') {
                 <span class="icon"><i class="fa-solid fa-file-signature"></i></span>
                 <span>Attendance Request</span>
             </a>
-            <a href="../admin/download_attendance.php" class="menu">
+            <a href="../download_attendance/download_attendance.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-download"></i></span>
                 <span>Download Attendance</span>
             </a>

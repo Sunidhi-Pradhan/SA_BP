@@ -14,8 +14,7 @@ if (!isset($_SESSION['user'])) {
     <meta charset="UTF-8">
     <title>Attendance Request – Security Billing Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="assets/fontawesome/css/all.min.css"
-          onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css'">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/js/all.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; font-family:"Segoe UI",sans-serif; }
@@ -372,7 +371,7 @@ if (!isset($_SESSION['user'])) {
                 <span class="icon"><i class="fa-solid fa-indian-rupee-sign"></i></span>
                 <span>Basic Pay Update</span>
             </a>
-            <a href="../admin/extra_manpower.php" class="menu">
+            <a href="../admin/add_extra_manpower.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-user-clock"></i></span>
                 <span>Add Extra Manpower</span>
             </a>
@@ -384,7 +383,7 @@ if (!isset($_SESSION['user'])) {
                 <span class="icon"><i class="fa-solid fa-file-signature"></i></span>
                 <span>Attendance Request</span>
             </a>
-            <a href="../admin/download_attendance.php" class="menu">
+            <a href="../download_attendance/download_attendance.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-download"></i></span>
                 <span>Download Attendance</span>
             </a>
@@ -396,7 +395,7 @@ if (!isset($_SESSION['user'])) {
                 <span class="icon"><i class="fa-solid fa-calendar-days"></i></span>
                 <span>Monthly Attendance</span>
             </a>
-            <a href="#" class="menu">
+            <a href="../download_attendance/download_attendance.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-file-pdf"></i></span>
                 <span>Download Salary</span>
             </a>

@@ -69,7 +69,7 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
     <meta charset="UTF-8">
     <title>Basic Pay Update – Security Billing Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/js/all.min.js" defer></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.10.5/sweetalert2.min.css">
     <style>
         /* ===== RESET ===== */
@@ -491,7 +491,7 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
                 <span class="icon"><i class="fa-solid fa-indian-rupee-sign"></i></span>
                 <span>Basic Pay Update</span>
             </a>
-            <a href="../admin/extra_manpower.php" class="menu">
+            <a href="../admin/add_extra_manpower.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-user-clock"></i></span>
                 <span>Add Extra Manpower</span>
             </a>
@@ -503,7 +503,7 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
                 <span class="icon"><i class="fa-solid fa-file-signature"></i></span>
                 <span>Attendance Request</span>
             </a>
-            <a href="../admin/download_attendance.php" class="menu">
+            <a href="../download_attendance/download_attendance.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-download"></i></span>
                 <span>Download Attendance</span>
             </a>

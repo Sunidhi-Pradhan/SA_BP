@@ -404,16 +404,16 @@
             <a href="../employees.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-user-plus"></i></span><span>Add Employee</span>
             </a>
-            <a href="#" class="menu">
+            <a href="../admin/basic_pay_update.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-indian-rupee-sign"></i></span><span>Basic Pay Update</span>
             </a>
-            <a href="#" class="menu">
+            <a href="../admin/add_extra_manpower.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-user-clock"></i></span><span>Add Extra Manpower</span>
             </a>
             <a href="../unlock/unlock.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-lock-open"></i></span><span>Unlock Attendance</span>
             </a>
-            <a href="#" class="menu">
+            <a href="../admin/attendance_request.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-file-signature"></i></span><span>Attendance Request</span>
             </a>
             <a href="../download_attendance/download_attendance.php" class="menu active">

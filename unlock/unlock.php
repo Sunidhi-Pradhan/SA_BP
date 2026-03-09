@@ -551,7 +551,7 @@ require_once '../config.php';
                 <span class="icon"><i class="fa-solid fa-indian-rupee-sign"></i></span>
                 <span>Basic Pay Update</span>
             </a>
-            <a href="../admin/extra_manpower.php" class="menu">
+            <a href="../admin/add_extra_manpower.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-user-clock"></i></span>
                 <span>Add Extra Manpower</span>
             </a>
