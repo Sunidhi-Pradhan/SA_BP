@@ -567,16 +567,21 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
 
                             <div class="form-group">
                                 <label class="form-label">Basic+VDA Amount <span class="req">*</span></label>
-                                <select class="form-control" name="basic_vda" required>
-                                    <option value="">Enter Basic+VDA Amount</option>
-                                    <?php
-                                    $amounts = ['8000','9000','10000','11000','12000','13000','14000','15000','16000','17000','18000','20000'];
-                                    foreach ($amounts as $a): ?>
-                                    <option value="<?= $a ?>" <?= (isset($_POST['basic_vda']) && $_POST['basic_vda'] == $a) ? 'selected' : '' ?>>
-                                        ₹<?= number_format((int)$a) ?>
-                                    </option>
-                                    <?php endforeach; ?>
-                                </select>
+                                <div style="position:relative;">
+    <span style="position:absolute;left:.95rem;top:50%;transform:translateY(-50%);
+                 color:var(--subtext);font-size:.9rem;font-weight:600;pointer-events:none;">₹</span>
+    <input
+        type="number"
+        class="form-control"
+        name="basic_vda"
+        placeholder="Enter amount"
+        min="1"
+        step="1"
+        style="padding-left:1.85rem;"
+        value="<?= htmlspecialchars($_POST['basic_vda'] ?? '') ?>"
+        required
+    >
+</div>
                             </div>
 
                             <div class="form-group">
@@ -597,7 +602,7 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
                                 <select class="form-control" name="designation" required>
                                     <option value="">-- Select Designation --</option>
                                     <?php
-                                    $designations = ['Security Guard','Security Supervisor','Head Guard','Fire Guard','Lady Guard','Dog Handler','Driver cum Guard'];
+                                    $designations = ['Security Guard','Security Supervisor','Gun Man','Head Guard','Fire Guard','Lady Guard','Dog Handler','Driver cum Guard'];
                                     foreach ($designations as $d): ?>
                                     <option <?= (isset($_POST['designation']) && $_POST['designation'] === $d) ? 'selected' : '' ?>>
                                         <?= htmlspecialchars($d) ?>
