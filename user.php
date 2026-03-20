@@ -728,6 +728,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <option>GM</option>
                                         <option>HQSO</option>
                                         <option>SDHOD</option>
+                                        <option>Finance</option>
                                     </select>
                                 </div>
                                 <div class="form-group">

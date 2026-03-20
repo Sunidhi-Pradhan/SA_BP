@@ -7,30 +7,25 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
-        :root { --primary:#0f766e; --primary-dark:#0d5f58; --sidebar-width:220px; }
+        :root { --primary:#0f766e; --primary-dark:#0d5f58; --sidebar-width:270px; }
         html { scroll-behavior:smooth; }
         body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#f1f5f4; color:#333; line-height:1.5; }
         .dashboard-layout { display:grid; grid-template-columns:var(--sidebar-width) 1fr; min-height:100vh; }
 
-        /* ── SIDEBAR ── */
+        /* ── SIDEBAR (identical to monthlylpp) ── */
         .sidebar { background:linear-gradient(180deg,#0f766e 0%,#0a5c55 100%); color:white; padding:0; box-shadow:4px 0 24px rgba(13,95,88,0.35); position:sticky; top:0; height:100vh; overflow-y:auto; z-index:100; display:flex; flex-direction:column; }
         .sidebar-close { display:none; position:absolute; top:1rem; right:1rem; background:rgba(255,255,255,0.12); border:none; color:white; width:32px; height:32px; border-radius:8px; cursor:pointer; font-size:1rem; align-items:center; justify-content:center; z-index:2; }
-        .sidebar-logo { padding:1.1rem 1.2rem 1rem; border-bottom:1px solid rgba(255,255,255,0.15); display:flex; align-items:center; gap:0.6rem; }
-        .mcl-logo-box { background:white; padding:6px 10px; border-radius:8px; display:flex; align-items:center; justify-content:center; }
-        .mcl-logo-text { font-size:1.1rem; font-weight:900; color:#0f766e; letter-spacing:1px; display:flex; align-items:center; gap:4px; }
-        .mcl-logo-dot { width:10px; height:10px; background:#0f766e; border-radius:50%; }
-        .sidebar-nav { list-style:none; padding:0.75rem 0; flex:1; }
-        .sidebar-nav li { margin:0.15rem 0.75rem; }
-        .nav-link { display:flex; align-items:center; gap:0.75rem; padding:0.7rem 0.9rem; color:rgba(255,255,255,0.88); text-decoration:none; border-radius:10px; transition:all 0.2s; font-weight:500; font-size:0.88rem; cursor:pointer; }
+        .sidebar-logo { padding:1.4rem 1.5rem 1.2rem; border-bottom:1px solid rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; }
+        .mcl-logo-box { background:white; padding:8px 14px; border-radius:10px; display:flex; align-items:center; justify-content:center; }
+        .mcl-logo-img { max-width:140px; height:auto; display:block; }
+        .sidebar-nav { list-style:none; padding:1rem 0; flex:1; }
+        .sidebar-nav li { margin:0.25rem 1rem; }
+        .nav-link { display:flex; align-items:center; gap:0.9rem; padding:0.85rem 1.1rem; color:rgba(255,255,255,0.88); text-decoration:none; border-radius:12px; transition:all 0.2s; font-weight:500; font-size:0.95rem; cursor:pointer; }
         .nav-link:hover { background:rgba(255,255,255,0.15); color:#fff; }
         .nav-link.active { background:rgba(255,255,255,0.22); color:#fff; font-weight:600; }
-        .nav-link i { font-size:0.9rem; width:18px; text-align:center; opacity:0.9; }
+        .nav-link i { font-size:1.05rem; width:22px; text-align:center; opacity:0.9; }
         .logout-link { color:rgba(255,255,255,0.75) !important; }
         .logout-link:hover { background:rgba(239,68,68,0.18) !important; color:#fca5a5 !important; }
-        .sidebar-bottom { padding:0.75rem; border-top:1px solid rgba(255,255,255,0.1); }
-        .sidebar-att-card { background:rgba(255,255,255,0.12); border-radius:12px; padding:0.75rem; text-align:center; }
-        .sidebar-att-img { width:70px; height:60px; background:rgba(255,255,255,0.15); border-radius:8px; margin:0 auto 0.4rem; display:flex; align-items:center; justify-content:center; font-size:1.8rem; }
-        .sidebar-att-label { font-size:0.7rem; color:rgba(255,255,255,0.8); font-weight:600; }
 
         /* ── MAIN ── */
         .main-content { overflow-y:auto; display:flex; flex-direction:column; min-width:0; }
@@ -39,7 +34,6 @@
         .topbar { display:flex; justify-content:space-between; align-items:center; background:white; padding:0.75rem 1.5rem; box-shadow:0 1px 6px rgba(0,0,0,0.06); border-bottom:1px solid #e5e7eb; gap:1rem; position:sticky; top:0; z-index:50; }
         .hamburger-btn { display:none; background:#f3f4f6; border:1.5px solid #e5e7eb; border-radius:8px; width:34px; height:34px; align-items:center; justify-content:center; cursor:pointer; color:#0f766e; font-size:0.9rem; flex-shrink:0; }
         .topbar-left { display:flex; align-items:center; gap:0.75rem; }
-        .sidebar-toggle { background:none; border:none; color:#374151; cursor:pointer; font-size:1rem; padding:0.3rem; }
         .topbar h2 { font-size:1.1rem; font-weight:700; color:#1f2937; }
         .topbar-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
         .header-icon { width:34px; height:34px; border-radius:50%; background:#f3f4f6; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; color:#6b7280; font-size:0.88rem; border:1px solid #e5e7eb; }
@@ -104,13 +98,11 @@
         .lpp-table-wrap::-webkit-scrollbar-thumb { background:#0f766e; border-radius:3px; }
         .lpp-table { width:100%; border-collapse:collapse; font-size:0.78rem; min-width:860px; }
 
-        /* Main thead */
         .lpp-table thead tr th { background:#f8fafc; color:#374151; font-weight:700; font-size:0.72rem; padding:0.65rem 0.75rem; text-align:center; border-bottom:2px solid #e5e7eb; border-right:1px solid #e5e7eb; white-space:nowrap; position:relative; }
         .lpp-table thead tr th:first-child { text-align:left; padding-left:1rem; min-width:280px; border-right:1px solid #e5e7eb; }
         .lpp-table thead tr th:last-child { border-right:none; background:#f0fdf4; color:#065f46; }
         .sort-icon { font-size:0.6rem; color:#9ca3af; margin-left:4px; cursor:pointer; }
 
-        /* Site rows */
         .site-row { cursor:pointer; transition:background 0.12s; border-bottom:1px solid #f0f0f0; }
         .site-row:hover { background:#f9fafb; }
         .site-row.expanded { background:#f0fdf9; border-bottom:none; }
@@ -118,7 +110,6 @@
         .site-row td:first-child { text-align:left; padding-left:0.75rem; border-right:1px solid #f0f0f0; }
         .site-row td:last-child { border-right:none; color:#065f46; font-weight:700; background:#f0fdf4; }
 
-        /* Site name cell */
         .site-name-wrap { display:flex; align-items:flex-start; gap:0.5rem; }
         .expand-btn { width:20px; height:20px; border-radius:5px; border:1.5px solid #d1d5db; background:white; color:#6b7280; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; font-size:0.58rem; flex-shrink:0; margin-top:1px; transition:all 0.2s; }
         .expand-btn.open { background:#0f766e; color:white; border-color:#0f766e; }
@@ -127,7 +118,6 @@
         .site-name { font-weight:700; font-size:0.8rem; color:#1f2937; }
         .site-emp-count { font-size:0.65rem; color:#9ca3af; }
 
-        /* Pills */
         .pill { display:inline-flex; align-items:center; justify-content:center; min-width:26px; height:22px; border-radius:20px; font-size:0.7rem; font-weight:700; padding:0 0.45rem; }
         .pill-green  { background:#dcfce7; color:#15803d; }
         .pill-red    { background:#fee2e2; color:#b91c1c; }
@@ -136,18 +126,15 @@
         .pill-yellow { background:#fef9c3; color:#a16207; }
         .pill-gray   { background:#f3f4f6; color:#6b7280; }
 
-        /* Breakdown inline section */
         .breakdown-link-row td { padding:0.25rem 0.75rem 0.5rem 2.7rem; background:#f0fdf9; border-bottom:1px solid #e0f2f1; }
         .breakdown-link-row.hidden { display:none; }
         .breakdown-link { display:inline-flex; align-items:center; gap:0.3rem; font-size:0.72rem; font-weight:600; color:#0f766e; cursor:pointer; border:none; background:none; padding:0; text-decoration:underline; text-underline-offset:2px; }
         .breakdown-link i { font-size:0.65rem; }
 
-        /* Designation section */
         .desig-section-row { display:none; }
         .desig-section-row.open { display:table-row; }
         .desig-outer-td { padding:0; background:#f8fafc; border-bottom:2px solid #d1fae5; }
 
-        /* Desig sub-table */
         .desig-sub-wrap { overflow-x:auto; }
         .desig-sub-table { width:100%; border-collapse:collapse; font-size:0.73rem; min-width:860px; }
         .desig-sub-table thead th { background:linear-gradient(135deg,#1e3a5f 0%,#1a3354 100%); color:rgba(255,255,255,0.92); font-weight:700; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.3px; padding:0.5rem 0.65rem; text-align:center; border-right:1px solid rgba(255,255,255,0.08); white-space:nowrap; }
@@ -161,19 +148,18 @@
         .desig-sub-table tbody td:last-child { border-right:none; background:#d1fae5; color:#065f46; font-weight:700; }
         .desig-sub-table tbody tr:nth-child(even) td:last-child { background:#a7f3d0; }
 
-        /* Grand total row */
         .grand-row td { background:linear-gradient(90deg,#f0fdf4,#dcfce7); font-weight:800; color:#065f46; padding:0.7rem 0.75rem; text-align:center; border-top:2px solid #6ee7b7; white-space:nowrap; font-size:0.78rem; }
         .grand-row td:first-child { text-align:left; padding-left:1rem; }
         .grand-row td:last-child { background:linear-gradient(135deg,#059669,#047857); color:white; border-right:none; }
 
-        /* Sidebar overlay */
-        .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:99; }
+        /* ── SIDEBAR OVERLAY ── */
+        .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:99; backdrop-filter:blur(2px); }
         .sidebar-overlay.active { display:block; }
 
         /* ── RESPONSIVE ── */
         @media (max-width:900px) {
             .dashboard-layout { grid-template-columns:1fr; }
-            .sidebar { position:fixed; left:0; top:0; height:100vh; width:220px; transform:translateX(-100%); transition:transform 0.3s; z-index:200; }
+            .sidebar { position:fixed; left:0; top:0; height:100vh; width:var(--sidebar-width); transform:translateX(-100%); transition:transform 0.3s; z-index:200; }
             .sidebar.open { transform:translateX(0); box-shadow:8px 0 32px rgba(0,0,0,0.3); }
             .sidebar-close { display:flex; }
             .hamburger-btn { display:flex; }
@@ -187,28 +173,23 @@
 
 <div class="dashboard-layout">
 
-    <!-- ── SIDEBAR ── -->
+    <!-- ── SIDEBAR (identical to monthlylpp) ── -->
     <aside class="sidebar" id="sidebar">
         <button class="sidebar-close" id="sidebarClose"><i class="fa-solid fa-xmark"></i></button>
         <div class="sidebar-logo">
             <div class="mcl-logo-box">
-                <div class="mcl-logo-text"><div class="mcl-logo-dot"></div> MCL</div>
+                <img src="../assets/logo/images.png" alt="MCL Logo" class="mcl-logo-img"
+                     onerror="this.parentElement.innerHTML='<span style=&quot;font-size:1.4rem;font-weight:900;color:#0f766e;letter-spacing:2px;&quot;>&#9679; MCL</span>'">
             </div>
         </div>
         <ul class="sidebar-nav">
             <li><a href="dashboard.php" class="nav-link"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a></li>
-            <li><a href="monthlyatt.php" class="nav-link"><i class="fa-solid fa-chart-bar"></i><span>Monthly Attendance</span></a></li>
-            <li><a href="monthlylpp.php" class="nav-link"><i class="fa-solid fa-file-invoice-dollar"></i><span>Monthly LPP</span></a></li>
-            <li><a class="nav-link active"><i class="fa-solid fa-list-check"></i><span>Details Monthly LPP</span></a></li>
-            <li><a href="vvstatement.php" class="nav-link"><i class="fa-solid fa-file-lines"></i><span>VV Statement</span></a></li>
+            <li><a href="monthlyatt.php" class="nav-link"><i class="fa-solid fa-calendar-days"></i><span>Monthly Attendance</span></a></li>
+            <li><a href="monthlylpp.php" class="nav-link"><i class="fa-solid fa-calendar-check"></i><span>Monthly LPP</span></a></li>
+            <li><a href="details_monthly_lpp.php" class="nav-link active"><i class="fa-solid fa-list-check"></i><span>Details Monthly LPP</span></a></li>
+            <li><a href="vvstatement.php" class="nav-link"><i class="fa-solid fa-file-invoice"></i><span>VV Statement</span></a></li>
             <li><a href="../logout.php" class="nav-link logout-link"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></a></li>
         </ul>
-        <div class="sidebar-bottom">
-            <div class="sidebar-att-card">
-                <div class="sidebar-att-img">📊</div>
-                <div class="sidebar-att-label">Attendance<br>Management</div>
-            </div>
-        </div>
     </aside>
 
     <!-- ── MAIN ── -->
@@ -218,7 +199,6 @@
         <header class="topbar">
             <div class="topbar-left">
                 <button class="hamburger-btn" id="hamburgerBtn"><i class="fa-solid fa-bars"></i></button>
-                <button class="sidebar-toggle" id="sidebarToggleBtn"><i class="fa-solid fa-bars"></i></button>
                 <h2>Security Billing Management Portal</h2>
             </div>
             <div class="topbar-right">
@@ -326,9 +306,9 @@
                                 <td id="gt-extra">0</td>
                                 <td id="gt-twd">0</td>
                                 <td id="gt-emp">0</td>
-                                <td id="gt-net">₹0.00</td>
-                                <td id="gt-gst">₹0.00</td>
-                                <td id="gt-gross">₹0.00</td>
+                                <td id="gt-net">&#8377;0.00</td>
+                                <td id="gt-gst">&#8377;0.00</td>
+                                <td id="gt-gross">&#8377;0.00</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -365,7 +345,7 @@ const designations = [
     { title:'SECURITY SUPERVISOR', empPct:0.07, basic:893,  cmpf:107.16, cmps:62.51, bonus:null,  esi:null,  pfAdmin:6.43, otherAllow:1069.10, sc:133.64, perDay:1202.74 },
 ];
 
-const INR = v => v === 0 ? '₹0.00' : '₹' + v.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+const INR = v => v === 0 ? '&#8377;0.00' : '&#8377;' + v.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
 const shortMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const fullMonths  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -436,7 +416,7 @@ function buildTable() {
 
         const sid = site.id;
 
-        /* ── Site Row ── */
+        /* Site Row */
         const tr = document.createElement('tr');
         tr.className = 'site-row';
         tr.dataset.siteName = site.name.toLowerCase();
@@ -465,7 +445,7 @@ function buildTable() {
         tr.onclick = () => toggleDesig(sid);
         body.appendChild(tr);
 
-        /* ── Breakdown link row ── */
+        /* Breakdown link row */
         const blr = document.createElement('tr');
         blr.className = 'breakdown-link-row hidden';
         blr.id = `blr-${sid}`;
@@ -478,7 +458,7 @@ function buildTable() {
         `;
         body.appendChild(blr);
 
-        /* ── Designation sub-table row ── */
+        /* Designation sub-table row */
         const dsr = document.createElement('tr');
         dsr.className = 'desig-section-row';
         dsr.id = `dsr-${sid}`;
@@ -493,8 +473,8 @@ function buildTable() {
                 <td>${INR(d.basic)}</td>
                 <td>${INR(d.cmpf)}</td>
                 <td>${INR(d.cmps)}</td>
-                <td>${d.bonus ? INR(d.bonus) : '—'}</td>
-                <td>${d.esi ? INR(d.esi) : '—'}</td>
+                <td>${d.bonus ? INR(d.bonus) : '&mdash;'}</td>
+                <td>${d.esi ? INR(d.esi) : '&mdash;'}</td>
                 <td>${INR(d.pfAdmin)}</td>
                 <td>${INR(d.otherAllow)}</td>
                 <td>${INR(d.sc)}</td>
@@ -540,19 +520,16 @@ function buildTable() {
 
     /* Grand totals */
     document.getElementById('gt-emp').textContent   = gTotals.emp.toLocaleString('en-IN');
-    document.getElementById('gt-net').textContent   = INR(gTotals.net);
-    document.getElementById('gt-gst').textContent   = INR(gTotals.gst);
-    document.getElementById('gt-gross').textContent = INR(gTotals.gross);
+    document.getElementById('gt-net').innerHTML     = INR(gTotals.net);
+    document.getElementById('gt-gst').innerHTML     = INR(gTotals.gst);
+    document.getElementById('gt-gross').innerHTML   = INR(gTotals.gross);
 
     const mLabel = fullMonths[pickerMonth-1] + ' ' + pickerYear;
     document.getElementById('summaryTitle').textContent     = `LPP Summary (${mLabel})`;
     document.getElementById('summaryMonthChip').textContent = mLabel;
     document.getElementById('summarySubtitle').textContent  = `${filtered.length} sites\u00a0|\u00a0${gTotals.emp.toLocaleString('en-IN')} total employees`;
 
-    /* Auto-expand first row to match reference image */
-    if (filtered.length > 0) {
-        toggleDesig(filtered[0].id);
-    }
+    if (filtered.length > 0) toggleDesig(filtered[0].id);
 }
 
 /* ── TOGGLE ── */
@@ -562,9 +539,7 @@ function toggleDesig(sid) {
     const dsr  = document.getElementById(`dsr-${sid}`);
     const btn  = document.getElementById(`expbtn-${sid}`);
     if (!siteRow) return;
-
     const isOpen = dsr.classList.contains('open');
-
     if (isOpen) {
         dsr.classList.remove('open');
         blr.classList.add('hidden');

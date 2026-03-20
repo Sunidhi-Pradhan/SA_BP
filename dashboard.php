@@ -98,10 +98,6 @@ if (!isset($_SESSION["user"])) {
                 <span class="icon"><i class="fa-solid fa-calendar-days"></i></span>
                 <span>Monthly Attendance</span>
             </a>
-            <a href="#" class="menu">
-                <span class="icon"><i class="fa-solid fa-file-pdf"></i></span>
-                <span>Download Salary</span>
-            </a>
             <a href="logout.php" class="menu logout">
                 <span class="icon"><i class="fa-solid fa-right-from-bracket"></i></span>
                 <span>Logout</span>
