@@ -239,9 +239,9 @@ body {
   <div class="header-left">
     <img src="assets/logo/images.png" alt="MCL Logo" onerror="this.style.display='none'">
   </div>
-  <div class="header-center">Security Billing Management Portal</div>
+  <div class="header-center"><h1>Security Billing Management Portal</h1></div>
   <div class="header-right">
-    <img src="assets/logo/moc.png" alt="Ministry of Coal" onerror="this.style.display='none'">
+<img src="assets/logo/image.png" alt="Ministry of Coal" onerror="this.style.display='none'">
     <div class="moc-text">
       <strong>Ministry of Coal</strong>
       Government of India
