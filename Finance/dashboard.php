@@ -324,6 +324,7 @@ td { padding: 15px 20px; font-size: 0.86rem; }
     </div>
     <ul class="sidebar-nav">
       <li><a class="nav-link active" href="dashboard.php"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a></li>
+      <li><a class="nav-link" href="monthlylpp.php"><i class="fa-solid fa-file-invoice-dollar"></i><span>Monthly LPP</span></a></li>
       <!-- <li><a class="nav-link logout-link" href="../logout.php"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></a></li> -->
     </ul>
   </aside>

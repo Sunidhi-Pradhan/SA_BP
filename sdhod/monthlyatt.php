@@ -152,6 +152,10 @@ if ($reportLoaded) {
         $alreadyApproved = true;
         $currentStep     = 'COMPLETE';
 
+        // ── Auto-generate LPC after SDHOD final approval ──
+        require_once __DIR__ . '/generate_lpc.php';
+        generateLpcForSite($pdo, $siteCode, $month, $year);
+
         // Refresh workflow
         $stmtWorkflow->execute([$siteCode, $month, $year]);
         $workflowRow = $stmtWorkflow->fetch(PDO::FETCH_ASSOC);
