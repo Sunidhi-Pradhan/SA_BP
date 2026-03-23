@@ -456,8 +456,9 @@ foreach ($attendanceList as $row) {
             </div>
             <h2>Security Management Portal</h2>
             <div class="topbar-right">
+                <button class="theme-btn" id="themeToggle" title="Toggle dark mode" style="width:36px;height:36px;border-radius:50%;border:1px solid #e5e7eb;background:#f3f4f6;color:#6b7280;font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s,color .2s,transform .2s;"><i class="fa-solid fa-moon"></i></button>
                 <div class="user-icon">
-                    <a href="user_profile.php">
+                    <a href="user_profile.php" aria-label="Profile">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
                              stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -641,6 +642,18 @@ foreach ($attendanceList as $row) {
         document.getElementById('filterBtnText').textContent = 'Hide Filters';
     });
     <?php endif; ?>
+
+    /* ── Theme toggle ── */
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+      const themeIcon = themeToggle.querySelector('i');
+      function applyTheme(d) {
+        if (d) { document.body.classList.add('dark'); themeToggle.classList.add('active'); themeToggle.style.background='#1e293b'; themeToggle.style.color='#fbbf24'; themeToggle.style.borderColor='#334155'; themeIcon.className='fa-solid fa-sun'; }
+        else { document.body.classList.remove('dark'); themeToggle.classList.remove('active'); themeToggle.style.background='#f3f4f6'; themeToggle.style.color='#6b7280'; themeToggle.style.borderColor='#e5e7eb'; themeIcon.className='fa-solid fa-moon'; }
+      }
+      applyTheme(localStorage.getItem('theme')==='dark');
+      themeToggle.addEventListener('click', () => { const d=document.body.classList.contains('dark'); applyTheme(!d); localStorage.setItem('theme',!d?'dark':'light'); });
+    }
 </script>
 </body>
 </html>

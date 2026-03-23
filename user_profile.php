@@ -327,6 +327,51 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
         .profile-actions { justify-content: center; }
         .action-btn { width: 100%; justify-content: center; }
     }
+
+    /* ── Change Password Modal ── */
+    .modal-overlay {
+        display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5);
+        z-index:1000; align-items:center; justify-content:center; backdrop-filter:blur(3px);
+    }
+    .modal-overlay.active { display:flex; }
+    .modal-box {
+        background:#fff; border-radius:14px; width:400px; max-width:92vw;
+        box-shadow:0 20px 60px rgba(0,0,0,0.2); overflow:hidden;
+        animation:modalIn .35s ease;
+    }
+    @keyframes modalIn { from{opacity:0;transform:scale(.93) translateY(20px);} to{opacity:1;transform:scale(1) translateY(0);} }
+    .modal-header {
+        background:linear-gradient(135deg,#0f766e,#0d5f58); padding:1.25rem 1.5rem;
+        display:flex; align-items:center; justify-content:space-between;
+    }
+    .modal-header h3 { color:#fff; font-size:1rem; font-weight:700; display:flex; align-items:center; gap:.5rem; }
+    .modal-close {
+        background:rgba(255,255,255,.15); border:none; color:#fff; width:30px; height:30px;
+        border-radius:8px; cursor:pointer; font-size:.9rem; display:flex; align-items:center; justify-content:center;
+    }
+    .modal-body { padding:1.5rem; }
+    .modal-step { display:none; }
+    .modal-step.active { display:block; }
+    .form-group { margin-bottom:1rem; }
+    .form-group label { display:block; font-size:.82rem; font-weight:600; color:#374151; margin-bottom:.4rem; }
+    .form-group input {
+        width:100%; padding:.7rem 1rem; border:1.5px solid #d1d5db; border-radius:8px;
+        font-size:.9rem; outline:none; transition:border-color .2s;
+    }
+    .form-group input:focus { border-color:#0f766e; box-shadow:0 0 0 3px rgba(15,118,110,.1); }
+    .modal-msg {
+        padding:.5rem .8rem; border-radius:7px; font-size:.82rem; font-weight:600; margin-bottom:1rem; display:none;
+    }
+    .modal-msg.error { display:flex; background:#fef2f2; color:#dc2626; border:1px solid #fecaca; align-items:center; gap:.4rem; }
+    .modal-msg.success { display:flex; background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; align-items:center; gap:.4rem; }
+    .modal-btn {
+        width:100%; padding:.7rem; border:none; border-radius:8px; font-size:.9rem; font-weight:700;
+        cursor:pointer; display:flex; align-items:center; justify-content:center; gap:.5rem;
+        background:linear-gradient(135deg,#0f766e,#0d5f58); color:#fff;
+        box-shadow:0 3px 10px rgba(15,118,110,.3); transition:filter .2s,transform .15s;
+    }
+    .modal-btn:hover { filter:brightness(1.07); transform:translateY(-1px); }
+    .modal-btn:disabled { opacity:.6; cursor:not-allowed; }
     </style>
 </head>
 <body>
@@ -450,6 +495,10 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
                         <i class="fa-solid fa-arrow-left"></i>
                         Back to Dashboard
                     </a>
+                    <button class="action-btn primary" onclick="document.getElementById('pwModal').classList.add('active')" style="background:#d97706;border:none;cursor:pointer;">
+                        <i class="fa-solid fa-key"></i>
+                        Change Password
+                    </button>
                 </div>
 
             </div>
@@ -458,6 +507,47 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
         <footer>© 2026 MCL — All Rights Reserved</footer>
 
     </main>
+</div>
+
+<!-- ═══════════════ CHANGE PASSWORD MODAL ═══════════════ -->
+<div class="modal-overlay" id="pwModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-key"></i> Change Password</h3>
+      <button class="modal-close" onclick="closePwModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-msg" id="pwMsg"></div>
+
+      <!-- Step 1: Verify Google Authenticator Code -->
+      <div class="modal-step active" id="pwStep1">
+        <p style="font-size:.84rem;color:#6b7280;margin-bottom:1rem;">Enter the 6-digit code from your Google Authenticator app to verify your identity.</p>
+        <div class="form-group">
+          <label>Authenticator Code</label>
+          <input type="text" id="authCode" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" placeholder="Enter 6-digit code" autocomplete="off">
+        </div>
+        <button class="modal-btn" id="verifyCodeBtn" onclick="verifyCode()">
+          <i class="fa-solid fa-shield-halved"></i> Verify & Proceed
+        </button>
+      </div>
+
+      <!-- Step 2: New Password -->
+      <div class="modal-step" id="pwStep2">
+        <p style="font-size:.84rem;color:#16a34a;margin-bottom:1rem;font-weight:600;"><i class="fa-solid fa-circle-check"></i> Identity verified. Enter your new password.</p>
+        <div class="form-group">
+          <label>New Password</label>
+          <input type="password" id="newPassword" placeholder="At least 6 characters">
+        </div>
+        <div class="form-group">
+          <label>Confirm Password</label>
+          <input type="password" id="confirmPassword" placeholder="Re-enter new password">
+        </div>
+        <button class="modal-btn" id="changePwBtn" onclick="changePassword()">
+          <i class="fa-solid fa-lock"></i> Update Password
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -485,6 +575,60 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
     window.addEventListener('resize', () => {
         if (window.innerWidth > 768) closeSidebar();
     });
+    /* ── Change Password Modal Logic ── */
+    function closePwModal() {
+        document.getElementById('pwModal').classList.remove('active');
+        document.getElementById('pwStep1').classList.add('active');
+        document.getElementById('pwStep2').classList.remove('active');
+        document.getElementById('pwMsg').className='modal-msg';
+        document.getElementById('pwMsg').textContent='';
+        document.getElementById('authCode').value='';
+        document.getElementById('newPassword').value='';
+        document.getElementById('confirmPassword').value='';
+    }
+
+    // Click outside modal to close
+    document.getElementById('pwModal').addEventListener('click', function(e) {
+        if (e.target === this) closePwModal();
+    });
+
+    async function verifyCode() {
+        const btn = document.getElementById('verifyCodeBtn');
+        const code = document.getElementById('authCode').value.trim();
+        const msg = document.getElementById('pwMsg');
+        if (!/^[0-9]{6}$/.test(code)) { showMsg(msg,'error','Please enter a valid 6-digit code.'); return; }
+        btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...';
+        try {
+            const fd = new FormData(); fd.append('action','verify_code'); fd.append('code',code);
+            const res = await fetch('change_password.php',{method:'POST',body:fd});
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('pwStep1').classList.remove('active');
+                document.getElementById('pwStep2').classList.add('active');
+                msg.className='modal-msg'; msg.textContent='';
+            } else { showMsg(msg,'error',data.message); }
+        } catch(e) { showMsg(msg,'error','Network error.'); }
+        btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Verify & Proceed';
+    }
+
+    async function changePassword() {
+        const btn = document.getElementById('changePwBtn');
+        const np = document.getElementById('newPassword').value;
+        const cp = document.getElementById('confirmPassword').value;
+        const msg = document.getElementById('pwMsg');
+        if (np.length < 6) { showMsg(msg,'error','Password must be at least 6 characters.'); return; }
+        if (np !== cp) { showMsg(msg,'error','Passwords do not match.'); return; }
+        btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Updating...';
+        try {
+            const fd = new FormData(); fd.append('action','change_password'); fd.append('new_password',np); fd.append('confirm_password',cp);
+            const res = await fetch('change_password.php',{method:'POST',body:fd});
+            const data = await res.json();
+            if (data.success) { showMsg(msg,'success',data.message); btn.innerHTML = '<i class="fa-solid fa-check"></i> Done!'; setTimeout(()=>closePwModal(),2000); }
+            else { showMsg(msg,'error',data.message); btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-lock"></i> Update Password'; }
+        } catch(e) { showMsg(msg,'error','Network error.'); btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-lock"></i> Update Password'; }
+    }
+
+    function showMsg(el,type,text) { el.className='modal-msg '+type; el.innerHTML='<i class="fa-solid fa-'+(type==='error'?'circle-exclamation':'circle-check')+'"></i> '+text; }
 </script>
 
 </body>

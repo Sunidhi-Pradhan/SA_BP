@@ -844,6 +844,21 @@ foreach ($records as $record) {
             .table-controls { padding: 1rem; flex-direction: column; align-items: stretch; }
             .search-box { max-width: 100%; }
         }
+        .theme-btn {
+          width: 40px; height: 40px; border-radius: 50%;
+          border: 1px solid var(--border-color); background: var(--bg-primary);
+          color: var(--text-secondary); font-size: 1rem; cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          transition: background .2s, color .2s, transform .2s;
+        }
+        .theme-btn:hover { background: var(--primary-light); color: white; transform: scale(1.1); }
+        .theme-btn.active { background: #1e293b; color: #fbbf24; border-color: #334155; }
+        body.dark { --bg-primary: #0f172a; --bg-secondary: #1e293b; --border-color: #334155; --text-primary: #e5e7eb; --text-secondary: #94a3b8; }
+        body.dark .sidebar { background: linear-gradient(180deg, #0a3d38 0%, #072926 100%); }
+        body.dark .header { background: #1e293b; border-color: #334155; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+        body.dark .stat-card, body.dark .table-card, body.dark .chart-card { background: #1e293b; border-color: #334155; }
+        body.dark .table-row:hover { background: #263445; }
+        body.dark .table-row:nth-child(even) { background: #1a2332; }
     </style>
 </head>
 
@@ -893,6 +908,7 @@ foreach ($records as $record) {
                 <p>Today is <?= date('l, F d, Y') ?></p>
             </div>
             <div class="header-right">
+                <button class="theme-btn" id="themeToggle" title="Toggle dark mode"><i class="fa-solid fa-moon"></i></button>
                 <div class="header-icon">
                     <i class="fa-regular fa-bell"></i>
                     <span class="badge">3</span>
@@ -1279,6 +1295,18 @@ function updateStats() {
 document.addEventListener('DOMContentLoaded', () => {
     initChart();
     updateStats();
+
+    /* ── Theme toggle ── */
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        const themeIcon = themeToggle.querySelector('i');
+        function applyTheme(d) {
+            if (d) { document.body.classList.add('dark'); themeToggle.classList.add('active'); themeIcon.className='fa-solid fa-sun'; }
+            else { document.body.classList.remove('dark'); themeToggle.classList.remove('active'); themeIcon.className='fa-solid fa-moon'; }
+        }
+        applyTheme(localStorage.getItem('theme')==='dark');
+        themeToggle.addEventListener('click', () => { const d=document.body.classList.contains('dark'); applyTheme(!d); localStorage.setItem('theme',!d?'dark':'light'); });
+    }
 });
 </script>
 

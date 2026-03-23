@@ -464,6 +464,13 @@ if ($donutTotal === 0) { $donutPresent = 1; $donutTotal = 1; } // show filled ci
       <button class="theme-btn" id="themeToggle" title="Toggle dark mode">
         <i class="fa-solid fa-moon"></i>
       </button>
+      <a href="admin_profile.php" title="My Profile" style="text-decoration:none;">
+        <div style="width:40px;height:40px;border-radius:50%;background:#0f766e;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .2s,box-shadow .2s;flex-shrink:0;" onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 4px 14px rgba(15,118,110,0.35)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none'">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="8" r="4"/>
+          </svg>
+        </div>
+      </a>
     </header>
 
     <!-- PAGE CONTENT -->

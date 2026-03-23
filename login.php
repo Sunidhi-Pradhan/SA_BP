@@ -350,7 +350,7 @@ body {
         <button type="submit" class="btn-login">Login</button>
 
         <div class="extra-links">
-          <span>Forgot Password? <a href="#">Click Here</a></span>
+          <span>Forgot Password? <a href="forgot_password.php">Click Here</a></span>
           <span>User Manual? <a href="#">Click Here</a></span>
         </div>
 

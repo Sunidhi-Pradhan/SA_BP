@@ -409,6 +409,26 @@ td { padding: 16px 20px; font-size: 0.86rem; }
   .main-content { padding: 1.25rem; }
   .page-heading { flex-direction: column; align-items: flex-start; }
 }
+.theme-btn {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 1px solid var(--border); background: #f3f4f6;
+  color: #6b7280; font-size: 1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .2s, color .2s, transform .2s;
+}
+.theme-btn:hover { background: #e5e7eb; transform: scale(1.1); }
+.theme-btn.active { background: #1e293b; color: #fbbf24; border-color: #334155; }
+body.dark { --bg: #0f172a; --white: #1e293b; --border: #334155; --text: #e5e7eb; --muted: #94a3b8; }
+body.dark .sidebar { background: linear-gradient(180deg, #0a3d38 0%, #072926 100%); }
+body.dark .topbar { background: #1e293b; box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+body.dark .kpi-card { background: #1e293b; border-color: #334155; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+body.dark .section { background: #1e293b; border-color: #334155; }
+body.dark thead th { background: linear-gradient(135deg, #0a3d38, #072926); }
+body.dark tbody tr:hover { background: #263445; }
+body.dark tbody tr:nth-child(even) { background: #1a2332; }
+body.dark .pagination { background: #1a2332; border-color: #334155; }
+body.dark .pag-btn { background: #1e293b; border-color: #334155; color: #94a3b8; }
+body.dark .filter-select { background-color: #1e293b; color: #e5e7eb; border-color: #334155; }
 </style>
 </head>
 <body>
@@ -464,6 +484,7 @@ td { padding: 16px 20px; font-size: 0.86rem; }
           <i class="fa-regular fa-bell"></i>
           <span class="badge">3</span>
         </div>
+        <button class="theme-btn" id="themeToggle" title="Toggle dark mode"><i class="fa-solid fa-moon"></i></button>
         <a href="profile.php" title="My Profile" style="text-decoration:none;">
           <div class="user-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -648,6 +669,16 @@ td { padding: 16px 20px; font-size: 0.86rem; }
 
   // Render on page load
   renderTable();
+
+  /* ── Theme toggle ── */
+  const themeToggle = document.getElementById('themeToggle');
+  const themeIcon = themeToggle.querySelector('i');
+  function applyTheme(d) {
+    if (d) { document.body.classList.add('dark'); themeToggle.classList.add('active'); themeIcon.className='fa-solid fa-sun'; }
+    else { document.body.classList.remove('dark'); themeToggle.classList.remove('active'); themeIcon.className='fa-solid fa-moon'; }
+  }
+  applyTheme(localStorage.getItem('theme')==='dark');
+  themeToggle.addEventListener('click', () => { const d=document.body.classList.contains('dark'); applyTheme(!d); localStorage.setItem('theme',!d?'dark':'light'); });
 </script>
 </body>
 </html>

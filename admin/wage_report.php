@@ -569,7 +569,7 @@ async function fetchData() {
             </div>
             <a class="btn-download" href="${downloadUrl}" download>
                 <i class="fa-solid fa-download"></i>
-                Download CSV File
+                Download Excel Report
             </a>
             <div class="download-note">
                 <i class="fa-solid fa-circle-info"></i>

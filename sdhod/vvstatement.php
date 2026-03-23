@@ -131,26 +131,8 @@ body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#f5f5
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">SELECT SITE</label>
-                        <select class="form-select" id="siteSelect">
-                            <option value="ALL">All Sites</option>
-                            <?php foreach($sites as $site): ?>
-                                <option value="<?= htmlspecialchars($site['SiteCode']) ?>"><?= htmlspecialchars($site['SiteName']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="form-group full-width">
-                        <label class="form-label">SELECT CATEGORY</label>
-                        <select class="form-select" id="categorySelect">
-                            <option value=">26">Working days More than 26 notional days</option>
-                            <option value="=26">Working days exactly 26 notional days</option>
-                            <option value="<26">Working days Less than 26 notional days</option>
-                            <option value="overtime">Overtime</option>
-                            <option value="leave">Leave</option>
-                            <option value="all">All Categories</option>
-                        </select>
-                    </div>
+                    <input type="hidden" id="siteSelect" value="ALL">
+                    <input type="hidden" id="categorySelect" value="all">
                 </div>
 
                 <button class="btn-submit" onclick="fetchStatement()">
@@ -167,10 +149,48 @@ body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#f5f5
 </div>
 
 <script>
-function fetchStatement() {
+let vvData = null; // cached data from last fetch
+
+const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function getMonthsForFY(fy) {
+    const [startYear] = fy.split('-').map(Number);
+    const months = [];
+    for (let m = 4; m <= 12; m++) months.push({ name: monthNames[m-1], year: startYear });
+    for (let m = 1; m <= 3; m++)  months.push({ name: monthNames[m-1], year: startYear + 1 });
+    return months;
+}
+
+// Populate month selector on page load & FY change
+function populateMonths() {
     const fy = document.getElementById('fySelect').value;
-    const site = document.getElementById('siteSelect').value;
-    const cat = document.getElementById('categorySelect').value;
+    const months = getMonthsForFY(fy);
+    let sel = document.getElementById('monthSelect');
+    if (!sel) {
+        // Create month selector
+        const group = document.createElement('div');
+        group.className = 'form-group';
+        group.innerHTML = '<label class="form-label">SELECT MONTH</label><select class="form-select" id="monthSelect"></select>';
+        document.querySelector('.form-grid').insertBefore(group, document.querySelector('.form-group.full-width'));
+        sel = document.getElementById('monthSelect');
+    }
+    sel.innerHTML = months.map(m => `<option value="${m.name} ${m.year}">${m.name} ${m.year}</option>`).join('');
+
+    // Default to current month if it exists in the list
+    const now = new Date();
+    const curLabel = monthNames[now.getMonth()] + ' ' + now.getFullYear();
+    if ([...sel.options].find(o => o.value === curLabel)) sel.value = curLabel;
+}
+document.getElementById('fySelect').addEventListener('change', populateMonths);
+document.addEventListener('DOMContentLoaded', populateMonths);
+
+async function fetchStatement() {
+    const fy    = document.getElementById('fySelect').value;
+    const site  = document.getElementById('siteSelect').value;
+    const cat   = document.getElementById('categorySelect').value;
+    const month = document.getElementById('monthSelect')?.value || '';
+
+    if (!month) { Swal.fire({icon:'warning',title:'Select Month',text:'Please select a month.',toast:true,position:'top-end',showConfirmButton:false,timer:3000}); return; }
 
     const btn = document.querySelector('.btn-submit');
     const originalHtml = btn.innerHTML;
@@ -178,36 +198,128 @@ function fetchStatement() {
     btn.disabled = true;
     document.getElementById('downloadBtn').style.display = 'none';
 
-    // Simulate API call for now since backend logic for VV Statement isn't fully defined yet
-    setTimeout(() => {
-        btn.innerHTML = originalHtml;
-        btn.disabled = false;
-        
-        document.getElementById('downloadBtn').style.display = 'flex';
-        
-        Swal.fire({
-            icon: 'success',
-            title: 'Filters Applied',
-            text: 'VV Statement data loaded conditionally.',
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 3000
-        });
-    }, 800);
+    try {
+        const url = `export_vv_statement.php?format=json&fy=${encodeURIComponent(fy)}&site=${encodeURIComponent(site)}&category=${encodeURIComponent(cat)}&month=${encodeURIComponent(month)}`;
+        const res = await fetch(url);
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); } catch(pe) {
+            console.error('Server response:', text);
+            Swal.fire({icon:'error',title:'Server Error',text:text.substring(0,200),toast:true,position:'top-end',showConfirmButton:false,timer:5000});
+            btn.innerHTML = originalHtml; btn.disabled = false; return;
+        }
+
+        if (data.error) {
+            Swal.fire({icon:'error',title:'Database Error',text:data.error.substring(0,200),toast:true,position:'top-end',showConfirmButton:false,timer:5000});
+            btn.innerHTML = originalHtml; btn.disabled = false; return;
+        }
+
+        vvData = data;
+
+        if (data.count > 0) {
+            document.getElementById('downloadBtn').style.display = 'flex';
+            Swal.fire({
+                icon: 'success',
+                title: 'Data Loaded',
+                text: `${data.count} employees found for ${month}.`,
+                toast: true,position: 'top-end', showConfirmButton: false, timer: 3000
+            });
+        } else {
+            document.getElementById('downloadBtn').style.display = 'none';
+            Swal.fire({
+                icon: 'info',
+                title: 'No Records',
+                text: `No employees found for ${month} with selected filters. Try "All Categories".`,
+                toast: true, position: 'top-end', showConfirmButton: false, timer: 4000
+            });
+        }
+    } catch(e) {
+        console.error(e);
+        Swal.fire({icon:'error',title:'Error',text:'Failed to fetch data: ' + e.message,toast:true,position:'top-end',showConfirmButton:false,timer:3000});
+    }
+
+    btn.innerHTML = originalHtml;
+    btn.disabled = false;
 }
 
 function downloadExcel() {
+    if (!vvData || !vvData.rows || vvData.rows.length === 0) {
+        Swal.fire({icon:'warning',title:'No Data',text:'Please fetch data first.',toast:true,position:'top-end',showConfirmButton:false,timer:3000});
+        return;
+    }
+
+    const wb = XLSX.utils.book_new();
+
+    // Build rows array
+    const header = [
+        'SlNo', 'RegNo', 'ESIC No', 'CMPF Acc No', 'Aadhar No',
+        'Name of the Employee', "Father's Name", 'Designation', 'Site Name',
+        'Wages (Basic+VDA)', 'Actual Attendance', 'National Working Days',
+        'Gross Wage Payment', 'National Wages',
+        'PF Member (12%)', 'PF Employer (12%)',
+        'Pension Member (7%)', 'Pension Employer (7%)',
+        'Total PF', 'Total Pension', 'Total Deduction'
+    ];
+
+    // Title rows
+    const aoa = [
+        [vvData.title || 'Monthly VV Statement'],
+        [`Area: MCL ${vvData.area || ''}`],
+        [],
+        header
+    ];
+
+    // Data rows
+    vvData.rows.forEach(d => {
+        aoa.push([
+            d.slNo, d.regNo, d.esicNo, d.cmpfAccNo, d.aadharNo,
+            d.employeeName, d.fatherName, d.designation, d.siteName,
+            d.wages, d.actualAttendance, d.notionalDays,
+            d.grossWage, d.notionalWages,
+            d.pfMember12, d.pfEmployer12,
+            d.pensionMember7, d.pensionEmployer7,
+            d.totalPF, d.totalPension, d.totalDeduction
+        ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    // Auto-width columns
+    const colWidths = header.map((h, i) => {
+        let max = h.length;
+        vvData.rows.forEach(d => {
+            const val = String(aoa[4] ? (aoa[aoa.length-1]?.[i] ?? '') : '');
+            if (val.length > max) max = val.length;
+        });
+        return { wch: Math.min(max + 4, 30) };
+    });
+    ws['!cols'] = colWidths;
+
+    // Merge title cells
+    ws['!merges'] = [
+        { s:{r:0,c:0}, e:{r:0,c:header.length-1} },
+        { s:{r:1,c:0}, e:{r:1,c:header.length-1} }
+    ];
+
+    // Get month from selected dropdown for sheet name
+    const month = document.getElementById('monthSelect')?.value || 'VV_Report';
+    const sheetName = month.replace(/\s+/g, '_').substring(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+    // Generate & Download
+    const fy = document.getElementById('fySelect').value;
+    const fileName = `VV_Report_${fy}_${sheetName}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
     Swal.fire({
-        icon: 'info',
-        title: 'Downloading...',
-        text: 'Preparing your Excel report.',
+        icon: 'success',
+        title: 'Downloaded!',
+        text: `${fileName} saved successfully.`,
         toast: true,
         position: 'top-end',
         showConfirmButton: false,
-        timer: 2000
+        timer: 3000
     });
-    // Implementation for downloading the actual data when available
 }
 </script>
 </body>

@@ -14,6 +14,23 @@ if (!isset($_SESSION['temp_user_id'])) {
 
 $userId = $_SESSION['temp_user_id'];
 
+// ── Check if user is locked out ──
+$stmtLock = $pdo->prepare("SELECT otp_failed_attempts, otp_locked_until, email FROM user WHERE id = ?");
+$stmtLock->execute([$userId]);
+$lockData = $stmtLock->fetch(PDO::FETCH_ASSOC);
+
+if ($lockData && !empty($lockData['otp_locked_until'])) {
+    $lockedUntil = new DateTime($lockData['otp_locked_until']);
+    $now = new DateTime();
+    if ($now < $lockedUntil) {
+        $remaining = $now->diff($lockedUntil);
+        $mins = ($remaining->h * 60) + $remaining->i;
+        $error = "Account is temporarily locked. Try again in {$mins} minute(s).";
+        // Block form submission
+        $_SERVER["REQUEST_METHOD"] = "BLOCKED";
+    }
+}
+
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $otp = trim($_POST['otp'] ?? '');
 
@@ -28,6 +45,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $error = "Authenticator not set up. Please login again.";
         } else {
             if ($ga->verifyCode($user['google_secret'], $otp, 2)) {
+                // ── Success: Reset failed attempts and login ──
+                $pdo->prepare("UPDATE user SET otp_failed_attempts = 0, otp_locked_until = NULL WHERE id = ?")->execute([$userId]);
+
                 $_SESSION['user'] = $userId;
                 unset($_SESSION['temp_user_id']);
 
@@ -47,10 +67,78 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 else                         header("Location: dashboard.php");
                 exit;
             } else {
-                $error = "Invalid code. Please try again.";
+                // ── Failed: Increment attempts ──
+                $currentAttempts = (int)($lockData['otp_failed_attempts'] ?? 0) + 1;
+
+                if ($currentAttempts >= 5) {
+                    // Lock for 2 hours
+                    $lockUntil = (new DateTime())->modify('+2 hours')->format('Y-m-d H:i:s');
+                    $pdo->prepare("UPDATE user SET otp_failed_attempts = ?, otp_locked_until = ? WHERE id = ?")
+                        ->execute([$currentAttempts, $lockUntil, $userId]);
+
+                    // Send restriction email
+                    $userEmail = $lockData['email'] ?? '';
+                    if (!empty($userEmail)) {
+                        try {
+                            sendLockoutEmail($userEmail, $userId);
+                        } catch (Exception $e) {
+                            // Log error but don't block the flow
+                        }
+                    }
+
+                    $error = "Too many failed attempts. Your account is locked for 2 hours. A notification email has been sent.";
+                } else {
+                    $pdo->prepare("UPDATE user SET otp_failed_attempts = ? WHERE id = ?")
+                        ->execute([$currentAttempts, $userId]);
+                    $remaining = 5 - $currentAttempts;
+                    $error = "Invalid code. {$remaining} attempt(s) remaining.";
+                }
             }
         }
     }
+}
+
+// ── Send lockout email function ──
+function sendLockoutEmail($toEmail, $userId) {
+
+    require_once __DIR__ . "/PHPMailer/src/Exception.php";
+    require_once __DIR__ . "/PHPMailer/src/PHPMailer.php";
+    require_once __DIR__ . "/PHPMailer/src/SMTP.php";
+
+    $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+
+    $mail->isSMTP();
+    $mail->Host = "smtp.gmail.com";
+    $mail->SMTPAuth = true;
+    $mail->Username = "test.work3589@gmail.com";
+    $mail->Password = "qfwi zclu oelb fxuh";
+    $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+    $mail->Port = 587;
+
+    $mail->setFrom("test.work3589@gmail.com", "Security Billing Portal");
+    $mail->addAddress($toEmail);
+
+    $mail->isHTML(true);
+    $mail->Subject = "⚠️ Account Temporarily Locked – Security Alert";
+    $mail->Body = "
+        <div style='font-family:Segoe UI,sans-serif;max-width:500px;margin:0 auto;'>
+            <div style='background:linear-gradient(135deg,#0f766e,#0d5f58);padding:1.5rem;text-align:center;border-radius:10px 10px 0 0;'>
+                <h2 style='color:#fff;margin:0;'>🔒 Account Locked</h2>
+            </div>
+            <div style='padding:1.5rem;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 10px 10px;'>
+                <p>Dear User (ID: <strong>{$userId}</strong>),</p>
+                <p>Your account has been <strong>temporarily locked for 2 hours</strong> due to 5 consecutive failed Google Authenticator code attempts.</p>
+                <p style='background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;color:#dc2626;font-weight:600;'>
+                    ⚠️ If this was not you, please contact the administrator immediately.
+                </p>
+                <p style='color:#6b7280;font-size:0.85rem;'>You can try logging in again after the lockout period expires.</p>
+                <hr style='border:none;border-top:1px solid #e5e7eb;margin:1rem 0;'>
+                <p style='color:#9ca3af;font-size:0.75rem;'>Security Billing Management Portal – Mahanadi Coalfields Limited</p>
+            </div>
+        </div>
+    ";
+
+    $mail->send();
 }
 ?>
 <!DOCTYPE html>
@@ -166,6 +254,14 @@ body {
   display: flex; align-items: center; gap: .5rem;
 }
 
+/* Warning (lockout) */
+.alert-warning {
+  background: #fffbeb; border: 1px solid #fde68a; border-radius: 7px;
+  color: #92400e; font-size: .82rem; font-weight: 600;
+  padding: .6rem .9rem; margin-bottom: 1rem;
+  display: flex; align-items: center; gap: .5rem;
+}
+
 /* OTP input */
 .otp-group { margin-bottom: 1rem; }
 .otp-input {
@@ -208,6 +304,9 @@ body {
   box-shadow: 0 6px 18px rgba(15,118,110,0.38);
 }
 .btn-verify:active { transform: translateY(0); }
+.btn-verify:disabled {
+  opacity: 0.6; cursor: not-allowed; filter: none; transform: none;
+}
 
 /* Back link */
 .back-link {
@@ -266,7 +365,11 @@ body {
     <div class="card-body">
 
       <?php if ($error !== ""): ?>
-        <div class="alert-error">
+        <?php
+          $alertClass = (strpos($error, 'locked') !== false || strpos($error, 'Locked') !== false)
+            ? 'alert-warning' : 'alert-error';
+        ?>
+        <div class="<?= $alertClass ?>">
           <i class="fa-solid fa-circle-exclamation"></i>
           <?= htmlspecialchars($error) ?>
         </div>
@@ -289,9 +392,11 @@ body {
             placeholder="Enter code from app"
             autofocus
             required
+            <?php if (strpos($error, 'locked') !== false || strpos($error, 'Locked') !== false): ?>disabled<?php endif; ?>
           >
         </div>
-        <button type="submit" class="btn-verify">
+        <button type="submit" class="btn-verify"
+          <?php if (strpos($error, 'locked') !== false || strpos($error, 'Locked') !== false): ?>disabled<?php endif; ?>>
           <i class="fa-solid fa-shield-halved"></i>
           Verify &amp; Continue
         </button>

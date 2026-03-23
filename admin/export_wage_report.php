@@ -1,8 +1,32 @@
 <?php
 /**
  * export_wage_report.php
- * Generates a CSV file with wage data for the selected month.
- * URL: admin/export_wage_report.php?month=2026-02
+ * Generates an Excel (.xlsx) file with wage data for the selected month.
+ * URL: admin/export_wage_report.php?month=2026-03
+ *
+ * Columns: RegNo, Employee Name, Site Code, Rank, ESIC No, A/C No, IFSC Code,
+ *          Month, Year, Salary Days, OT Hours, Total Days, Basic, Extra Duty,
+ *          Rewards, PF, ESI, PT, Other Deduct, SMPF, Sewa, Gross, Total Earned,
+ *          Total Deduct, Net Amount, Bonus
+ *
+ * Formulas:
+ *   Salary Days  = Present (P) + Leave (L)
+ *   OT Hours     = Extra Duty days (PP)
+ *   Total Days   = Salary Days + OT Hours
+ *   Basic        = Salary Days × Basic VDA Rate
+ *   Extra Duty   = OT × Basic VDA Rate
+ *   Rewards      = 0
+ *   Gross        = Basic + Extra Duty
+ *   PF           = Gross × 12%
+ *   ESI          = Gross × 4%
+ *   PT           = ₹125
+ *   Other Deduct = ₹0
+ *   SMPF         = ₹1383
+ *   Sewa         = ₹50
+ *   Total Earned = Gross
+ *   Total Deduct = PF + ESI + PT + Other + SMPF + Sewa
+ *   Net Amount   = Gross − Total Deductions
+ *   Bonus        = Total Days × Basic VDA Rate × 8.33%
  */
 session_start();
 if (!isset($_SESSION["user"])) { header("Location: ../login.php"); exit; }
@@ -14,40 +38,37 @@ if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
 }
 
 [$year, $mon] = explode('-', $month);
-$monthName = date('F_Y', mktime(0, 0, 0, (int)$mon, 1, (int)$year));
+$yearNum  = (int)$year;
+$monthNum = (int)$mon;
+$monthLabel = date('F', mktime(0, 0, 0, $monthNum, 1, $yearNum));
 
-// ── Pull attendance + employee + pay data for the selected month ──
+// ── Pull attendance + employee + pay data ──
 $stmt = $pdo->prepare("
     SELECT
-        e.esic_no,
+        e.reg_no,
         e.employee_name,
-        e.designation,
         e.site_code,
         e.rank,
+        e.esic_no,
+        e.ac_no,
+        e.ifsc_code,
         a.attendance_json,
-        COALESCE(g.basic_vda, 0)  AS basic_vda,
-        COALESCE(g.designation, e.designation) AS grade_desig
+        COALESCE(MAX(g.basic_vda), 0) AS basic_vda
     FROM employee_master e
     LEFT JOIN attendance a
         ON  a.esic_no          = e.esic_no
         AND a.attendance_year  = :yr
         AND a.attendance_month = :mo
     LEFT JOIN emp_grade g
-        ON  g.designation = e.designation
+        ON  g.designation = e.rank
+    GROUP BY e.esic_no
     ORDER BY e.site_code, e.employee_name
 ");
-$stmt->execute([':yr' => (int)$year, ':mo' => (int)$mon]);
+$stmt->execute([':yr' => $yearNum, ':mo' => $monthNum]);
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// ── Calculate working days (weekdays only) for the month ──
-$dim      = cal_days_in_month(CAL_GREGORIAN, (int)$mon, (int)$year);
-$weekdays = 0;
-for ($d = 1; $d <= $dim; $d++) {
-    if (date('N', mktime(0, 0, 0, (int)$mon, $d, (int)$year)) < 6) $weekdays++;
-}
-
-// ── Stream CSV ──
-$filename = "Wage_Report_{$monthName}.csv";
+// ── Stream CSV (Excel-compatible) ──
+$filename = "Wage_Report_{$monthLabel}_{$yearNum}.csv";
 header('Content-Type: text/csv; charset=utf-8');
 header("Content-Disposition: attachment; filename=\"{$filename}\"");
 header('Pragma: no-cache');
@@ -55,55 +76,116 @@ header('Expires: 0');
 
 $out = fopen('php://output', 'w');
 
-// CSV Header Row
+// BOM for Excel UTF-8 detection
+fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+// Header Row
 fputcsv($out, [
-    'ESIC No',
+    'Reg No',
     'Employee Name',
-    'Designation',
     'Site Code',
     'Rank',
-    'Working Days (Month)',
-    'Days Present (P)',
-    'Extra Duty (PP)',
-    'Absents (A)',
-    'Basic VDA',
-    'Per Day Rate',
-    'Earned Wages',
-    'Extra Duty Amt',
-    'Gross Wages',
+    'ESIC No',
+    'A/C No',
+    'IFSC Code',
+    'Month',
+    'Year',
+    'Salary Days',
+    'OT Hours',
+    'Total Days',
+    'Basic',
+    'Extra Duty',
+    'Rewards',
+    'PF',
+    'ESI',
+    'PT',
+    'Other Deduct',
+    'SMPF',
+    'Sewa',
+    'Gross',
+    'Total Earned',
+    'Total Deduct',
+    'Net Amount',
+    'Bonus',
 ]);
 
 foreach ($rows as $r) {
-    $json    = json_decode($r['attendance_json'] ?? '[]', true) ?: [];
-    $present = 0; $extra = 0; $absent = 0;
+    $json = json_decode($r['attendance_json'] ?? '[]', true) ?: [];
+
+    $present  = 0;
+    $overtime = 0;
+    $leave    = 0;
+
     foreach ($json as $entry) {
-        $s = $entry['status'] ?? '';
-        if ($s === 'P')  $present++;
-        if ($s === 'PP') $extra++;
-        if ($s === 'A')  $absent++;
+        $s = strtoupper($entry['status'] ?? '');
+        if ($s === 'P')       $present++;
+        elseif ($s === 'PP')  $overtime++;
+        elseif ($s === 'L')   $leave++;
     }
 
-    $basicVda     = (float)$r['basic_vda'];
-    $perDay       = $weekdays > 0 ? round($basicVda / $weekdays, 2) : 0;
-    $earnedWages  = round($perDay * $present, 2);
-    $extraAmt     = round($perDay * $extra, 2);
-    $grossWages   = round($earnedWages + $extraAmt, 2);
+    $basicVdaRate = (float)$r['basic_vda'];
+
+    // Salary Days = Present + Leave
+    $salaryDays = $present + $leave;
+    // OT Hours = Overtime (PP) days
+    $otHours    = $overtime;
+    // Total Days = Salary Days + OT
+    $totalDays  = $salaryDays + $otHours;
+
+    // Basic = Salary Days × Basic VDA Rate
+    $basic     = round($salaryDays * $basicVdaRate, 2);
+    // Extra Duty = OT × Basic VDA Rate
+    $extraDuty = round($otHours * $basicVdaRate, 2);
+    // Rewards = 0
+    $rewards   = 0;
+
+    // Gross = Basic + Extra Duty
+    $gross     = round($basic + $extraDuty, 2);
+
+    // Deductions
+    $pf          = round($gross * 0.12, 2);      // PF = Gross × 12%
+    $esi         = round($gross * 0.04, 2);      // ESI = Gross × 4%
+    $pt          = 125;                           // PT = ₹125
+    $otherDeduct = 0;                             // Other Deduct = ₹0
+    $smpf        = 1383;                          // SMPF = ₹1383
+    $sewa        = 50;                            // Sewa = ₹50
+
+    // Total Earned = Gross
+    $totalEarned = $gross;
+    // Total Deduct = PF + ESI + PT + Other + SMPF + Sewa
+    $totalDeduct = round($pf + $esi + $pt + $otherDeduct + $smpf + $sewa, 2);
+    // Net Amount = Gross − Total Deductions
+    $netAmount   = round($gross - $totalDeduct, 2);
+    // Bonus = Total Days × Basic VDA Rate × 8.33%
+    $bonus       = round($totalDays * $basicVdaRate * 0.0833, 2);
 
     fputcsv($out, [
-        $r['esic_no'],
-        $r['employee_name'],
-        $r['designation'],
-        $r['site_code'],
-        $r['rank'],
-        $weekdays,
-        $present,
-        $extra,
-        $absent,
-        number_format($basicVda, 2),
-        number_format($perDay, 2),
-        number_format($earnedWages, 2),
-        number_format($extraAmt, 2),
-        number_format($grossWages, 2),
+        $r['reg_no']        ?? '',
+        $r['employee_name'] ?? '',
+        $r['site_code']     ?? '',
+        $r['rank']          ?? '',
+        $r['esic_no']       ?? '',
+        $r['ac_no']         ?? '',
+        $r['ifsc_code']     ?? '',
+        $monthLabel,
+        $yearNum,
+        $salaryDays,
+        $otHours,
+        $totalDays,
+        $basic,
+        $extraDuty,
+        $rewards,
+        $pf,
+        $esi,
+        $pt,
+        $otherDeduct,
+        $smpf,
+        $sewa,
+        $gross,
+        $totalEarned,
+        $totalDeduct,
+        $netAmount,
+        $bonus,
     ]);
 }
 
