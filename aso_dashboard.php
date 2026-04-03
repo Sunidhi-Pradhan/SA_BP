@@ -860,6 +860,7 @@ foreach ($records as $record) {
         body.dark .table-row:hover { background: #263445; }
         body.dark .table-row:nth-child(even) { background: #1a2332; }
     </style>
+<link rel="stylesheet" href="assets/responsive.css">
 </head>
 
 <body>

@@ -557,6 +557,7 @@ $totalDuty = $totalWorking + $totalExtra;
             .search-input { width:100%; }
         }
     </style>
+<link rel="stylesheet" href="../assets/responsive.css">
 </head>
 <body>
 

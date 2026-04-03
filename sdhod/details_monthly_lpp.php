@@ -166,6 +166,7 @@
             .filter-row { grid-template-columns:1fr; }
         }
     </style>
+<link rel="stylesheet" href="../assets/responsive.css">
 </head>
 <body>
 

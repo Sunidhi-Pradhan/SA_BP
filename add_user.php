@@ -48,7 +48,28 @@ if (
     empty($role) ||
     empty($site_code)
 ) {
-    die("All fields are required");
+    header("Location: user.php?error=" . urlencode("All fields are required"));
+    exit;
+}
+
+// --------------------
+// VALIDATE EMAIL FORMAT
+// --------------------
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    header("Location: user.php?error=" . urlencode("Invalid email address: " . $email));
+    exit;
+}
+
+// Additional email checks
+$emailParts = explode('@', $email);
+if (count($emailParts) !== 2 || empty($emailParts[0]) || empty($emailParts[1])) {
+    header("Location: user.php?error=" . urlencode("Invalid email format. Must be in format: name@domain.com"));
+    exit;
+}
+$domain = $emailParts[1];
+if (!preg_match('/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/', $domain)) {
+    header("Location: user.php?error=" . urlencode("Invalid email domain: " . $domain));
+    exit;
 }
 
 // --------------------
@@ -58,7 +79,8 @@ $check = $pdo->prepare("SELECT id FROM user WHERE email = ?");
 $check->execute([$email]);
 
 if ($check->rowCount() > 0) {
-    die("Email already exists");
+    header("Location: user.php?error=" . urlencode("Email already exists: " . $email));
+    exit;
 }
 
 // --------------------

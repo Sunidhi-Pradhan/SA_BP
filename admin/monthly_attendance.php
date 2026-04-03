@@ -386,6 +386,7 @@ if (isset($_GET['fetch']) && $_GET['fetch'] === '1') {
             .excel-icon::before { font-size:22px; }
         }
     </style>
+<link rel="stylesheet" href="../assets/responsive.css">
 </head>
 <body>
 

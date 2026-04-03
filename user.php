@@ -541,7 +541,50 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             box-shadow: 0 8px 28px rgba(15,118,110,0.4), 0 2px 10px rgba(16,185,129,0.2);
             border-color: rgba(16,185,129,0.4);
         }
+        /* Email validation error styles */
+        .form-control.input-error {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 3px rgba(239,68,68,.12) !important;
+            background: #fef2f2 !important;
+        }
+        .email-error-msg {
+            color: #ef4444;
+            font-size: .73rem;
+            font-weight: 600;
+            margin-top: .25rem;
+            display: none;
+            align-items: center;
+            gap: .3rem;
+        }
+        .email-error-msg.show { display: flex; }
+        .form-control.input-valid {
+            border-color: #059669 !important;
+            box-shadow: 0 0 0 3px rgba(5,150,105,.12) !important;
+        }
+        /* Server-side alert banner */
+        .alert-banner {
+            padding: .75rem 1.1rem;
+            border-radius: 10px;
+            font-size: .85rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            animation: fadeUp 0.35s ease both;
+        }
+        .alert-banner.error {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        .alert-banner.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+        }
     </style>
+<link rel="stylesheet" href="assets/responsive.css">
 </head>
 <body>
 
@@ -624,6 +667,19 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <!-- PAGE CONTENT -->
         <div class="page-content">
 
+            <?php if (isset($_GET['error'])): ?>
+                <div class="alert-banner error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <?= htmlspecialchars($_GET['error']) ?>
+                </div>
+            <?php endif; ?>
+            <?php if (isset($_GET['success'])): ?>
+                <div class="alert-banner success">
+                    <i class="fa-solid fa-circle-check"></i>
+                    User added successfully! Credentials emailed.
+                </div>
+            <?php endif; ?>
+
             <!-- Tab Navigation -->
             <div class="tab-nav">
                 <button class="tab-btn active" id="tab-existing" onclick="switchTab('existing')">
@@ -698,7 +754,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="u-card-header">
                         <div class="u-card-title"><i class="fa-solid fa-user-plus"></i> Add New User</div>
                     </div>
-                    <form method="POST" action="add_user.php">
+                    <form method="POST" action="add_user.php" id="addUserForm">
                         <div class="form-body">
                             <div class="form-grid">
                                 <div class="form-group">
@@ -711,7 +767,11 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Email Address</label>
-                                    <input class="form-control" type="email" name="email" placeholder="email@example.com" required>
+                                    <input class="form-control" type="email" name="email" id="emailInput" placeholder="email@example.com" required autocomplete="off">
+                                    <div class="email-error-msg" id="emailError">
+                                        <i class="fa-solid fa-circle-exclamation"></i>
+                                        <span id="emailErrorText">Please enter a valid email address</span>
+                                    </div>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Password</label>
@@ -807,6 +867,74 @@ themeToggle.addEventListener('click', function () {
     applyTheme(!isDark);
     localStorage.setItem('theme', !isDark ? 'dark' : 'light');
 });
+/* ── Email Validation ── */
+(function() {
+    const form       = document.getElementById('addUserForm');
+    const emailInput = document.getElementById('emailInput');
+    const emailError = document.getElementById('emailError');
+    const emailText  = document.getElementById('emailErrorText');
+
+    if (!form || !emailInput) return;
+
+    // Regex: standard email format
+    const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+
+    function validateEmail() {
+        const val = emailInput.value.trim();
+        if (val === '') {
+            emailInput.classList.remove('input-error', 'input-valid');
+            emailError.classList.remove('show');
+            return true; // empty will be caught by 'required'
+        }
+        if (!emailRegex.test(val)) {
+            emailInput.classList.add('input-error');
+            emailInput.classList.remove('input-valid');
+            // Provide specific error messages
+            if (!val.includes('@')) {
+                emailText.textContent = 'Email must contain "@" symbol';
+            } else if (val.indexOf('@') === 0) {
+                emailText.textContent = 'Email must have a name before "@"';
+            } else if (val.split('@').length > 2) {
+                emailText.textContent = 'Email must contain only one "@" symbol';
+            } else if (!val.split('@')[1].includes('.')) {
+                emailText.textContent = 'Domain must contain a dot (e.g. example.com)';
+            } else {
+                emailText.textContent = 'Please enter a valid email address';
+            }
+            emailError.classList.add('show');
+            return false;
+        }
+        emailInput.classList.remove('input-error');
+        emailInput.classList.add('input-valid');
+        emailError.classList.remove('show');
+        return true;
+    }
+
+    // Real-time validation on input and blur
+    emailInput.addEventListener('input', validateEmail);
+    emailInput.addEventListener('blur', validateEmail);
+
+    // Prevent form submission if invalid
+    form.addEventListener('submit', function(e) {
+        if (!validateEmail()) {
+            e.preventDefault();
+            emailInput.focus();
+            // Shake animation
+            emailInput.style.animation = 'none';
+            void emailInput.offsetHeight; // trigger reflow
+            emailInput.style.animation = 'shake 0.4s ease';
+        }
+    });
+})();
 </script>
+<style>
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(6px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}
+</style>
 </body>
 </html>

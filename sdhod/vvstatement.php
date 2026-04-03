@@ -89,6 +89,7 @@ body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#f5f5
 .result-area { display:none; margin-top:2rem; background:white; border-radius:14px; padding:1.5rem; box-shadow:0 2px 12px rgba(0,0,0,0.08); border:1px solid #e5e7eb; width:100%; }
 
 </style>
+<link rel="stylesheet" href="../assets/responsive.css">
 </head>
 <body>
 

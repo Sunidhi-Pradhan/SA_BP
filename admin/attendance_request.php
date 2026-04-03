@@ -342,6 +342,7 @@ if (!isset($_SESSION['user'])) {
             .btn-tab { font-size:.73rem; padding:.4rem .7rem; }
         }
     </style>
+<link rel="stylesheet" href="../assets/responsive.css">
 </head>
 <body>
 

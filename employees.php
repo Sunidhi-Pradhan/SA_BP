@@ -494,6 +494,7 @@
             .btn-demo    { padding: 8px 14px; font-size: 12px; }
         }
     </style>
+<link rel="stylesheet" href="assets/responsive.css">
 </head>
 
 <body>

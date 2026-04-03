@@ -390,6 +390,7 @@ foreach ($attendanceList as $row) {
         .status-badge { padding:3px 8px; font-size:11px; }
     }
     </style>
+<link rel="stylesheet" href="assets/responsive.css">
 </head>
 <body>
 

@@ -462,6 +462,7 @@ $sites = $pdo->query("SELECT SiteCode, SiteName FROM site_master ORDER BY SiteNa
         }
         .swal2-timer-progress-bar { background: #0f766e !important; }
     </style>
+<link rel="stylesheet" href="../assets/responsive.css">
 </head>
 <body>
 

@@ -1,0 +1,327 @@
+/* ============================================================
+   SABP — Global Responsive Overrides
+   Include AFTER all other stylesheets on every page.
+   ============================================================ */
+
+/* ── BASE: make everything overflow-safe ── */
+html { overflow-x: hidden; }
+img, canvas, video, svg { max-width: 100%; height: auto; }
+
+/* ─────────────────────────────────────────
+   1400px — Wide Desktops
+   ───────────────────────────────────────── */
+@media (max-width: 1400px) {
+  .kpi-grid-8        { grid-template-columns: repeat(4, 1fr) !important; }
+  .charts-row         { grid-template-columns: 1fr 240px !important; }
+}
+
+/* ─────────────────────────────────────────
+   1100px — Small Desktops / Landscape Tablets
+   ───────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .kpi-grid-8        { grid-template-columns: repeat(2, 1fr) !important; }
+  .kpi-grid-4        { grid-template-columns: repeat(2, 1fr) !important; }
+  .charts-row         { grid-template-columns: 1fr !important; }
+  .graph-section      { grid-template-columns: 1fr !important; }
+  .filter-row         { flex-direction: column; align-items: stretch !important; }
+  .filter-field       { min-width: 0 !important; width: 100% !important; }
+  .filter-select      { min-width: 0 !important; width: 100% !important; }
+}
+
+/* ─────────────────────────────────────────
+   900px — Tablets Portrait
+   ───────────────────────────────────────── */
+@media (max-width: 900px) {
+  .stats              { grid-template-columns: repeat(2, 1fr) !important; }
+  .right-col          { flex-direction: column !important; }
+
+  /* Tables: horizontal scroll wrapper */
+  .table-wrap,
+  .card-body,
+  .emp-content,
+  .page-content {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Generic tables */
+  table {
+    min-width: 600px;
+  }
+
+  /* Form grids: 2-col → 1-col */
+  .form-grid          { grid-template-columns: 1fr !important; }
+}
+
+/* ─────────────────────────────────────────
+   768px — Mobile (sidebar becomes off-canvas)
+   ───────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Sidebar off-canvas */
+  .menu-btn { display: flex !important; }
+  .sidebar {
+    position: fixed !important;
+    top: 0; left: 0;
+    height: 100vh !important; height: 100dvh !important;
+    transform: translateX(-100%);
+    animation: none !important;
+  }
+  .sidebar.open { transform: translateX(0); }
+
+  /* Header */
+  header         { padding: 0 12px !important; gap: 8px !important; }
+  header h1      { font-size: 1rem !important; }
+
+  /* Page content */
+  .page-content,
+  .emp-content   { padding: 14px 12px 24px !important; gap: 12px !important; }
+
+  /* Stat cards */
+  .stats         { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+  .stat-card     { padding: 14px !important; }
+  .stat-card h2  { font-size: 20px !important; }
+  .stat-card p   { font-size: 12px !important; }
+
+  /* KPI cards */
+  .kpi-grid-8,
+  .kpi-grid-4   { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+  .kpi-value     { font-size: 1.25rem !important; }
+
+  /* Charts */
+  .chart-wrapper { height: 220px !important; }
+  .charts-row    { grid-template-columns: 1fr !important; gap: 12px !important; }
+
+  /* Graph section */
+  .graph-section { grid-template-columns: 1fr !important; gap: 12px !important; }
+
+  /* Tables */
+  .users-table th,
+  .users-table td,
+  table th,
+  table td {
+    padding: .55rem .6rem !important;
+    font-size: .78rem !important;
+  }
+
+  /* Tab navigation: scrollable */
+  .tab-nav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .tab-nav::-webkit-scrollbar { display: none; }
+  .tab-btn { white-space: nowrap; flex-shrink: 0; padding: .65rem 1rem !important; font-size: .82rem !important; }
+
+  /* Card headers */
+  .card-header   { padding: 14px 16px !important; flex-wrap: wrap; }
+  .u-card-header { padding: .75rem 1rem !important; flex-wrap: wrap; gap: .5rem; }
+
+  /* Form footer: stack buttons on narrow */
+  .form-footer   { flex-direction: column !important; gap: .5rem !important; }
+  .form-footer .btn-submit,
+  .form-footer .btn-reset { width: 100% !important; justify-content: center; }
+
+  /* Filter panel */
+  .dash-topbar   { flex-direction: column !important; gap: 8px !important; align-items: stretch !important; }
+  .topbar-left   { flex-wrap: wrap; }
+  .filter-row    { flex-direction: column !important; gap: 10px !important; }
+  .filter-actions { width: 100% !important; }
+  .btn-apply-filter,
+  .btn-reset-filter { width: 100% !important; justify-content: center; }
+
+  /* Profile cards */
+  .profile-grid  { grid-template-columns: 1fr !important; }
+
+  /* Download attendance & misc grids */
+  .report-grid   { grid-template-columns: 1fr !important; }
+
+  /* Summary box */
+  .summary-item  { font-size: 13px !important; padding: 8px 0 !important; }
+
+  /* Today panel */
+  .today-row     { font-size: .75rem !important; }
+
+  /* Donut */
+  .donut-box     { padding: 1rem .75rem !important; }
+
+  /* Action buttons */
+  .action-btns   { gap: .25rem !important; }
+  .btn-icon      { width: 28px !important; height: 28px !important; font-size: .72rem !important; }
+
+  /* Top header (login, 2fa, forgot-password pages) */
+  .top-header    { padding: 0 12px !important; height: 56px !important; }
+  .header-center { position: static !important; transform: none !important; font-size: .85rem !important; flex: 1; text-align: center; }
+  .header-center h1 { font-size: .85rem !important; }
+  .header-right .moc-text { display: none !important; }
+  .header-right img { height: 36px !important; width: 36px !important; }
+  .header-left img  { height: 32px !important; }
+
+  /* Login / 2FA / OTP cards */
+  .login-card,
+  .setup-card   { max-width: 100% !important; margin: 0 8px; }
+  .card-body    { padding: 1.2rem 1rem !important; }
+
+  /* Print dashboard button */
+  .btn-post-dash { width: 100%; justify-content: center; }
+
+  /* Modal dialogs */
+  .modal-content,
+  .dialog-content { width: 95vw !important; max-width: 95vw !important; margin: 10px auto !important; }
+
+  /* Wage report / download tables */
+  .wage-table-wrap,
+  .download-table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+
+  /* VV Statement */
+  .vv-table-wrap { overflow-x: auto !important; }
+
+  /* LPC / LPP pages */
+  .lpc-grid      { grid-template-columns: 1fr !important; }
+  .lpp-grid      { grid-template-columns: 1fr !important; }
+
+  /* Extra manpower form */
+  .manpower-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ─────────────────────────────────────────
+   480px — Small Mobile
+   ───────────────────────────────────────── */
+@media (max-width: 480px) {
+  header h1      { font-size: .88rem !important; }
+
+  .page-content,
+  .emp-content   { padding: 10px 8px 20px !important; }
+
+  .stats         { gap: 8px !important; }
+  .stat-card     { padding: 12px 10px !important; }
+  .stat-card p   { font-size: 11px !important; }
+  .stat-card h2  { font-size: 18px !important; }
+
+  .kpi-grid-8,
+  .kpi-grid-4   { grid-template-columns: 1fr !important; gap: 8px !important; }
+  .kpi-card      { padding: .85rem 1rem !important; }
+  .kpi-value     { font-size: 1.15rem !important; }
+  .kpi-label     { font-size: .62rem !important; }
+
+  .chart-wrapper { height: 190px !important; }
+
+  .chart-box     { padding: 14px 12px !important; }
+  .chart-box h3  { font-size: .8rem !important; }
+
+  .tab-btn       { padding: .55rem .75rem !important; font-size: .76rem !important; }
+  .tab-badge     { font-size: .62rem !important; padding: 2px 6px !important; }
+
+  /* Form elements */
+  .form-label    { font-size: .68rem !important; }
+  .form-control  { font-size: .84rem !important; padding: .5rem .7rem !important; }
+
+  /* Login page */
+  .page-body     { padding: 1rem .5rem !important; }
+  .login-card,
+  .setup-card   { margin: 0 4px; }
+  .card-header h1 { font-size: 1.15rem !important; }
+  .card-header p  { font-size: .75rem !important; }
+
+  .btn-login,
+  .btn-verify    { font-size: .88rem !important; }
+
+  /* Page footer */
+  .page-footer   { font-size: .68rem !important; padding: .6rem .5rem !important; }
+
+  /* Date chip */
+  .date-chip     { font-size: .72rem !important; padding: .2rem .6rem !important; }
+
+  /* Today panel */
+  .today-panel h3 { font-size: .72rem !important; }
+  .today-row     { font-size: .7rem !important; }
+
+  /* Donut legend */
+  .donut-legend  { gap: 5px 10px !important; }
+  .d-leg         { font-size: .65rem !important; }
+
+  /* Card headers */
+  .card-header   { padding: 12px 14px !important; }
+  .header-left   { font-size: 14px !important; }
+  .btn-demo      { padding: 7px 12px !important; font-size: 11px !important; }
+
+  /* Instructions */
+  .instructions  { padding: 10px 14px !important; }
+  .instructions h4 { font-size: 13px !important; }
+  .instructions li { font-size: 11px !important; }
+
+  /* Drop box */
+  .drop-box      { padding: 30px 16px !important; min-height: 140px !important; }
+  .cloud         { font-size: 36px !important; }
+  #dropText      { font-size: 14px !important; }
+  #fileName      { font-size: 12px !important; }
+
+  /* Upload button */
+  .btn-upload    { font-size: 13px !important; padding: 12px !important; }
+
+  /* Summary box */
+  .summary-item  { font-size: 12px !important; padding: 7px 0 !important; }
+  .summary-box h3 { font-size: 13px !important; }
+
+  /* Attendance tables */
+  table th, table td {
+    padding: .4rem .45rem !important;
+    font-size: .72rem !important;
+  }
+
+  /* Profile page */
+  .profile-header { flex-direction: column !important; text-align: center; }
+  .profile-avatar { margin: 0 auto !important; }
+
+  /* Role badges */
+  .role-badge    { font-size: .65rem !important; padding: 2px 7px !important; }
+  .emp-id        { font-size: .68rem !important; }
+
+  /* OTP input */
+  .otp-input     { font-size: .92rem !important; letter-spacing: 4px !important; }
+
+  /* Extra links */
+  .extra-links span,
+  .extra-links a { font-size: .72rem !important; }
+}
+
+/* ─────────────────────────────────────────
+   360px — Very Small Phones
+   ───────────────────────────────────────── */
+@media (max-width: 360px) {
+  .stats         { grid-template-columns: 1fr !important; }
+  .chart-wrapper { height: 170px !important; }
+
+  header h1      { font-size: .78rem !important; }
+  .stat-card h2  { font-size: 16px !important; }
+
+  .card-header h1 { font-size: 1rem !important; }
+
+  .form-control  { font-size: .8rem !important; }
+
+  .btn-submit,
+  .btn-login,
+  .btn-verify    { font-size: .82rem !important; padding: .55rem .8rem !important; }
+}
+
+/* ─────────────────────────────────────────
+   PRINT — hide sidebar, keep content
+   ───────────────────────────────────────── */
+@media print {
+  .sidebar, .sidebar-overlay, .menu-btn,
+  .theme-btn, .top-header, .page-footer,
+  .btn-post-dash, .btn-show-filters,
+  .filter-panel, .tab-nav { display: none !important; }
+
+  .dashboard { display: block !important; }
+  .main      { width: 100% !important; }
+  .page-content { padding: 0 !important; }
+  .kpi-grid-8, .kpi-grid-4, .stats { grid-template-columns: repeat(4, 1fr) !important; }
+
+  .kpi-card, .stat-card, .chart-box, .summary-box {
+    break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+}

@@ -620,6 +620,7 @@ $asoSiteCode = $u['site_code'];
             .topbar-center h2 { font-size: 0.8rem; }
         }
     </style>
+<link rel="stylesheet" href="../assets/responsive.css">
 </head>
 
 <body>

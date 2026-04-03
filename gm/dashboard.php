@@ -430,6 +430,7 @@ body.dark .pagination { background: #1a2332; border-color: #334155; }
 body.dark .pag-btn { background: #1e293b; border-color: #334155; color: #94a3b8; }
 body.dark .filter-select { background-color: #1e293b; color: #e5e7eb; border-color: #334155; }
 </style>
+<link rel="stylesheet" href="../assets/responsive.css">
 </head>
 <body>
 

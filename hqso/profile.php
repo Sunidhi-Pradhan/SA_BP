@@ -89,6 +89,7 @@ $createdAt = isset($user['created_at']) ? date('d-m-Y H:i', strtotime($user['cre
             .profile-card { padding:1.25rem; }
         }
     </style>
+<link rel="stylesheet" href="../assets/responsive.css">
 </head>
 <body>
 <div class="dashboard-layout">

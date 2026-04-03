@@ -127,6 +127,7 @@ body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#f5f5
     .btn-load { width:100%; justify-content:center; }
 }
 </style>
+<link rel="stylesheet" href="../assets/responsive.css">
 </head>
 <body>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>

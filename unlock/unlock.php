@@ -521,6 +521,7 @@ require_once '../config.php';
         }
         @media (max-width: 480px) { .attendance-counters { gap: 8px; } .counter-item { padding: 5px 8px; } }
     </style>
+<link rel="stylesheet" href="../assets/responsive.css">
 </head>
 
 <body>

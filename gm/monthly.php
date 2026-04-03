@@ -726,6 +726,7 @@ $totalDuty = $totalWorking + $totalExtra;
             .btn-export { flex:1; }
         }
     </style>
+<link rel="stylesheet" href="../assets/responsive.css">
 </head>
 <body>
 

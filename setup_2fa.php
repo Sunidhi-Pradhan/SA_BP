@@ -179,6 +179,7 @@ body { min-height:100vh; background:#f0f2f5; display:flex; flex-direction:column
   .header-right .moc-text { display:none; }
 }
 </style>
+<link rel="stylesheet" href="assets/responsive.css">
 </head>
 <body>
 

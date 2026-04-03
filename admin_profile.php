@@ -147,6 +147,7 @@ body.dark .modal-box { background: var(--card); }
     .profile-wrapper { padding: 1rem; }
 }
 </style>
+<link rel="stylesheet" href="assets/responsive.css">
 </head>
 <body>
 

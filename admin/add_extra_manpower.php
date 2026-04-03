@@ -641,6 +641,7 @@ $sites = $pdo->query("
             .form-control { font-size:.85rem; min-height:42px; }
         }
     </style>
+<link rel="stylesheet" href="../assets/responsive.css">
 </head>
 <body>
 

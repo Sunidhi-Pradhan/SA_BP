@@ -377,6 +377,7 @@ body.dark .wage-card {
     .btn-download { padding:.65rem 1.4rem; font-size:.83rem; }
 }
 </style>
+<link rel="stylesheet" href="../assets/responsive.css">
 </head>
 <body>
 

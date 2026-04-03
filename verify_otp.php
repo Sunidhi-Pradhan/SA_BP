@@ -330,6 +330,7 @@ body {
   .header-right .moc-text { display: none; }
 }
 </style>
+<link rel="stylesheet" href="assets/responsive.css">
 </head>
 <body>
 

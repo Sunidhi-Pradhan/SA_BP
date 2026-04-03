@@ -309,6 +309,7 @@ td { padding: 15px 20px; font-size: 0.86rem; }
   .filter-bar { flex-direction: column; align-items: stretch; }
 }
 </style>
+<link rel="stylesheet" href="../assets/responsive.css">
 </head>
 <body>
 

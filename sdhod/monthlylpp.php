@@ -167,6 +167,7 @@ $userName = $user['name'];
             .role-badge { display:none; }
         }
     </style>
+<link rel="stylesheet" href="../assets/responsive.css">
 </head>
 <body>
 

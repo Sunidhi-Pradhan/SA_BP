@@ -278,6 +278,7 @@ body {
   .card-body { padding: 1.3rem 1.1rem; }
 }
 </style>
+<link rel="stylesheet" href="assets/responsive.css">
 </head>
 <body>
 

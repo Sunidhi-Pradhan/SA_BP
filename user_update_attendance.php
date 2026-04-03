@@ -649,6 +649,7 @@ if ($u['role'] !== 'user') {
         .pg-btn  { padding: 5px 10px !important; font-size: 0.75rem !important; }
     }
     </style>
+<link rel="stylesheet" href="assets/responsive.css">
 </head>
 <body>
 

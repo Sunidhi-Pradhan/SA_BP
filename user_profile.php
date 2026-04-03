@@ -373,6 +373,7 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
     .modal-btn:hover { filter:brightness(1.07); transform:translateY(-1px); }
     .modal-btn:disabled { opacity:.6; cursor:not-allowed; }
     </style>
+<link rel="stylesheet" href="assets/responsive.css">
 </head>
 <body>
 

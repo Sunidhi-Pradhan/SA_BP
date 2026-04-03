@@ -333,6 +333,7 @@ if ($u['role'] !== 'user') {
     }
 
     </style>
+<link rel="stylesheet" href="assets/responsive.css">
 </head>
 <body>
 

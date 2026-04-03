@@ -392,6 +392,7 @@ if ($donutTotal === 0) { $donutPresent = 1; $donutTotal = 1; } // show filled ci
 @media (max-width: 900px)  { .charts-row { grid-template-columns: 1fr; } .right-col { flex-direction: row; } }
 @media (max-width: 768px)  { .kpi-grid-8 { grid-template-columns: 1fr; } .kpi-grid-4 { grid-template-columns: 1fr; } .right-col { flex-direction: column; } }
 </style>
+<link rel="stylesheet" href="assets/responsive.css">
 </head>
 <body>
 
