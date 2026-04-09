@@ -19,8 +19,8 @@ $siteCode   = $user['site_code'];
 $approvedBy = $user['name'];
 $userId     = $_SESSION['user'];
 
-$year  = 2026;
-$month = 1;
+$year  = (int) date('Y', strtotime('first day of last month'));
+$month = (int) date('n', strtotime('first day of last month'));
 
 /* FETCH ATTENDANCE DATA */
 $stmt = $pdo->prepare("
@@ -120,6 +120,16 @@ if ($workflow) {
             }
             $comments[] = ['role' => $step['Code'], 'approved_by' => $actorName, 'comment' => $step['comment'], 'created_at' => $step['acted_at'] ?? ''];
         }
+    }
+}
+
+/* COMPUTE WORKING DAYS FOR THE MONTH */
+$days = [];
+$daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+for ($d = 1; $d <= $daysInMonth; $d++) {
+    $dayOfWeek = date('N', mktime(0,0,0,$month,$d,$year));
+    if ($dayOfWeek < 6) {
+        $days[] = $d;
     }
 }
 
@@ -766,7 +776,7 @@ $totalDuty = $totalWorking + $totalExtra;
 
             <div class="attendance-header">
                 <h1>MONTHLY ATTENDANCE REPORT</h1>
-                <p>Attendance Period: January 2026 &nbsp;|&nbsp; Working Days: 22 (Weekends Excluded) &nbsp;|&nbsp; Site: <strong><?= htmlspecialchars($siteCode) ?></strong></p>
+                <p>Attendance Period: <?= date('F Y', strtotime('first day of last month')) ?> &nbsp;|&nbsp; Working Days: <?= count($days) ?> (Weekends Excluded) &nbsp;|&nbsp; Site: <strong><?= htmlspecialchars($siteCode) ?></strong></p>
             </div>
 
             <?php if ($alreadyApproved): ?>
@@ -886,11 +896,9 @@ $totalDuty = $totalWorking + $totalExtra;
                         <thead>
                             <tr>
                                 <th>S.N.</th><th>EMP CODE</th><th>NAME</th><th>RANK</th>
-                                <th class="day-col">1</th><th class="day-col">2</th><th class="day-col">5</th><th class="day-col">6</th><th class="day-col">7</th>
-                                <th class="day-col">8</th><th class="day-col">9</th><th class="day-col">12</th><th class="day-col">13</th><th class="day-col">14</th>
-                                <th class="day-col">15</th><th class="day-col">16</th><th class="day-col">19</th><th class="day-col">20</th><th class="day-col">21</th>
-                                <th class="day-col">22</th><th class="day-col">23</th><th class="day-col">26</th><th class="day-col">27</th><th class="day-col">28</th>
-                                <th class="day-col">29</th><th class="day-col">30</th>
+                                <?php foreach ($days as $day): ?>
+                                    <th class="day-col"><?= $day ?></th>
+                                <?php endforeach; ?>
                                 <th class="summary-col col-working">WORKING</th>
                                 <th class="summary-col extra-col col-extra">EXTRA</th>
                                 <th class="summary-col total-col col-total">TOTAL</th>
@@ -898,8 +906,7 @@ $totalDuty = $totalWorking + $totalExtra;
                         </thead>
                         <tbody>
                         <?php
-                        $sn   = 1;
-                        $days = [1,2,5,6,7,8,9,12,13,14,15,16,19,20,21,22,23,26,27,28,29,30];
+                        $sn = 1;
                         foreach ($attendanceRows as $row):
                             $attendanceData = json_decode($row['attendance_json'], true) ?? [];
                             $working = 0; $extra = 0;
