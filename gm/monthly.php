@@ -148,7 +148,7 @@ $totalDuty = $totalWorking + $totalExtra;
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Monthly Attendance – Security Billing Management Portal</title>
+    <title>Monthly Attendance – Security Attendance and Billing Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -156,7 +156,7 @@ $totalDuty = $totalWorking + $totalExtra;
         :root { --primary: #0f766e; --primary-dark: #0d5f58; --sidebar-width: 270px; }
         html { scroll-behavior: smooth; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; color: #333; line-height: 1.6; overflow-x: hidden; }
-        .dashboard-layout { display: grid; grid-template-columns: var(--sidebar-width) 1fr; min-height: 100vh; }
+        .dashboard-layout { display: grid; grid-template-columns: var(--sidebar-width) 1fr; min-height: 100vh; background: linear-gradient(to right, #0a5c55 var(--sidebar-width), #f5f5f5 var(--sidebar-width)); }
 
         /* ===== ANIMATIONS ===== */
         @keyframes fadeUp {
@@ -758,7 +758,7 @@ $totalDuty = $totalWorking + $totalExtra;
     <main class="main-content">
         <header class="topbar">
             <button class="hamburger-btn" id="hamburgerBtn"><i class="fa-solid fa-bars"></i></button>
-            <h2>Security Billing Management Portal</h2>
+            <h2>Security Attendance and Billing Portal</h2>
             <div class="topbar-right">
                 <div class="header-icon"><i class="fa-regular fa-bell"></i><span class="badge">3</span></div>
                 <a href="profile.php" title="My Profile" style="text-decoration:none;">

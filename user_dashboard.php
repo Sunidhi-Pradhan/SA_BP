@@ -433,12 +433,7 @@ foreach ($attendanceList as $row) {
                     Update Attendance
                 </a>
             </li>
-            <li>
-                <a href="logout.php">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                    Logout
-                </a>
-            </li>
+
         </ul>
 
     </aside>
@@ -455,7 +450,7 @@ foreach ($attendanceList as $row) {
                     <i class="fa-solid fa-bars"></i>
                 </button>
             </div>
-            <h2>Security Management Portal</h2>
+            <h2>Security Attendance and Billing Portal</h2>
             <div class="topbar-right">
                 <button class="theme-btn" id="themeToggle" title="Toggle dark mode" style="width:36px;height:36px;border-radius:50%;border:1px solid #e5e7eb;background:#f3f4f6;color:#6b7280;font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s,color .2s,transform .2s;"><i class="fa-solid fa-moon"></i></button>
                 <div class="user-icon">

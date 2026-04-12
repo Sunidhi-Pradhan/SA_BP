@@ -23,7 +23,7 @@ $asoSiteCode = $u['site_code'];
 
 <head>
     <meta charset="UTF-8">
-    <title>Security Billing Management Portal</title>
+    <title><center>Security Attendance and Billing Portal</center></title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -663,7 +663,7 @@ $asoSiteCode = $u['site_code'];
                     <button class="hamburger-btn" id="hamburgerBtn"><i class="fa-solid fa-bars"></i></button>
                 </div>
                 <div class="topbar-center">
-                    <h2>Security Billing Management Portal</h2>
+                    <h2>Security Attendance and Billing Portal</h2>
                 </div>
                 <div class="topbar-right">
                     <div class="header-icon">

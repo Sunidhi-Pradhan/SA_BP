@@ -17,7 +17,7 @@ if (isset($_GET['fetch']) && $_GET['fetch'] === '1') {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Wage Report – Security Billing Portal</title>
+<title>Wage Report – Security Attendance and Billing Portal</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
@@ -447,7 +447,7 @@ body.dark .wage-card {
             <button class="menu-btn" id="menuBtn" aria-label="Open menu">
                 <i class="fa-solid fa-bars"></i>
             </button>
-            <h1>Security Billing Management Portal</h1>
+            <h1>Security Attendance and Billing Portal</h1>
             <button class="theme-btn" id="themeToggle" title="Toggle dark mode">
                 <i class="fa-solid fa-moon"></i>
             </button>

@@ -189,19 +189,7 @@ if ($u['role'] !== 'user') {
     .sidebar ul li:hover  a i { transform: scale(1.28) rotate(-6deg); opacity: 1; }
     .sidebar ul li.active a i { transform: scale(1.18); opacity: 1; }
 
-    /* Logout item */
-    .sidebar ul li:last-child {
-        margin-top: 10px !important;
-        border-top: 1px solid rgba(255,255,255,0.12) !important;
-        padding-top: 6px !important;
-    }
-    .sidebar ul li:last-child a      { color: rgba(255,255,255,0.58) !important; }
-    .sidebar ul li:last-child:hover  { background: rgba(239,68,68,0.18) !important; }
-    .sidebar ul li:last-child:hover a{ color: #fca5a5 !important; }
-    .sidebar ul li:last-child:hover a i {
-        color: #fca5a5;
-        transform: scale(1.18) translateX(3px) !important;
-    }
+
 
     /* ============================================================
        MOBILE OVERLAY
@@ -376,12 +364,7 @@ if ($u['role'] !== 'user') {
                     Update Attendance
                 </a>
             </li>
-            <li>
-                <a href="logout.php">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                    Logout
-                </a>
-            </li>
+
         </ul>
 
     </aside>
@@ -398,7 +381,7 @@ if ($u['role'] !== 'user') {
                     <i class="fa-solid fa-bars"></i>
                 </button>
             </div>
-            <h3>Security Management Portal</h3>
+            <h3>Security Attendance and Billing Portal</h3>
             <div class="topbar-right">
                 <div class="user-icon">
                     <a href="user_profile.php">

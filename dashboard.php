@@ -387,6 +387,180 @@ if ($donutTotal === 0) { $donutPresent = 1; $donutTotal = 1; } // show filled ci
 .no-leave-notice i { font-size: 1.8rem; color: #059669; }
 .no-leave-notice p { font-size: .78rem; color: #6b7280; }
 
+/* ── DARK MODE OVERRIDES ── */
+
+/* --- Topbar & Filter Panel --- */
+body.dark .dash-topbar {
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: 0 1px 6px rgba(0,0,0,.25);
+}
+body.dark .filter-panel {
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: 0 4px 12px rgba(0,0,0,.25);
+}
+body.dark .date-chip {
+  background: rgba(16,185,129,.12);
+  color: #6ee7b7;
+  border-color: rgba(110,231,183,.25);
+}
+body.dark .btn-show-filters {
+  background: rgba(255,255,255,.05);
+  border-color: var(--border);
+  color: #d1d5db;
+}
+body.dark .btn-show-filters:hover {
+  border-color: #10b981;
+  color: #10b981;
+}
+body.dark .btn-show-filters.active {
+  background: rgba(16,185,129,.1);
+  border-color: #34d399;
+  color: #6ee7b7;
+}
+body.dark .btn-post-dash {
+  background: #10b981;
+  color: #022c22;
+}
+body.dark .btn-post-dash:hover {
+  background: #059669;
+}
+
+/* --- Filter Inputs --- */
+body.dark .filter-input,
+body.dark .filter-select {
+  background: rgba(255,255,255,.05);
+  border-color: var(--border);
+  color: #e5e7eb;
+}
+body.dark .filter-input:focus,
+body.dark .filter-select:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16,185,129,.15);
+  background: rgba(255,255,255,.08);
+}
+body.dark .filter-label {
+  color: #9ca3af;
+}
+body.dark .btn-apply-filter {
+  background: #3b82f6;
+}
+body.dark .btn-apply-filter:hover {
+  background: #2563eb;
+}
+body.dark .btn-reset-filter {
+  background: rgba(255,255,255,.05);
+  color: #d1d5db;
+  border-color: var(--border);
+}
+body.dark .btn-reset-filter:hover {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+/* --- KPI Cards --- */
+body.dark .kpi-card {
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+body.dark .kpi-card:hover {
+  box-shadow: 0 8px 22px rgba(16,185,129,.2);
+  border-color: rgba(16,185,129,.3);
+}
+body.dark .kpi-value {
+  color: #f3f4f6;
+}
+body.dark .kpi-label {
+  color: #9ca3af;
+}
+body.dark .kpi-sub {
+  color: #9ca3af;
+}
+body.dark .kpi-sub.green  { color: #34d399; }
+body.dark .kpi-sub.red    { color: #f87171; }
+body.dark .kpi-sub.amber  { color: #fbbf24; }
+body.dark .kpi-sub.blue   { color: #60a5fa; }
+
+/* --- KPI Icon Dark Variants --- */
+body.dark .kpi-icon.purple { background: #2e1065; color: #a78bfa; }
+body.dark .kpi-icon.green  { background: #064e3b; color: #34d399; }
+body.dark .kpi-icon.red    { background: #450a0a; color: #f87171; }
+body.dark .kpi-icon.amber  { background: #451a03; color: #fbbf24; }
+body.dark .kpi-icon.blue   { background: #1e3a5f; color: #60a5fa; }
+body.dark .kpi-icon.teal   { background: #042f2e; color: #2dd4bf; }
+body.dark .kpi-icon.orange { background: #431407; color: #fb923c; }
+body.dark .kpi-icon.indigo { background: #1e1b4b; color: #a5b4fc; }
+
+/* --- Chart Boxes --- */
+body.dark .chart-box {
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+body.dark .chart-box:hover {
+  box-shadow: 0 8px 22px rgba(16,185,129,.18);
+  border-color: rgba(16,185,129,.3);
+}
+body.dark .chart-box h3 {
+  color: #e5e7eb;
+}
+body.dark .chart-box h3 i {
+  color: #34d399;
+}
+body.dark .chart-box h3 small {
+  color: #6b7280;
+}
+
+/* --- Donut Box --- */
+body.dark .donut-box {
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+body.dark .donut-box h3 {
+  color: #e5e7eb;
+}
+body.dark .d-leg {
+  color: #9ca3af;
+}
+body.dark .no-leave-notice i {
+  color: #34d399;
+}
+body.dark .no-leave-notice p {
+  color: #9ca3af;
+}
+
+/* --- Today Panel --- */
+body.dark .today-panel {
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+body.dark .today-panel h3 {
+  color: #e5e7eb;
+}
+body.dark .today-row {
+  border-bottom-color: rgba(255,255,255,.06);
+}
+body.dark .today-row span {
+  color: #9ca3af;
+}
+body.dark .today-row b {
+  color: #f3f4f6;
+}
+body.dark .today-row b.green { color: #34d399; }
+body.dark .today-row b.red   { color: #f87171; }
+body.dark .today-row b.amber { color: #fbbf24; }
+
+/* --- LPP Badge in dark mode --- */
+body.dark .chart-box h3 span[style] {
+  background: rgba(16,185,129,.12) !important;
+  color: #6ee7b7 !important;
+  border-color: rgba(110,231,183,.25) !important;
+}
+
 /* responsive */
 @media (max-width: 1100px) { .kpi-grid-8 { grid-template-columns: repeat(2,1fr); } .kpi-grid-4 { grid-template-columns: repeat(2,1fr); } }
 @media (max-width: 900px)  { .charts-row { grid-template-columns: 1fr; } .right-col { flex-direction: row; } }
@@ -461,7 +635,7 @@ if ($donutTotal === 0) { $donutPresent = 1; $donutTotal = 1; } // show filled ci
       <button class="menu-btn" id="menuBtn" aria-label="Open menu">
         <i class="fa-solid fa-bars"></i>
       </button>
-      <h1>Security Billing Management Portal</h1>
+      <h1>Security Attendance and Billing Portal</h1>
       <button class="theme-btn" id="themeToggle" title="Toggle dark mode">
         <i class="fa-solid fa-moon"></i>
       </button>
@@ -830,153 +1004,182 @@ const cLPP      = <?= json_encode($chartLPP) ?>;
 const FONT = { family:"Segoe UI,sans-serif", size:11 };
 Chart.defaults.font = FONT;
 
-/* ── 1. Attendance Trend (Bar + Line) ── */
-new Chart(document.getElementById('trendChart'), {
-  data: {
-    labels,
-    datasets: [
-      {
-        type: 'bar',
-        label: 'Present Count (Days)',
-        data: cPresent,
-        backgroundColor: 'rgba(16,185,129,.55)',
-        borderColor: '#059669',
-        borderWidth: 1,
-        borderRadius: 5,
-        yAxisID: 'y',
-      },
-      {
-        type: 'line',
-        label: 'Total Overtime (Hrs)',
-        data: cOT,
-        borderColor: '#f59e0b',
-        backgroundColor: 'rgba(245,158,11,.12)',
+/* ── Theme-aware chart colors ── */
+function isDark() { return document.body.classList.contains('dark'); }
+function gridColor()   { return isDark() ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.04)'; }
+function tickColor()   { return isDark() ? '#9ca3af' : '#6b7280'; }
+function legendColor() { return isDark() ? '#d1d5db' : '#374151'; }
+function donutBorder() { return isDark() ? '#111827' : '#ffffff'; }
+
+/* Store chart instances for theme re-render */
+const chartInstances = {};
+
+function createCharts() {
+  // Destroy existing charts before re-creating
+  Object.values(chartInstances).forEach(c => c.destroy());
+
+  const gc = gridColor();
+  const tc = tickColor();
+  const lc = legendColor();
+
+  /* ── 1. Attendance Trend (Bar + Line) ── */
+  chartInstances.trend = new Chart(document.getElementById('trendChart'), {
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Present Count (Days)',
+          data: cPresent,
+          backgroundColor: 'rgba(16,185,129,.55)',
+          borderColor: '#059669',
+          borderWidth: 1,
+          borderRadius: 5,
+          yAxisID: 'y',
+        },
+        {
+          type: 'line',
+          label: 'Total Overtime (Hrs)',
+          data: cOT,
+          borderColor: '#f59e0b',
+          backgroundColor: 'rgba(245,158,11,.12)',
+          borderWidth: 2.2,
+          tension: 0.4,
+          fill: false,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#f59e0b',
+          yAxisID: 'y2',
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      plugins: { legend: { labels: { usePointStyle:true, padding:14, color:lc } } },
+      scales: {
+        y:  { beginAtZero:true, grid:{ color:gc }, ticks:{ font:FONT, color:tc } },
+        y2: { beginAtZero:true, position:'right', grid:{ drawOnChartArea:false }, ticks:{ font:FONT, color:tc } },
+        x:  { grid:{ display:false }, ticks:{ font:FONT, maxRotation:0, color:tc } }
+      }
+    }
+  });
+
+  /* ── 2. Donut ── */
+  <?php if ($todayPresent > 0 || $todayAbsent > 0 || $todayLeave > 0): ?>
+  chartInstances.donut = new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Present','Absent','Leave'],
+      datasets: [{
+        data: [<?= $donutPresent ?>, <?= $donutAbsent ?>, <?= $donutLeave ?>],
+        backgroundColor: ['#10b981','#ef4444','#f59e0b'],
+        borderWidth: 2, borderColor: donutBorder(),
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '70%',
+      plugins: { legend: { display:false } }
+    }
+  });
+  <?php endif; ?>
+
+  /* ── 3. Monthly Attendance Record ── */
+  chartInstances.monthly = new Chart(document.getElementById('monthlyChart'), {
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Present Count (Days)',
+          data: cPresent,
+          backgroundColor: 'rgba(16,185,129,.55)',
+          borderColor: '#059669',
+          borderWidth: 1,
+          borderRadius: 4,
+          yAxisID: 'y',
+        },
+        {
+          type: 'line',
+          label: 'Total Overtime (Hrs)',
+          data: cOT,
+          borderColor: '#f59e0b',
+          borderWidth: 2,
+          tension: 0.4,
+          fill: false,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          pointBackgroundColor: '#f59e0b',
+          yAxisID: 'y2',
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      plugins: { legend: { labels: { usePointStyle:true, padding:14, color:lc } } },
+      scales: {
+        y:  { beginAtZero:true, grid:{ color:gc }, ticks:{ font:FONT, color:tc } },
+        y2: { beginAtZero:true, position:'right', grid:{ drawOnChartArea:false }, ticks:{ font:FONT, color:tc } },
+        x:  { grid:{ display:false }, ticks:{ font:FONT, maxRotation:45, color:tc } }
+      }
+    }
+  });
+
+  /* ── 4. Monthly LPP Amount ── */
+  chartInstances.lpp = new Chart(document.getElementById('lppChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Total Amount Paid',
+        data: cLPP,
+        borderColor: '#2563eb',
+        backgroundColor: isDark() ? 'rgba(37,99,235,.15)' : 'rgba(37,99,235,.07)',
         borderWidth: 2.2,
         tension: 0.4,
-        fill: false,
+        fill: true,
         pointRadius: 4,
         pointHoverRadius: 6,
-        pointBackgroundColor: '#f59e0b',
-        yAxisID: 'y2',
-      }
-    ]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    interaction: { mode:'index', intersect:false },
-    plugins: { legend: { labels: { usePointStyle:true, padding:14 } } },
-    scales: {
-      y:  { beginAtZero:true, grid:{ color:'rgba(0,0,0,.04)' }, ticks:{ font:FONT } },
-      y2: { beginAtZero:true, position:'right', grid:{ drawOnChartArea:false }, ticks:{ font:FONT } },
-      x:  { grid:{ display:false }, ticks:{ font:FONT, maxRotation:0 } }
-    }
-  }
-});
-
-/* ── 2. Donut ── */
-<?php if ($todayPresent > 0 || $todayAbsent > 0 || $todayLeave > 0): ?>
-new Chart(document.getElementById('donutChart'), {
-  type: 'doughnut',
-  data: {
-    labels: ['Present','Absent','Leave'],
-    datasets: [{
-      data: [<?= $donutPresent ?>, <?= $donutAbsent ?>, <?= $donutLeave ?>],
-      backgroundColor: ['#10b981','#ef4444','#f59e0b'],
-      borderWidth: 2, borderColor: '#fff',
-      hoverOffset: 6,
-    }]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    cutout: '70%',
-    plugins: { legend: { display:false } }
-  }
-});
-<?php endif; ?>
-
-/* ── 3. Monthly Attendance Record ── */
-new Chart(document.getElementById('monthlyChart'), {
-  data: {
-    labels,
-    datasets: [
-      {
-        type: 'bar',
-        label: 'Present Count (Days)',
-        data: cPresent,
-        backgroundColor: 'rgba(16,185,129,.55)',
-        borderColor: '#059669',
-        borderWidth: 1,
-        borderRadius: 4,
-        yAxisID: 'y',
-      },
-      {
-        type: 'line',
-        label: 'Total Overtime (Hrs)',
-        data: cOT,
-        borderColor: '#f59e0b',
-        borderWidth: 2,
-        tension: 0.4,
-        fill: false,
-        pointRadius: 3,
-        pointHoverRadius: 5,
-        pointBackgroundColor: '#f59e0b',
-        yAxisID: 'y2',
-      }
-    ]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    interaction: { mode:'index', intersect:false },
-    plugins: { legend: { labels: { usePointStyle:true, padding:14 } } },
-    scales: {
-      y:  { beginAtZero:true, grid:{ color:'rgba(0,0,0,.04)' }, ticks:{ font:FONT } },
-      y2: { beginAtZero:true, position:'right', grid:{ drawOnChartArea:false }, ticks:{ font:FONT } },
-      x:  { grid:{ display:false }, ticks:{ font:FONT, maxRotation:45 } }
-    }
-  }
-});
-
-/* ── 4. Monthly LPP Amount ── */
-new Chart(document.getElementById('lppChart'), {
-  type: 'line',
-  data: {
-    labels,
-    datasets: [{
-      label: 'Total Amount Paid',
-      data: cLPP,
-      borderColor: '#2563eb',
-      backgroundColor: 'rgba(37,99,235,.07)',
-      borderWidth: 2.2,
-      tension: 0.4,
-      fill: true,
-      pointRadius: 4,
-      pointHoverRadius: 6,
-      pointBackgroundColor: '#2563eb',
-    }]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: {
-      legend: { labels: { usePointStyle:true, padding:14 } },
-      tooltip: {
-        callbacks: {
-          label: ctx => '₹' + Number(ctx.raw).toLocaleString('en-IN', {minimumFractionDigits:2})
-        }
-      }
+        pointBackgroundColor: '#2563eb',
+      }]
     },
-    scales: {
-      y: {
-        beginAtZero:true,
-        grid:{ color:'rgba(0,0,0,.04)' },
-        ticks: {
-          font:FONT,
-          callback: v => '₹' + Number(v).toLocaleString('en-IN')
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { usePointStyle:true, padding:14, color:lc } },
+        tooltip: {
+          callbacks: {
+            label: ctx => '₹' + Number(ctx.raw).toLocaleString('en-IN', {minimumFractionDigits:2})
+          }
         }
       },
-      x: { grid:{ display:false }, ticks:{ font:FONT, maxRotation:45 } }
+      scales: {
+        y: {
+          beginAtZero:true,
+          grid:{ color:gc },
+          ticks: {
+            font:FONT, color:tc,
+            callback: v => '₹' + Number(v).toLocaleString('en-IN')
+          }
+        },
+        x: { grid:{ display:false }, ticks:{ font:FONT, maxRotation:45, color:tc } }
+      }
     }
-  }
-});
+  });
+}
+
+/* Initial chart creation */
+createCharts();
+
+/* Re-create charts when theme toggles */
+const origApplyTheme = applyTheme;
+applyTheme = function(dark) {
+  origApplyTheme(dark);
+  createCharts();
+};
 </script>
 </body>
 </html>

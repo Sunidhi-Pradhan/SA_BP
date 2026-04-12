@@ -35,7 +35,7 @@ $defaultFY = $fyStart . '-' . ($fyStart + 1);
 <html lang="en">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>VV Statement – SDHOD | Security Billing Management Portal</title>
+<title>VV Statement – SDHOD | Security Attendance and Billing Portal</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -112,7 +112,7 @@ body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#f5f5
 
     <main class="main-content">
         <header class="topbar">
-            <h2>Security Billing Management Portal</h2>
+            <h2>Security Attendance and Billing Portal</h2>
             <div class="topbar-right">
                 <span class="role-badge"><i class="fa-solid fa-user-tie"></i> SDHOD</span>
                 <a href="profile.php" style="text-decoration:none;"><div class="user-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="8" r="4"/></svg></div></a>

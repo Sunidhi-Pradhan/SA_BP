@@ -259,7 +259,7 @@ if ($workflow) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Monthly Attendance – HQSO | Security Billing Management Portal</title>
+    <title>Monthly Attendance – HQSO | Security Attendance and Billing Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -274,7 +274,7 @@ if ($workflow) {
         }
         html { scroll-behavior: smooth; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; color: #333; line-height: 1.6; }
-        .dashboard-layout { display: grid; grid-template-columns: var(--sidebar-width) 1fr; min-height: 100vh; }
+        .dashboard-layout { display: grid; grid-template-columns: var(--sidebar-width) 1fr; min-height: 100vh; background: linear-gradient(to right, #0a5c55 var(--sidebar-width), #f5f5f5 var(--sidebar-width)); }
 
         /* ── SIDEBAR ── */
         .sidebar { background: linear-gradient(180deg,#0f766e 0%,#0a5c55 100%); color:white; padding:0; box-shadow:4px 0 24px rgba(13,95,88,0.35); position:sticky; top:0; height:100vh; overflow-y:auto; z-index:100; transition:transform 0.3s cubic-bezier(0.4,0,0.2,1); display:flex; flex-direction:column; }
@@ -513,7 +513,7 @@ if ($workflow) {
     <main class="main-content">
         <header class="topbar">
             <button class="hamburger-btn" id="hamburgerBtn"><i class="fa-solid fa-bars"></i></button>
-            <h2>Security Billing Management Portal</h2>
+            <h2>Security Attendance and Billing Portal</h2>
             <div class="topbar-right">
                 <span class="role-badge"><i class="fa-solid fa-shield-halved"></i> HQSO</span>
                 <div class="header-icon"><i class="fa-regular fa-bell"></i><span class="badge">3</span></div>

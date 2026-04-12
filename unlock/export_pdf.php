@@ -102,7 +102,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </head>
 <body>
     <div class="header">
-        <h2>Security Billing Portal</h2>
+        <h2>Security Attendance and Billing Portal</h2>
         <h3>Attendance Report</h3>
     </div>
     
@@ -160,7 +160,7 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </table>
     
     <div class="footer">
-        <p>© <?php echo date('Y'); ?> Security Billing Portal - MCI. All rights reserved.</p>
+        <p>© <?php echo date('Y'); ?> Security Attendance and Billing Portal - MCI. All rights reserved.</p>
     </div>
 
     <script>

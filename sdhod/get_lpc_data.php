@@ -8,8 +8,8 @@ require "../config.php";
 
 header('Content-Type: application/json');
 
-$month = (int)($_GET['month'] ?? 0);
-$year  = (int)($_GET['year']  ?? 0);
+$month = (int) ($_GET['month'] ?? 0);
+$year = (int) ($_GET['year'] ?? 0);
 
 if (!$month || !$year) {
     echo json_encode(["sites" => [], "workflow" => null]);
@@ -45,6 +45,6 @@ foreach ($rows as $row) {
 }
 
 echo json_encode([
-    "sites"    => $allSites,
+    "sites" => $allSites,
     "workflow" => $workflow,
 ]);

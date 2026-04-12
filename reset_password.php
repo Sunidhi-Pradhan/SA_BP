@@ -40,7 +40,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Reset Password – Security Billing Management Portal</title>
+<title>Reset Password – Security Attendance and Billing Portal</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
@@ -168,7 +168,7 @@ body { min-height:100vh; background:#f0f2f5; display:flex; flex-direction:column
   <div class="header-left">
     <img src="assets/logo/images.png" alt="MCL Logo" onerror="this.style.display='none'">
   </div>
-  <div class="header-center"><h1>Security Billing Management Portal</h1></div>
+  <div class="header-center"><h1>Security Attendance and Billing Portal</h1></div>
   <div class="header-right">
     <img src="assets/logo/image.png" alt="Ministry of Coal" onerror="this.style.display='none'">
     <div class="moc-text">

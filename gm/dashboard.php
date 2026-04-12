@@ -119,7 +119,7 @@ for ($y = $fyStartYear; $y >= 2021; $y--) {
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Security Billing Management Portal – GM Dashboard</title>
+<title>Security Attendance and Billing Portal – GM Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
 <style>
@@ -477,7 +477,7 @@ body.dark .filter-select { background-color: #1e293b; color: #e5e7eb; border-col
     <header class="topbar">
       <div class="topbar-left">
         <button class="hamburger-btn" id="hamburgerBtn"><i class="fa-solid fa-bars"></i></button>
-        <h2>Security Billing Management Portal</h2>
+        <h2>Security Attendance and Billing Portal</h2>
       </div>
       <div class="topbar-right">
         <span class="role-badge"><i class="fa-solid fa-user-gear"></i> GM</span>

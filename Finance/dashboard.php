@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Security Billing Management Portal – Finance Dashboard</title>
+<title>Security Attendance and Billing Portal – Finance Dashboard</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -337,7 +337,7 @@ td { padding: 15px 20px; font-size: 0.86rem; }
     <header class="topbar">
       <div class="topbar-left">
         <button class="hamburger-btn" id="hamburgerBtn"><i class="fa-solid fa-bars"></i></button>
-        <h2>Security Billing Management Portal</h2>
+        <h2>Security Attendance and Billing Portal</h2>
       </div>
       <div class="topbar-right">
         <span class="role-badge"><i class="fa-solid fa-user-tie"></i> Finance</span>

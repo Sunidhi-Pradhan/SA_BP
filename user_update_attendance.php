@@ -195,11 +195,7 @@ if ($u['role'] !== 'user') {
     .sidebar ul li:hover  a i { transform: scale(1.28) rotate(-6deg); opacity: 1; }
     .sidebar ul li.active a i { transform: scale(1.18); opacity: 1; }
 
-    .sidebar ul li:last-child { margin-top: 10px !important; border-top: 1px solid rgba(255,255,255,0.12) !important; padding-top: 6px !important; }
-    .sidebar ul li:last-child a      { color: rgba(255,255,255,0.58) !important; }
-    .sidebar ul li:last-child:hover  { background: rgba(239,68,68,0.18) !important; }
-    .sidebar ul li:last-child:hover a{ color: #fca5a5 !important; }
-    .sidebar ul li:last-child:hover a i { color: #fca5a5; transform: scale(1.18) translateX(3px) !important; }
+
 
     /* ============================================================
        MOBILE OVERLAY
@@ -268,6 +264,8 @@ if ($u['role'] !== 'user') {
         padding: 28px;
         box-shadow: 0 2px 12px rgba(0,0,0,0.07);
         height: fit-content;
+        min-width: 0;
+        overflow: hidden;
         /* entrance */
         animation: panelSlideLeft 0.55s 0.35s cubic-bezier(0.22,1,0.36,1) both;
     }
@@ -369,6 +367,8 @@ if ($u['role'] !== 'user') {
         border-radius: 12px;
         padding: 28px;
         box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+        min-width: 0;
+        overflow: hidden;
         animation: panelSlideRight 0.55s 0.4s cubic-bezier(0.22,1,0.36,1) both;
     }
 
@@ -631,7 +631,7 @@ if ($u['role'] !== 'user') {
         .pagination-row { flex-wrap: wrap !important; gap: 8px !important; }
         #showingText { font-size: 0.78rem !important; }
         .pg-btn { padding: 6px 13px !important; font-size: 0.79rem !important; }
-        footer { margin-top: 16px !important; padding: 14px !important; }
+
     }
 
     @media (max-width: 480px) {
@@ -690,12 +690,7 @@ if ($u['role'] !== 'user') {
                     Update Attendance
                 </a>
             </li>
-            <li>
-                <a href="logout.php">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                    Logout
-                </a>
-            </li>
+
         </ul>
 
     </aside>
@@ -712,7 +707,7 @@ if ($u['role'] !== 'user') {
                     <i class="fa-solid fa-bars"></i>
                 </button>
             </div>
-            <h3>Security Management Portal</h3>
+            <h3>Security Attendance and Billing Portal</h3>
             <div class="topbar-right">
                 <div class="user-icon">
                     <a href="user_profile.php">
@@ -862,7 +857,7 @@ if ($u['role'] !== 'user') {
             </div>
         </div>
 
-        <footer>© 2026 MCL — All Rights Reserved</footer>
+
 
     </main>
 </div>

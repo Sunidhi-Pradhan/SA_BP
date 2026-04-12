@@ -107,7 +107,7 @@ $createdAt = isset($user['created_at']) ? date('d-m-Y H:i', strtotime($user['cre
     <main class="main-content">
         <!-- Topbar -->
         <header class="topbar">
-            <h2>Security Billing Management Portal</h2>
+            <h2>Security Attendance and Billing Portal</h2>
             <div class="topbar-right">
                 <span class="role-badge"><i class="fa-solid fa-user-tie"></i> SDHOD</span>
                 <div class="header-icon">

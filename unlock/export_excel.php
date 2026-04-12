@@ -47,7 +47,7 @@ header("Expires: 0");
     </style>
 </head>
 <body>
-    <h2>Security Billing Portal - Attendance Report</h2>
+    <h2>Security Attendance and Billing Portal - Attendance Report</h2>
     <p>Generated on: <?php echo date('Y-m-d H:i:s'); ?></p>
     
     <table>

@@ -426,9 +426,6 @@
             <a href="../admin/monthly_attendance.php" class="menu">
                 <span class="icon"><i class="fa-solid fa-calendar-days"></i></span><span>Monthly Attendance</span>
             </a>
-            <a href="#" class="menu">
-                <span class="icon"><i class="fa-solid fa-file-pdf"></i></span><span>Download Salary</span>
-            </a>
             <a href="../logout.php" class="menu logout">
                 <span class="icon"><i class="fa-solid fa-right-from-bracket"></i></span><span>Logout</span>
             </a>
@@ -441,7 +438,7 @@
             <button class="menu-btn" id="menuBtn" aria-label="Open menu">
                 <i class="fa-solid fa-bars"></i>
             </button>
-            <h2>Security Billing Portal</h2>
+            <h2>Security Attendance and Billing Portal</h2>
             <button class="theme-btn" id="themeToggle" title="Toggle dark mode">
                 <i class="fa-solid fa-moon"></i>
             </button>

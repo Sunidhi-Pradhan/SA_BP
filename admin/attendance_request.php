@@ -12,7 +12,7 @@ if (!isset($_SESSION['user'])) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Attendance Request – Security Billing Portal</title>
+    <title>Attendance Request – Security Attendance and Billing Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/js/all.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -396,10 +396,6 @@ if (!isset($_SESSION['user'])) {
                 <span class="icon"><i class="fa-solid fa-calendar-days"></i></span>
                 <span>Monthly Attendance</span>
             </a>
-            <a href="../download_attendance/download_attendance.php" class="menu">
-                <span class="icon"><i class="fa-solid fa-file-pdf"></i></span>
-                <span>Download Salary</span>
-            </a>
             <a href="logout.php" class="menu logout">
                 <span class="icon"><i class="fa-solid fa-right-from-bracket"></i></span>
                 <span>Logout</span>
@@ -411,7 +407,7 @@ if (!isset($_SESSION['user'])) {
     <main class="main">
         <header>
             <button class="menu-btn" id="menuBtn"><i class="fa-solid fa-bars"></i></button>
-            <h1>Security Billing Portal</h1>
+            <h1>Security Attendance and Billing Portal</h1>
             <button class="theme-btn" id="themeToggle"><i class="fa-solid fa-moon"></i></button>
         </header>
 

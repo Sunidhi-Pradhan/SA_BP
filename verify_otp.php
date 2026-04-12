@@ -115,7 +115,7 @@ function sendLockoutEmail($toEmail, $userId) {
     $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
     $mail->Port = 587;
 
-    $mail->setFrom("test.work3589@gmail.com", "Security Billing Portal");
+    $mail->setFrom("test.work3589@gmail.com", "Security Attendance and Billing Portal");
     $mail->addAddress($toEmail);
 
     $mail->isHTML(true);
@@ -133,7 +133,7 @@ function sendLockoutEmail($toEmail, $userId) {
                 </p>
                 <p style='color:#6b7280;font-size:0.85rem;'>You can try logging in again after the lockout period expires.</p>
                 <hr style='border:none;border-top:1px solid #e5e7eb;margin:1rem 0;'>
-                <p style='color:#9ca3af;font-size:0.75rem;'>Security Billing Management Portal – Mahanadi Coalfields Limited</p>
+                <p style='color:#9ca3af;font-size:0.75rem;'>Security Attendance and Billing Portal – Mahanadi Coalfields Limited</p>
             </div>
         </div>
     ";
@@ -145,7 +145,7 @@ function sendLockoutEmail($toEmail, $userId) {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Verify OTP – Security Billing Management Portal</title>
+<title>Verify OTP – Security Attendance and Billing Portal</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
@@ -339,7 +339,7 @@ body {
   <div class="header-left">
     <img src="assets/logo/images.png" alt="MCL Logo" onerror="this.style.display='none'">
   </div>
-  <div class="header-center"><h1>Security Billing Management Portal</h1></div>
+  <div class="header-center"><h1>Security Attendance and Billing Portal</h1></div>
   <div class="header-right">
 <img src="assets/logo/image.png" alt="Ministry of Coal" onerror="this.style.display='none'">
     <div class="moc-text">

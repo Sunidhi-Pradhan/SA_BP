@@ -2,7 +2,7 @@
 try {
     // Database connection
     $pdo = new PDO("mysql:host=localhost;dbname=demo;charset=utf8mb4", "root", "");
-    
+
     // Set error mode
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
@@ -17,18 +17,18 @@ try {
 
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $data[] = [
-            "site"  => $row["site_name"],
-            "bes"   => $row["bes_no"],
-            "dar"   => $row["dar_no"],
-            "amount"=> $row["amount"],
-            "gst"   => $row["gst"],
+            "site" => $row["site_name"],
+            "bes" => $row["bes_no"],
+            "dar" => $row["dar_no"],
+            "amount" => $row["amount"],
+            "gst" => $row["gst"],
             "gross" => $row["gross_total"],
             "ittds" => $row["it_tds"],
-            "sgst"  => $row["sgst"],
-            "cgst"  => $row["cgst"],
-            "ret"   => $row["retention"],
+            "sgst" => $row["sgst"],
+            "cgst" => $row["cgst"],
+            "ret" => $row["retention"],
             "bonus" => $row["bonus"],
-            "net"   => $row["net_payment"]
+            "net" => $row["net_payment"]
         ];
     }
 

@@ -15,7 +15,7 @@ $userName = $user['name'];
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Monthly LPP – Security Billing Management Portal</title>
+    <title>Monthly LPP – Security Attendance and Billing Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -194,7 +194,7 @@ $userName = $user['name'];
     <main class="main-content">
         <header class="topbar">
             <button class="hamburger-btn" id="hamburgerBtn"><i class="fa-solid fa-bars"></i></button>
-            <h2>Security Billing Management Portal</h2>
+            <h2>Security Attendance and Billing Portal</h2>
             <div class="topbar-right">
                 <span class="role-badge"><i class="fa-solid fa-user-tie"></i> SDHOD</span>
                 <div class="header-icon"><i class="fa-regular fa-bell"></i><span class="badge">3</span></div>

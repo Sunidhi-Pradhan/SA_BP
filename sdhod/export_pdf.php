@@ -346,7 +346,7 @@ table.sig td { text-align:center; padding:6px 4px; border:1px solid #e5e7eb; }
 </table>
 
 <div class="footer">
-    Security Billing Management Portal &ndash; MCL &nbsp;|&nbsp;
+    Security Attendance and Billing Portal &ndash; MCL &nbsp;|&nbsp;
     <?= htmlspecialchars($siteName) ?> &nbsp;|&nbsp;
     <?= $monthName ?> <?= $year ?> &nbsp;|&nbsp;
     System generated &nbsp;|&nbsp; <?= date('d-m-Y H:i:s') ?>

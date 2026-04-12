@@ -254,7 +254,7 @@ $sites = $pdo->query("
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Extra Manpower – Security Billing Portal</title>
+    <title>Extra Manpower – Security Attendance and Billing Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/11.10.5/sweetalert2.min.css">
@@ -695,10 +695,6 @@ $sites = $pdo->query("
                 <span class="icon"><i class="fa-solid fa-calendar-days"></i></span>
                 <span>Monthly Attendance</span>
             </a>
-            <a href="#" class="menu">
-                <span class="icon"><i class="fa-solid fa-file-pdf"></i></span>
-                <span>Download Salary</span>
-            </a>
             <a href="logout.php" class="menu logout">
                 <span class="icon"><i class="fa-solid fa-right-from-bracket"></i></span>
                 <span>Logout</span>
@@ -713,7 +709,7 @@ $sites = $pdo->query("
             <button class="menu-btn" id="menuBtn" aria-label="Open menu">
                 <i class="fa-solid fa-bars"></i>
             </button>
-            <h1>Security Billing Portal</h1>
+            <h1>Security Attendance and Billing Portal</h1>
             <button class="theme-btn" id="themeToggle" title="Toggle dark mode">
                 <i class="fa-solid fa-moon"></i>
             </button>
