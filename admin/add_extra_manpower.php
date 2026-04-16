@@ -1067,5 +1067,6 @@ Swal.fire({
 .swal-confirm-btn, .swal-cancel-btn { border-radius:10px !important; font-size:.88rem !important; font-weight:700 !important; padding:10px 22px !important; display:inline-flex !important; align-items:center !important; gap:7px !important; }
 .swal2-timer-progress-bar { background:#0f766e !important; }
 </style>
+<?php include __DIR__ . '/../chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

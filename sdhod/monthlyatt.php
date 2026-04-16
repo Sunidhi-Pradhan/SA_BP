@@ -904,5 +904,6 @@ function exportPdf() {
     window.open(buildExportUrl('export_pdf.php'), '_blank');
 }
 </script>
+<?php include __DIR__ . '/../chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

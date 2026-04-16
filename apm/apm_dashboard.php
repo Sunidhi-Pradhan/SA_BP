@@ -978,5 +978,6 @@ $asoSiteCode = $u['site_code'];
         });
     </script>
 
+<?php include __DIR__ . '/../chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

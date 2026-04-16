@@ -559,5 +559,6 @@ function handleForwardReport(){
         .catch(err=>{ Swal.fire({ icon: 'error', title: 'Network Error', text: 'Could not connect to the server.', confirmButtonColor: '#0f766e' }); btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-paper-plane"></i> Forward Report'; });
 }
 </script>
+<?php include __DIR__ . '/../chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

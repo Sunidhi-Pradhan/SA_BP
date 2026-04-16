@@ -835,5 +835,6 @@ themeToggle.addEventListener('click',()=>{const d=!document.body.classList.conta
 ═══════════════════════════════════════ */
 loadData();
 </script>
+<?php include __DIR__ . '/../chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

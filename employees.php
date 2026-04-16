@@ -769,5 +769,6 @@ if (params.has("error")) {
 }
 </script>
 
+<?php include 'chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

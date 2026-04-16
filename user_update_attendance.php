@@ -1196,5 +1196,6 @@ if ($u['role'] !== 'user') {
     /* Initial load */
     loadHistory();
 </script>
+<?php include 'chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

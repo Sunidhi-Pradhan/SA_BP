@@ -598,5 +598,6 @@ async function loadData() {
     }
 }
 </script>
+<?php include __DIR__ . '/../chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

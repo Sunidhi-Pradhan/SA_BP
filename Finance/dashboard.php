@@ -594,5 +594,6 @@ td { padding: 15px 20px; font-size: 0.86rem; }
          });
   ──────────────────────────────────────────────────────────────── */
 </script>
+<?php include __DIR__ . '/../chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

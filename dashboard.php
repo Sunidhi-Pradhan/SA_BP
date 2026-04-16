@@ -1181,5 +1181,6 @@ applyTheme = function(dark) {
   createCharts();
 };
 </script>
+<?php include 'chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

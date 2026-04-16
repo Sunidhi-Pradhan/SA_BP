@@ -323,5 +323,6 @@ function downloadExcel() {
     });
 }
 </script>
+<?php include __DIR__ . '/../chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

@@ -822,5 +822,6 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 <?php endif; ?>
 </script>
+<?php include __DIR__ . '/../chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

@@ -168,5 +168,6 @@ $createdAt = isset($user['created_at']) ? date('d-m-Y H:i', strtotime($user['cre
         </div>
     </main>
 </div>
+<?php include 'chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

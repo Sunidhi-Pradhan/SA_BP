@@ -932,5 +932,6 @@ themeToggle.addEventListener('click', function () {
   80%      { transform: translateX(4px); }
 }
 </style>
+<?php include 'chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

@@ -651,5 +651,6 @@ foreach ($attendanceList as $row) {
       themeToggle.addEventListener('click', () => { const d=document.body.classList.contains('dark'); applyTheme(!d); localStorage.setItem('theme',!d?'dark':'light'); });
     }
 </script>
+<?php include 'chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

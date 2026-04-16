@@ -1311,5 +1311,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
+<?php include 'chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

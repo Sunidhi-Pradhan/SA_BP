@@ -602,5 +602,6 @@ if ($u['role'] !== 'user') {
         showNotification(parseInt(processed) > 0 ? 'success' : 'error', title, message);
     }
 </script>
+<?php include 'chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

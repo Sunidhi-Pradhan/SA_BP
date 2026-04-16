@@ -616,5 +616,6 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
     function showMsg(el,type,text) { el.className='modal-msg '+type; el.innerHTML='<i class="fa-solid fa-'+(type==='error'?'circle-exclamation':'circle-check')+'"></i> '+text; }
 </script>
 
+<?php include 'chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

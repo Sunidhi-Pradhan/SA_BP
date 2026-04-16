@@ -934,5 +934,6 @@ themeToggle.addEventListener('click', () => { const d = document.body.classList.
         window.addEventListener('DOMContentLoaded', function() { loadSites(); loadAttendance(); });
 </script>
 
+<?php include __DIR__ . '/../chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

@@ -685,5 +685,6 @@ body.dark .filter-select { background-color: #1e293b; color: #e5e7eb; border-col
   applyTheme(localStorage.getItem('theme')==='dark');
   themeToggle.addEventListener('click', () => { const d=document.body.classList.contains('dark'); applyTheme(!d); localStorage.setItem('theme',!d?'dark':'light'); });
 </script>
+<?php include __DIR__ . '/../chatbot/chatbot_widget.php'; ?>
 </body>
 </html>

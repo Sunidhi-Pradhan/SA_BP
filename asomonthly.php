@@ -1648,6 +1648,7 @@ $totalDuty = $totalWorking + $totalExtra;
             commentBox.addEventListener('input', function () { this.classList.remove('error'); });
         }
     </script>
+<?php include 'chatbot/chatbot_widget.php'; ?>
 </body>
 
 </html>
