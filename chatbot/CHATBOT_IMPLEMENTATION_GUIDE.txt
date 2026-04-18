@@ -1,0 +1,545 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║         SABP CHATBOT — COMPLETE IMPLEMENTATION GUIDE                     ║
+║         Security Attendance and Billing Portal                           ║
+║         Last Updated: April 2026                                         ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TABLE OF CONTENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. Overview & Architecture
+  2. File Structure
+  3. Database Setup (Step 1)
+  4. Backend API Logic (Step 2)
+  5. Live Data Queries (Step 3)
+  6. FAQ Knowledge Base (Step 4)
+  7. Frontend Widget — HTML (Step 5)
+  8. Frontend Logic — JavaScript (Step 6)
+  9. Styling — CSS (Step 7)
+  10. Including Chatbot on Any Page (Step 8)
+  11. How the Message Pipeline Works
+  12. Role-Based Access
+  13. Features Summary
+  14. Troubleshooting
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. OVERVIEW & ARCHITECTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The SABP chatbot is a floating chat widget that appears on every page of the
+portal. It is a RULE-BASED chatbot (not AI/ML) that uses keyword matching and
+regex patterns to understand user queries in both English and Hinglish.
+
+Architecture:
+┌─────────────────────────────────────────────────────┐
+│  FRONTEND (Browser)                                 │
+│  ┌───────────────┐    ┌───────────────────────────┐ │
+│  │ chatbot_widget│    │ chatbot.js                │ │
+│  │ (HTML/PHP)    │───▶│ (Handles UI interactions, │ │
+│  │ Floating FAB  │    │  API calls, rendering)    │ │
+│  └───────────────┘    └───────────┬───────────────┘ │
+└─────────────────────────────────────────────────────┘
+                                    │ AJAX (fetch)
+                                    │ POST JSON
+                                    ▼
+┌─────────────────────────────────────────────────────┐
+│  BACKEND (PHP Server)                               │
+│  ┌───────────────────────────────────────────────┐  │
+│  │ chatbot_api.php (Main Controller)             │  │
+│  │ ┌─────────────────────────────────────────┐   │  │
+│  │ │ Pipeline:                               │   │  │
+│  │ │ 1. Conversational check (greetings...)  │   │  │
+│  │ │ 2. Admin commands check                 │   │  │
+│  │ │ 3. Report/LPC/Salary queries            │   │  │
+│  │ │ 4. Live data queries (DB) ──────────────┼───┼──┼──▶ chatbot_queries.php
+│  │ │ 5. FAQ matching ────────────────────────┼───┼──┼──▶ chatbot_faqs (DB table)
+│  │ │ 6. Fallback response                    │   │  │
+│  │ └─────────────────────────────────────────┘   │  │
+│  └───────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────────────┐
+│  DATABASE (MySQL)                                   │
+│  ┌─────────────────┐  ┌──────────────────────────┐  │
+│  │ chatbot_history  │  │ chatbot_faqs             │  │
+│  │ (stores all msgs)│  │ (FAQ knowledge base)     │  │
+│  └─────────────────┘  └──────────────────────────┘  │
+└─────────────────────────────────────────────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. FILE STRUCTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SABP/
+└── chatbot/
+    ├── chatbot_migration.php    ← Run ONCE to create DB tables
+    ├── chatbot_knowledge.php    ← Run ONCE to seed FAQ data
+    ├── chatbot_api.php          ← Main API controller (backend brain)
+    ├── chatbot_queries.php      ← Live database queries
+    ├── chatbot_widget.php       ← HTML widget (include on pages)
+    ├── chatbot.js               ← Frontend logic (UI, API calls)
+    └── chatbot.css              ← All chatbot styles
+
+Total: 7 files. That's it!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. DATABASE SETUP (Step 1)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: chatbot_migration.php
+Purpose: Creates 2 tables in your MySQL database.
+Run: Visit http://localhost/prj1/SABP/chatbot/chatbot_migration.php ONCE.
+
+TABLE 1: chatbot_history
+  ┌─────────────┬──────────────┬───────────────────────────────────┐
+  │ Column      │ Type         │ Purpose                           │
+  ├─────────────┼──────────────┼───────────────────────────────────┤
+  │ id          │ INT (PK)     │ Auto-increment primary key        │
+  │ user_id     │ VARCHAR(50)  │ Which user sent the message       │
+  │ role        │ VARCHAR(20)  │ User's role (Admin, ASO, etc.)    │
+  │ sender      │ ENUM         │ 'user' or 'bot'                   │
+  │ message     │ TEXT         │ The message content               │
+  │ created_at  │ DATETIME     │ When the message was sent         │
+  └─────────────┴──────────────┴───────────────────────────────────┘
+
+TABLE 2: chatbot_faqs
+  ┌─────────────┬──────────────┬───────────────────────────────────┐
+  │ Column      │ Type         │ Purpose                           │
+  ├─────────────┼──────────────┼───────────────────────────────────┤
+  │ id          │ INT (PK)     │ Auto-increment primary key        │
+  │ role        │ VARCHAR(20)  │ 'all' or specific role            │
+  │ keywords    │ VARCHAR(500) │ Comma-separated keywords          │
+  │ question    │ VARCHAR(500) │ The FAQ question                  │
+  │ answer      │ TEXT         │ The FAQ answer (supports HTML)    │
+  │ priority    │ INT          │ Higher = matched first            │
+  │ is_active   │ TINYINT(1)   │ 1=active, 0=disabled              │
+  └─────────────┴──────────────┴───────────────────────────────────┘
+
+After migration, run chatbot_knowledge.php to seed the FAQ data.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. BACKEND API LOGIC (Step 2)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: chatbot_api.php
+Purpose: The main brain of the chatbot. Receives JSON requests from the
+         frontend and returns JSON responses.
+
+HOW IT WORKS:
+  1. Checks if user is logged in (session check)
+  2. Reads the user's role from the database
+  3. Reads the JSON body from the request
+  4. Routes to the correct action based on 'action' parameter
+
+SUPPORTED ACTIONS:
+  ┌────────────────┬────────────────────────────────────────────────┐
+  │ Action         │ What it does                                   │
+  ├────────────────┼────────────────────────────────────────────────┤
+  │ send_message   │ Process user message → return bot reply        │
+  │ get_history    │ Fetch last N chat messages for this user       │
+  │ delete_message │ Delete a single message by ID                  │
+  │ clear_history  │ Delete ALL chat history for this user          │
+  │ get_suggestions│ Get role-based suggestion chips + greeting     │
+  └────────────────┴────────────────────────────────────────────────┘
+
+REQUEST FORMAT (JSON POST):
+  {
+    "action": "send_message",
+    "message": "Hello, how many employees?"
+  }
+
+RESPONSE FORMAT:
+  {
+    "reply": "📊 There are currently <b>150</b> employees registered.",
+    "role": "Admin",
+    "time": "11:30 PM"
+  }
+
+KEY FUNCTIONS IN chatbot_api.php:
+  • saveMessage()          — Saves a message to chatbot_history table
+  • checkConversational()  — Handles greetings, thanks, bye, help, etc.
+  • checkAdminCommands()   — Admin-only commands (reset training, stats)
+  • handleReportQueries()  — LPC, salary, leave, attendance reports
+  • matchFAQ()             — Searches chatbot_faqs table for keyword matches
+  • getFallbackResponse()  — When nothing else matches, show helpful fallback
+  • getHelpMenu()          — Role-specific help menu
+  • getSuggestions()       — Role-specific suggestion chips
+  • getGreeting()          — Time-based greeting with role label
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. LIVE DATA QUERIES (Step 3)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: chatbot_queries.php
+Purpose: Executes SAFE, READ-ONLY database queries based on what the user asks.
+
+SUPPORTED QUERIES:
+  ┌────────────────────────┬──────────────────────────────────────────────┐
+  │ User asks              │ Bot does                                     │
+  ├────────────────────────┼──────────────────────────────────────────────┤
+  │ "How many employees?"  │ SELECT COUNT(*) FROM employee_master         │
+  │ "Total users"          │ SELECT COUNT(*) FROM user (Admin only)       │
+  │ "Today's attendance"   │ Parses attendance_json for today's date      │
+  │ "Pending approvals"    │ Counts from attendance_approval table        │
+  │ "How many sites?"      │ Lists sites from site_master                 │
+  │ "Upload status"        │ Counts attendance uploads for this month     │
+  │ "LPC/LPP status"       │ Counts from lpp_records + total paid amount  │
+  │ "Go to dashboard"      │ Tells user they're on the dashboard          │
+  └────────────────────────┴──────────────────────────────────────────────┘
+
+HOW KEYWORD MATCHING WORKS:
+  Uses PHP preg_match() with regex patterns. Example:
+
+    if (preg_match('/\b(how many|total|count|kitne)\b.*\b(employee|staff)\b/i', $msg)) {
+        // Query the database and return count
+    }
+
+  • \b = word boundary (prevents partial matches)
+  • /i = case-insensitive
+  • Supports both English ("how many employees") and Hinglish ("kitne karmchari")
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. FAQ KNOWLEDGE BASE (Step 4)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: chatbot_knowledge.php
+Purpose: Seeds the chatbot_faqs table with predefined Q&A pairs.
+Run: Visit http://localhost/prj1/SABP/chatbot/chatbot_knowledge.php ONCE.
+
+TOTAL FAQs: ~30 entries covering:
+  • Common (all roles): password, 2FA, profile, SABP info, logout, dark mode,
+    account locked, attendance statuses, approval workflow, LPC, LPP
+  • Admin: add user, add employee, unlock attendance, edit requests, basic pay,
+    extra manpower, download attendance, wage report
+  • User: view attendance, upload attendance, update attendance
+  • ASO: daily attendance, monthly attendance
+  • APM: approve attendance, reject report
+  • GM: approve monthly reports
+  • HQSO: approve monthly attendance
+  • SDHOD: generate LPC, monthly LPP, VV statement, forward LPC
+  • Finance: approve LPC, view LPP, billing workflow
+
+HOW FAQ MATCHING WORKS (matchFAQ function):
+  1. Fetch all active FAQs for user's role + 'all' role
+  2. For each FAQ, split its keywords by comma
+  3. Check if any keyword phrase exists in the user's message
+  4. Score each FAQ by match quality:
+     - Exact phrase match = keyword_length × 3
+     - Individual word match = matched_words × 2
+     - Add priority bonus
+  5. Return the highest-scoring FAQ if score >= 8
+
+TO ADD A NEW FAQ:
+  Add a new entry to the $faqs array in chatbot_knowledge.php:
+
+    ['role', 'keyword1,keyword2,keyword3', 'Question text', 'Answer with <b>HTML</b>', priority],
+
+  Example:
+    ['all', 'holiday,chutti,public holiday,holiday list', 
+     'What are the public holidays?',
+     'Public holidays are defined by MCL HQ. Contact HR for the holiday list.', 8],
+
+  Then re-run chatbot_knowledge.php to refresh the data.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. FRONTEND WIDGET — HTML (Step 5)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: chatbot_widget.php
+Purpose: The HTML template for the floating chat widget. This file is
+         INCLUDED at the bottom of every page where you want the chatbot.
+
+WIDGET STRUCTURE:
+  ┌──────────────────────────────────────────────────────┐
+  │  1. Floating Action Button (FAB)                     │
+  │     - Robot icon (🤖) / X icon when open             │
+  │     - Unread badge (red dot with count)              │
+  │                                                      │
+  │  2. Chat Panel (390×540px, slides up on click)       │
+  │     ┌──────────────────────────────────────────────┐ │
+  │     │  HEADER                                      │ │
+  │     │  🤖 SABP Assistant | ● Always online         │ │
+  │     │                        [🗑️ Clear] [➖ Min]   │ │
+  │     ├──────────────────────────────────────────────┤ │
+  │     │  MESSAGE BODY (scrollable)                   │ │
+  │     │  - Welcome card                              │ │
+  │     │  - Bot messages (left, white bubbles)        │ │
+  │     │  - User messages (right, green bubbles)      │ │
+  │     │  - Typing indicator (three bouncing dots)    │ │
+  │     ├──────────────────────────────────────────────┤ │
+  │     │  SUGGESTION CHIPS (scrollable row)           │ │
+  │     │  [Today's attendance] [LPC report] [Help]    │ │
+  │     ├──────────────────────────────────────────────┤ │
+  │     │  INPUT FOOTER                                │ │
+  │     │  [Type your message...          ] [📤 Send]  │ │
+  │     └──────────────────────────────────────────────┘ │
+  └──────────────────────────────────────────────────────┘
+
+AUTO PATH DETECTION:
+  The widget automatically calculates the correct relative path to the
+  chatbot/ directory regardless of which page includes it. It does this
+  by comparing the current script's path to the SABP root directory.
+
+    $chatbotDir = str_repeat('../', $depth) . 'chatbot/';
+
+  So a page at SABP/sdhod/dashboard.php will get chatbotDir = '../chatbot/'
+  And a page at SABP/dashboard.php will get chatbotDir = 'chatbot/'
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. FRONTEND LOGIC — JAVASCRIPT (Step 6)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: chatbot.js
+Purpose: Handles all client-side interactions using vanilla JavaScript.
+         NO jQuery, NO external libraries needed.
+
+KEY FEATURES:
+  1. IIFE Pattern — All code wrapped in (function(){...})() to avoid
+     global scope pollution.
+
+  2. API Communication — Uses fetch() with POST JSON:
+       function apiCall(action, data) {
+         return fetch(API_URL, {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ action: action, ...data }),
+           credentials: 'same-origin'
+         }).then(res => res.json());
+       }
+
+  3. Auto API URL Detection — Finds the API URL from the script tag's src:
+       var src = scripts[scripts.length-1].getAttribute('src');
+       return src.replace('chatbot.js', 'chatbot_api.php');
+
+  4. Panel Toggle — Click FAB to open/close. Escape key to close.
+
+  5. Message Rendering — addMessage() creates DOM elements with:
+     - Avatar (🤖 for bot)
+     - Message bubble with HTML content
+     - Timestamp
+     - Delete button (visible on hover)
+
+  6. Single Message Deletion — Click trash icon on any message:
+     - Smooth slide-out animation
+     - Removes from DOM after animation
+     - Deletes from database via API
+
+  7. Chat History — On first open, loads last 30 messages from database
+     and renders them in order.
+
+  8. Suggestion Chips — Clickable buttons that auto-fill and send the
+     message text.
+
+  9. Typing Indicator — Shows bouncing dots while waiting for bot reply.
+
+  10. Textarea Auto-Resize — Input grows as user types, up to max height.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9. STYLING — CSS (Step 7)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: chatbot.css
+Purpose: All chatbot-specific styles. 645 lines covering light mode,
+         dark mode, and responsive design.
+
+DESIGN HIGHLIGHTS:
+  • Theme: Teal/green gradient (#0f766e) matching SABP portal
+  • FAB: Pulsing glow animation, turns red when open
+  • Panel: Slides up with smooth cubic-bezier transitions
+  • Messages: Slide-in animation from bottom
+  • Typing dots: Bouncing dot animation
+  • Avatar: Gentle bobbing animation
+  • Status: Pulsing green dot
+  • Delete button: Hidden by default, appears on message hover
+
+DARK MODE:
+  All dark mode styles use body.dark selector prefix.
+  Example: body.dark .chatbot-panel { background: #1e293b; }
+  Dark mode automatically activates when user toggles the portal's
+  dark mode button (adding .dark class to <body>).
+
+RESPONSIVE BREAKPOINTS:
+  • Mobile (≤480px): Full-screen panel, smaller FAB
+  • Tablet (481-768px): Smaller panel (340×480px)
+  • Desktop (>768px): Default panel (390×540px)
+  • Print: Chatbot hidden completely
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+10. INCLUDING CHATBOT ON ANY PAGE (Step 8)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+To add the chatbot to any page, add ONE LINE before the closing </body> tag:
+
+  FOR ROOT-LEVEL PAGES (e.g., dashboard.php, user.php):
+    <?php include 'chatbot/chatbot_widget.php'; ?>
+
+  FOR SUBDIRECTORY PAGES (e.g., sdhod/dashboard.php, apm/profile.php):
+    <?php include __DIR__ . '/../chatbot/chatbot_widget.php'; ?>
+
+PREREQUISITES:
+  1. The page must have session_start() at the top
+  2. $_SESSION['user'] must be set (user must be logged in)
+  3. Font Awesome must be loaded (for icons)
+  4. config.php must be accessible (for database connection)
+
+That's all! The widget auto-detects paths and renders itself.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+11. HOW THE MESSAGE PIPELINE WORKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+When a user sends a message, it goes through this pipeline IN ORDER.
+The FIRST match wins — later steps are skipped.
+
+  User sends: "kitne employees hain?"
+         │
+         ▼
+  ┌─ STEP 1: Conversational Check ─────────────────────────────────┐
+  │  Is this a greeting, thanks, bye, help, or acknowledgement?    │
+  │  Regex examples: /^(hi|hello|hey|namaste)/i                    │
+  │  Result: NO MATCH → continue                                   │
+  └─────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+  ┌─ STEP 2: Admin Commands ───────────────────────────────────────┐
+  │  Is this an admin-only command? (Only if role=Admin)            │
+  │  Examples: "reset training", "chatbot stats"                   │
+  │  Result: NO MATCH (not admin command) → continue               │
+  └─────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+  ┌─ STEP 3: Report Queries ───────────────────────────────────────┐
+  │  Is this about LPC, salary, leave, attendance reports?         │
+  │  Examples: "lpc report", "salary details", "leave status"      │
+  │  Result: NO MATCH → continue                                   │
+  └─────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+  ┌─ STEP 4: Live Data Queries ────────────────────────────────────┐
+  │  Can we answer this by querying the database?                  │
+  │  Regex: /\b(how many|total|count|kitne)\b.*\b(employee)\b/i   │
+  │  Result: ✅ MATCH! Query DB → return "📊 There are 150 employees" │
+  └─────────────────────────────────────────────────────────────────┘
+         │ (would continue if no match)
+         ▼
+  ┌─ STEP 5: FAQ Matching ─────────────────────────────────────────┐
+  │  Search chatbot_faqs table for keyword matches                 │
+  │  Score-based: best match with score >= 8 wins                  │
+  └─────────────────────────────────────────────────────────────────┘
+         │ (would continue if no match)
+         ▼
+  ┌─ STEP 6: Fallback ─────────────────────────────────────────────┐
+  │  If nothing matched, return a helpful fallback message         │
+  │  Different fallback for questions vs. statements               │
+  └─────────────────────────────────────────────────────────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+12. ROLE-BASED ACCESS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The chatbot supports all 8 roles in the SABP system:
+
+  ┌──────────┬─────────────────────────────────────────────────────────┐
+  │ Role     │ What the chatbot shows them                             │
+  ├──────────┼─────────────────────────────────────────────────────────┤
+  │ Admin    │ Full access: user counts, employee data, admin commands │
+  │ user     │ Personal attendance, upload/edit guides                 │
+  │ ASO      │ Daily/monthly attendance, employee counts               │
+  │ APM      │ Approval guides, employee counts                        │
+  │ GM       │ Report approval guides, employee counts                 │
+  │ HQSO     │ Attendance approval guides                              │
+  │ SDHOD    │ LPC generation, LPP, VV statement, salary details      │
+  │ Finance  │ LPC approval, billing workflow, LPP details             │
+  └──────────┴─────────────────────────────────────────────────────────┘
+
+Role detection: The chatbot reads $_SESSION['user'] and queries the
+user table to get the role. This happens on EVERY API call.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+13. FEATURES SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✅ Role-aware responses (8 roles)
+  ✅ Bilingual support (English + Hinglish)
+  ✅ Live database queries (real-time data)
+  ✅ FAQ knowledge base with keyword scoring
+  ✅ Chat history (persistent per user)
+  ✅ Single message deletion with animation
+  ✅ Clear all history
+  ✅ Quick suggestion chips (role-specific)
+  ✅ Typing indicator (bouncing dots)
+  ✅ Unread message badge
+  ✅ Time-based greeting (morning/afternoon/evening)
+  ✅ Dark mode support (auto-detects)
+  ✅ Responsive design (mobile/tablet/desktop)
+  ✅ Keyboard shortcuts (Enter to send, Escape to close)
+  ✅ Auto-resize textarea
+  ✅ Smooth animations throughout
+  ✅ Print-safe (hidden on print)
+  ✅ No external dependencies (no jQuery, no AI APIs)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+14. TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROBLEM: Chatbot not showing on a page
+  → Check that you included chatbot_widget.php before </body>
+  → Check that the user is logged in (session exists)
+  → Check browser console for JavaScript errors
+
+PROBLEM: "Not authenticated" error
+  → User session expired. Re-login.
+  → Make sure session_start() is called on the page.
+
+PROBLEM: Bot says "sorry, something went wrong"
+  → Check PHP error logs in XAMPP
+  → Verify config.php has correct DB credentials
+  → Run chatbot_migration.php if tables don't exist
+
+PROBLEM: FAQ not matching a question
+  → Add more keywords to chatbot_knowledge.php
+  → Re-run chatbot_knowledge.php to refresh data
+  → Lower the match threshold (currently 8) in matchFAQ() if needed
+
+PROBLEM: Dark mode not working for chatbot
+  → Make sure the body tag has class="dark" when dark mode is on
+  → The chatbot CSS uses body.dark prefix for all dark styles
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+QUICK SETUP CHECKLIST (for a new project)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  □ 1. Create chatbot/ folder in your project root
+  □ 2. Create chatbot_migration.php → define DB tables
+  □ 3. Run migration in browser → tables created
+  □ 4. Create chatbot_knowledge.php → define FAQ data
+  □ 5. Run knowledge seeder → FAQs populated
+  □ 6. Create chatbot_queries.php → write DB query functions
+  □ 7. Create chatbot_api.php → main controller with pipeline
+  □ 8. Create chatbot_widget.php → HTML structure
+  □ 9. Create chatbot.js → frontend logic
+  □ 10. Create chatbot.css → all styling
+  □ 11. Include chatbot_widget.php on every page
+  □ 12. Test! Send messages and verify responses
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+END OF DOCUMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

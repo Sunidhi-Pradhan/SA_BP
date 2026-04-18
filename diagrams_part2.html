@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SABP Diagrams – Part 2</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif}
+body{background:#f0f2f5;color:#1f2937;padding:2rem}
+h1{text-align:center;font-size:2rem;color:#0f766e;margin-bottom:.5rem}
+.subtitle{text-align:center;color:#6b7280;margin-bottom:2rem}
+.diagram-card{background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.08);margin-bottom:2.5rem;overflow:hidden}
+.diagram-card h2{background:linear-gradient(135deg,#0f766e,#0a5c55);color:#fff;padding:1rem 1.5rem;font-size:1.2rem}
+.diagram-card .content{padding:1.5rem;overflow-x:auto}
+.mermaid{display:flex;justify-content:center}
+@media print{body{padding:.5rem}.diagram-card{break-inside:avoid;box-shadow:none;border:1px solid #ddd}}
+</style>
+</head>
+<body>
+<h1>Security Attendance and Billing Portal (SABP)</h1>
+<p class="subtitle">System Diagrams – Part 2: Class Diagram, DFD-0, Sequence Diagram</p>
+
+<!-- 5. CLASS DIAGRAM -->
+<div class="diagram-card">
+<h2>5. Class Diagram</h2>
+<div class="content">
+<pre class="mermaid">
+classDiagram
+    class User {
+        +int id
+        +String name
+        +String email
+        +String role
+        +String status
+        +String password
+        +String google_secret
+        +int otp_failed_attempts
+        +DateTime otp_locked_until
+        +DateTime created_at
+        +login()
+        +setupTwoFactor()
+        +verifyOTP()
+        +changePassword()
+        +resetPassword()
+    }
+
+    class EmployeeMaster {
+        +int id
+        +String esic_no
+        +String employee_name
+        +JSON employee_json
+        +DateTime created_at
+        +importFromExcel()
+        +getDetails()
+    }
+
+    class SiteMaster {
+        +String SiteCode
+        +String SiteName
+        +getEmployees()
+        +getAttendance()
+    }
+
+    class Attendance {
+        +String esic_no
+        +Year attendance_year
+        +int attendance_month
+        +Date attendance_date
+        +JSON attendance_json
+        +JSON backup_attendance_json
+        +uploadExcel()
+        +markDaily()
+        +editRequest()
+    }
+
+    class AttendanceApproval {
+        +int report_id
+        +String area_code
+        +int attendance_month
+        +Year attendance_year
+        +DateTime created_attendance_date
+        +JSON attendance_workflow
+        +String current_step
+        +submitReport()
+        +approveStep()
+        +rejectStep()
+        +getWorkflowStatus()
+    }
+
+    class AttendanceEditRequest {
+        +int id
+        +String esic_no
+        +String request_by
+        +String request_details
+        +String status
+        +DateTime created_at
+        +submitRequest()
+        +approveRequest()
+        +rejectRequest()
+    }
+
+    class LPCMaster {
+        +int lpc_id
+        +String lpc_area_code
+        +String sec_no
+        +String dak_no
+        +int lpc_month
+        +Year lpc_year
+        +DateTime created_lpc_date
+        +JSON lpc_summary
+        +JSON lpc_workflow
+        +generateLPC()
+        +forwardToFinance()
+        +approveLPC()
+    }
+
+    class MonthlyLPPReport {
+        +String site_name
+        +String bes_no
+        +String dar_no
+        +Decimal amount
+        +Decimal gst
+        +Decimal gross_total
+        +Decimal it_tds
+        +Decimal net_payment
+        +generateReport()
+        +exportPDF()
+        +exportExcel()
+    }
+
+    class ExtraManpowerAssign {
+        +int id
+        +String site_code
+        +String employee_details
+        +DateTime assigned_date
+        +assignManpower()
+        +removeAssignment()
+    }
+
+    class ChatbotHistory {
+        +int id
+        +String user_id
+        +String role
+        +String sender
+        +String message
+        +DateTime created_at
+        +saveMessage()
+        +getHistory()
+    }
+
+    class ChatbotFaqs {
+        +int id
+        +String role
+        +String keywords
+        +String question
+        +String answer
+        +int priority
+        +bool is_active
+        +matchQuery()
+    }
+
+    User "1" --> "*" ChatbotHistory : interacts
+    User "1" --> "*" AttendanceEditRequest : submits
+    EmployeeMaster "1" --> "*" Attendance : has
+    SiteMaster "1" --> "*" AttendanceApproval : contains
+    SiteMaster "1" --> "*" LPCMaster : generates
+    SiteMaster "1" --> "*" ExtraManpowerAssign : assigned
+    AttendanceApproval "1" --> "0..1" LPCMaster : triggers
+    LPCMaster "1" --> "1" MonthlyLPPReport : produces
+    ChatbotFaqs ..> ChatbotHistory : referenced_by
+</pre>
+</div>
+</div>
+
+<!-- 6. DFD LEVEL 0 -->
+<div class="diagram-card">
+<h2>6. DFD Level-0 (Context Diagram)</h2>
+<div class="content">
+<pre class="mermaid">
+flowchart LR
+    Guard(("Security Guard"))
+    Admin(("Admin"))
+    ASO(("ASO"))
+    APM(("APM"))
+    GM(("GM"))
+    HQSO(("HQSO"))
+    SDHOD(("SDHOD"))
+    Fin(("Finance"))
+    Email(("Email System"))
+
+    subgraph SABP["0. Security Attendance and Billing Portal"]
+        direction TB
+        Core["Process Attendance, Approvals, Billing & Reports"]
+    end
+
+    Guard -->|"Login Credentials, Edit Request"| SABP
+    SABP -->|"Attendance Data, Edit Status"| Guard
+
+    Admin -->|"User Data, Employee Excel, Basic Pay"| SABP
+    SABP -->|"Dashboard KPIs, Reports"| Admin
+
+    ASO -->|"Daily Attendance, Monthly Report"| SABP
+    SABP -->|"Approval Status, Dashboard"| ASO
+
+    APM -->|"Approval Decision"| SABP
+    SABP -->|"Pending Reports, Dashboard"| APM
+
+    GM -->|"Approval Decision"| SABP
+    SABP -->|"Pending Reports, Dashboard"| GM
+
+    HQSO -->|"Approval Decision"| SABP
+    SABP -->|"Pending Reports, Dashboard"| HQSO
+
+    SDHOD -->|"Final Approval, LPC Generation"| SABP
+    SABP -->|"VV Statement, LPC, Reports"| SDHOD
+
+    Fin -->|"LPC Approval"| SABP
+    SABP -->|"LPC Data, Billing Reports"| Fin
+
+    SABP -->|"OTP Lockout Alert, Password Reset"| Email
+
+    style SABP fill:#f0fdf4,stroke:#0f766e,stroke-width:3px
+    style Core fill:#0f766e,color:#fff,stroke:none
+</pre>
+</div>
+</div>
+
+<!-- 7. SEQUENCE DIAGRAM -->
+<div class="diagram-card">
+<h2>7. Sequence Diagram – Login & Attendance Approval Flow</h2>
+<div class="content">
+<pre class="mermaid">
+sequenceDiagram
+    actor U as User
+    participant LP as Login Page
+    participant DB as Database
+    participant GA as Google Authenticator
+    participant EM as Email System
+    participant AD as Admin Dashboard
+    participant ASO as ASO Module
+    participant APM as APM Module
+    participant GM as GM Module
+    participant HQSO as HQSO Module
+    participant SD as SDHOD Module
+    participant FN as Finance Module
+
+    rect rgb(240, 253, 244)
+    Note over U, GA: Authentication Flow
+    U->>LP: Enter Employee ID & Password
+    LP->>DB: Validate Credentials
+    DB-->>LP: User Record
+    alt Invalid Credentials
+        LP-->>U: Error - Invalid ID or Password
+    else Valid Credentials
+        alt No 2FA Setup
+            LP->>GA: Generate Secret & QR Code
+            GA-->>U: Display QR Code to Scan
+            U->>GA: Scan & Enter OTP
+        else 2FA Already Setup
+            LP->>U: Redirect to OTP Page
+            U->>LP: Enter 6-digit OTP
+        end
+        LP->>GA: Verify OTP Code
+        alt OTP Invalid
+            GA-->>LP: Verification Failed
+            LP->>DB: Increment Failed Attempts
+            alt Attempts >= 5
+                DB->>EM: Send Lockout Email
+                LP-->>U: Account Locked for 2 Hours
+            else Attempts < 5
+                LP-->>U: Invalid Code - Try Again
+            end
+        else OTP Valid
+            GA-->>LP: Verification Success
+            LP->>DB: Reset Failed Attempts
+            LP-->>U: Redirect to Role Dashboard
+        end
+    end
+    end
+
+    rect rgb(239, 246, 255)
+    Note over AD, FN: Attendance Upload & Approval Workflow
+    AD->>DB: Upload Attendance Excel
+    DB-->>AD: Employees Imported
+    ASO->>DB: Mark Daily Attendance
+    ASO->>DB: Submit Monthly Report
+    DB-->>ASO: Report Created
+
+    ASO->>DB: ASO Approves Report
+    DB-->>APM: Notify - Pending Approval
+
+    APM->>DB: APM Approves Report
+    DB-->>GM: Notify - Pending Approval
+
+    GM->>DB: GM Approves Report
+    DB-->>HQSO: Notify - Pending Approval
+
+    HQSO->>DB: HQSO Approves Report
+    DB-->>SD: Notify - Pending Approval
+
+    SD->>DB: SDHOD Final Approval
+    Note over SD: Status = COMPLETE
+
+    SD->>DB: Generate LPC Document
+    SD->>FN: Forward LPC to Finance
+    FN->>DB: Approve LPC & Billing
+    Note over FN: LPC Approved - Billing Done
+    end
+</pre>
+</div>
+</div>
+
+<p style="text-align:center;margin-top:2rem;color:#6b7280">
+  ← <a href="diagrams_part1.html" style="color:#0f766e;font-weight:700">Back to Part 1</a> (Flowchart, ER, Use Case, Activity)
+</p>
+
+<script>mermaid.initialize({startOnLoad:true,theme:'default',securityLevel:'loose',flowchart:{useMaxWidth:true,htmlLabels:true}});</script>
+</body>
+</html>

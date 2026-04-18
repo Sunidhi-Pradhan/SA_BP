@@ -2,9 +2,11 @@
 /**
  * SABP Chatbot — Main API Controller
  * Enhanced with Hinglish support, LPC handling, salary queries,
- * admin controls, and contextual conversation.
+ * admin controls, contextual conversation, proactive notifications,
+ * smart quick actions, and bot feedback rating.
  *
- * Actions: send_message, get_history, clear_history, get_suggestions
+ * Actions: send_message, get_history, clear_history, get_suggestions,
+ *          delete_message, rate_message, get_proactive
  */
 session_start();
 header('Content-Type: application/json; charset=utf-8');
@@ -91,14 +93,36 @@ switch ($action) {
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $rows = array_reverse($rows);
 
+        // Fetch feedback ratings for these messages
+        $msgIds = array_column($rows, 'id');
+        $feedbackMap = [];
+        if (!empty($msgIds)) {
+            $placeholders = implode(',', array_fill(0, count($msgIds), '?'));
+            try {
+                $fbStmt = $pdo->prepare("SELECT message_id, rating FROM chatbot_feedback WHERE message_id IN ($placeholders) AND user_id = ?");
+                $fbParams = array_merge($msgIds, [$userId]);
+                $fbStmt->execute($fbParams);
+                foreach ($fbStmt->fetchAll(PDO::FETCH_ASSOC) as $fb) {
+                    $feedbackMap[(int)$fb['message_id']] = $fb['rating'];
+                }
+            } catch (Exception $e) {
+                // Table may not exist yet
+            }
+        }
+
         $history = [];
         foreach ($rows as $r) {
-            $history[] = [
+            $entry = [
                 'id'      => (int)$r['id'],
                 'sender'  => $r['sender'],
                 'message' => $r['message'],
                 'time'    => date('h:i A', strtotime($r['created_at'])),
             ];
+            // Attach rating if exists
+            if (isset($feedbackMap[(int)$r['id']])) {
+                $entry['rating'] = $feedbackMap[(int)$r['id']];
+            }
+            $history[] = $entry;
         }
 
         echo json_encode(['history' => $history, 'role' => $role]);
@@ -134,6 +158,146 @@ switch ($action) {
         ]);
         break;
 
+    // ═══════════════════════════════════════════════════════════
+    // NEW: Rate a bot message (thumbs up / thumbs down)
+    case 'rate_message':
+        $msgId  = (int)($input['message_id'] ?? 0);
+        $rating = $input['rating'] ?? '';
+
+        if ($msgId <= 0 || !in_array($rating, ['up', 'down'])) {
+            echo json_encode(['error' => 'Invalid message_id or rating']);
+            exit;
+        }
+
+        try {
+            // Upsert — insert or update if already rated
+            $stmt = $pdo->prepare("
+                INSERT INTO chatbot_feedback (message_id, user_id, rating)
+                VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE rating = VALUES(rating), created_at = CURRENT_TIMESTAMP
+            ");
+            $stmt->execute([$msgId, $userId, $rating]);
+            echo json_encode(['success' => true, 'message_id' => $msgId, 'rating' => $rating]);
+        } catch (Exception $e) {
+            echo json_encode(['error' => 'Could not save feedback. Run chatbot_migration.php first.']);
+        }
+        break;
+
+    // ═══════════════════════════════════════════════════════════
+    // NEW: Remove a rating
+    case 'unrate_message':
+        $msgId = (int)($input['message_id'] ?? 0);
+        if ($msgId <= 0) {
+            echo json_encode(['error' => 'Invalid message_id']);
+            exit;
+        }
+        try {
+            $stmt = $pdo->prepare("DELETE FROM chatbot_feedback WHERE message_id = ? AND user_id = ?");
+            $stmt->execute([$msgId, $userId]);
+            echo json_encode(['success' => true, 'message_id' => $msgId]);
+        } catch (Exception $e) {
+            echo json_encode(['error' => 'Could not remove feedback.']);
+        }
+        break;
+
+    // ═══════════════════════════════════════════════════════════
+    // NEW: Proactive notifications — check pending tasks on panel open
+    case 'get_proactive':
+        $notifications = [];
+
+        try {
+            // 1. Pending approvals (for APM, GM, HQSO, SDHOD, Admin)
+            if (in_array($role, ['APM', 'GM', 'HQSO', 'SDHOD', 'Admin'])) {
+                $year  = (int)date('Y');
+                $month = (int)date('n');
+
+                // Map role to the approval step they handle
+                $stepMap = [
+                    'APM'   => 1,  // ASO submitted → APM reviews
+                    'GM'    => 2,  // APM approved → GM reviews
+                    'HQSO'  => 3,  // GM approved → HQSO reviews
+                    'SDHOD' => 4,  // HQSO approved → SDHOD reviews
+                    'Admin' => 0,  // Admin sees all
+                ];
+                $step = $stepMap[$role] ?? 0;
+
+                try {
+                    if ($role === 'Admin') {
+                        $stmt = $pdo->prepare("SELECT COUNT(*) FROM attendance_approval WHERE attendance_year = ? AND attendance_month = ?");
+                        $stmt->execute([$year, $month]);
+                    } else {
+                        $stmt = $pdo->prepare("SELECT COUNT(*) FROM attendance_approval WHERE attendance_year = ? AND attendance_month = ? AND current_step = ?");
+                        $stmt->execute([$year, $month, $step]);
+                    }
+                    $pending = (int)$stmt->fetchColumn();
+                    if ($pending > 0) {
+                        $notifications[] = [
+                            'type'    => 'approval',
+                            'icon'    => '📋',
+                            'message' => "You have <b>{$pending}</b> pending approval(s) for " . date('F Y') . ".",
+                            'action'  => getSmartActionForRole($role, 'approval'),
+                        ];
+                    }
+                } catch (Exception $e) {
+                    // attendance_approval table may not exist
+                }
+            }
+
+            // 2. Today's attendance summary (for ASO, Admin)
+            if (in_array($role, ['ASO', 'Admin', 'user'])) {
+                $year  = (int)date('Y');
+                $month = (int)date('n');
+                $day   = (int)date('j');
+
+                $stmt = $pdo->prepare("SELECT attendance_json FROM attendance WHERE attendance_year = ? AND attendance_month = ?");
+                $stmt->execute([$year, $month]);
+                $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+                $present = 0;
+                $absent  = 0;
+                foreach ($rows as $json) {
+                    $data = json_decode($json, true);
+                    if (!is_array($data)) continue;
+                    foreach ($data as $entry) {
+                        if ((int)($entry['day'] ?? 0) !== $day) continue;
+                        $s = $entry['status'] ?? '';
+                        if ($s === 'P' || $s === 'PP') $present++;
+                        elseif ($s === 'A') $absent++;
+                    }
+                }
+
+                if ($present > 0 || $absent > 0) {
+                    $notifications[] = [
+                        'type'    => 'attendance',
+                        'icon'    => '📊',
+                        'message' => "Today: <b>{$present}</b> present, <b>{$absent}</b> absent.",
+                        'action'  => getSmartActionForRole($role, 'dashboard'),
+                    ];
+                }
+            }
+
+            // 3. Total employees count (quick info)
+            if (in_array($role, ['Admin', 'ASO', 'APM', 'GM', 'HQSO', 'SDHOD'])) {
+                try {
+                    $empCount = (int)$pdo->query("SELECT COUNT(*) FROM employee_master")->fetchColumn();
+                    if ($empCount > 0) {
+                        $notifications[] = [
+                            'type'    => 'info',
+                            'icon'    => '👥',
+                            'message' => "<b>{$empCount}</b> employees in system.",
+                            'action'  => null,
+                        ];
+                    }
+                } catch (Exception $e) {}
+            }
+
+        } catch (Exception $e) {
+            // Silently handle any DB issues
+        }
+
+        echo json_encode(['notifications' => $notifications, 'role' => $role]);
+        break;
+
     default:
         echo json_encode(['error' => 'Invalid action']);
         break;
@@ -152,6 +316,48 @@ function saveMessage(PDO $pdo, string $userId, string $role, string $sender, str
     } catch (Exception $e) {
         // Silently fail — chat should not break if history table is missing
     }
+}
+
+
+// ─── SMART ACTION LINKS ─────────────────────────────────────────
+
+/**
+ * Generate smart action buttons HTML for bot responses.
+ * These render as clickable buttons that navigate the user.
+ */
+function smartAction(string $label, string $icon, string $page): string
+{
+    return '<button class="chatbot-action-btn" data-href="' . htmlspecialchars($page) . '">'
+         . $icon . ' ' . htmlspecialchars($label) . '</button>';
+}
+
+function smartActionBar(array $actions): string
+{
+    if (empty($actions)) return '';
+    return '<div class="chatbot-actions">' . implode('', $actions) . '</div>';
+}
+
+/**
+ * Get the appropriate navigation link for a role + context.
+ */
+function getSmartActionForRole(string $role, string $context): ?array
+{
+    $links = [
+        'approval' => [
+            'APM'   => ['label' => 'Monthly Attendance', 'page' => 'apm/monthly_attendance.php'],
+            'GM'    => ['label' => 'Monthly Reports',    'page' => 'gm/monthly.php'],
+            'HQSO'  => ['label' => 'Monthly Attendance', 'page' => 'hqso/monthly.php'],
+            'SDHOD' => ['label' => 'Monthly Attendance', 'page' => 'sdhod/monthlyatt.php'],
+            'Admin' => ['label' => 'Dashboard',          'page' => 'dashboard.php'],
+        ],
+        'dashboard' => [
+            'Admin' => ['label' => 'Dashboard',     'page' => 'dashboard.php'],
+            'ASO'   => ['label' => 'ASO Dashboard', 'page' => 'aso_dashboard.php'],
+            'user'  => ['label' => 'My Dashboard',  'page' => 'user_dashboard.php'],
+        ],
+    ];
+
+    return $links[$context][$role] ?? null;
 }
 
 
@@ -230,8 +436,6 @@ function handleReportQueries(PDO $pdo, string $message, string $role, string $us
     $msg = mb_strtolower(trim($message));
 
     // ── LPC Report Request ──────────────────────────────────
-    // Matches: "lpc report", "lpc chahiye", "last pay certificate", "lpc dikhao",
-    // "mujhe lpc chahiye", "last 2 month ka lpc", "lpc report generate", etc.
     if (preg_match('/\b(lpc|last pay certificate|lpc report|lpc chahiye|lpc dikhao|lpc generate|lpc nikalo|lpc banana|lpc download)\b/i', $msg)) {
 
         // Check if user has permission
@@ -240,7 +444,7 @@ function handleReportQueries(PDO $pdo, string $message, string $role, string $us
         }
 
         // Try to extract date range
-        $months = 1; // default
+        $months = 1;
         if (preg_match('/(\d+)\s*(month|months|mahine|mahina)/i', $msg, $m)) {
             $months = min((int)$m[1], 12);
         } elseif (preg_match('/last\s+(\d+)/i', $msg, $m)) {
@@ -251,23 +455,35 @@ function handleReportQueries(PDO $pdo, string $message, string $role, string $us
 
         $periodLabel = $months === 1 ? 'last 1 month' : "last {$months} months";
 
+        $actions = smartActionBar([
+            smartAction('Monthly LPP', '📄', 'sdhod/monthlylpp.php'),
+            smartAction('VV Statement', '📋', 'sdhod/vvstatement.php'),
+        ]);
+
         return "📄 <b>Generating your LPC report</b> for the {$periodLabel}. Please wait...<br><br>"
              . "👉 You can also generate LPC from:<br>"
              . "• <b>SDHOD</b> → Monthly LPP → Generate LPC<br>"
              . "• Select the desired month/year and click <b>Generate LPC</b><br><br>"
-             . "<i>Note: LPC reports require approved monthly attendance data.</i>";
+             . "<i>Note: LPC reports require approved monthly attendance data.</i>"
+             . $actions;
     }
 
     // ── Salary / Pay Slip ───────────────────────────────────
     if (preg_match('/\b(salary|salary slip|pay slip|salary details|vetan|tankhwah|kitni salary|wage|wages|salary dikhao|pay details|monthly pay)\b/i', $msg)) {
 
         if (in_array($role, ['Admin', 'SDHOD', 'Finance'])) {
+            $actions = smartActionBar([
+                smartAction('Wage Report', '💰', 'admin/wage_report.php'),
+                smartAction('Monthly LPP', '📄', 'sdhod/monthlylpp.php'),
+            ]);
+
             return "💰 <b>Salary / Wage Information</b><br><br>"
                  . "You can view wage details from:<br>"
                  . "• <b>Wage Report</b> — Shows calculated wages based on attendance<br>"
                  . "• <b>Monthly LPP</b> — Labour Payment Proposals with amounts<br>"
                  . "• <b>VV Statement</b> — Verification & Validation statement<br><br>"
-                 . "Do you want me to help with a specific month's data?";
+                 . "Do you want me to help with a specific month's data?"
+                 . $actions;
         } else {
             return "💰 Salary details are managed by the <b>SDHOD</b> and <b>Finance</b> departments. Your wage is calculated based on your attendance records.<br><br>For salary queries, please contact your department head or the Finance office.";
         }
@@ -286,13 +502,25 @@ function handleReportQueries(PDO $pdo, string $message, string $role, string $us
     // ── Attendance report / download ────────────────────────
     if (preg_match('/\b(attendance dikhao|attendance report|attendance download|report download|download report|report chahiye|attendance dekhna|meri attendance)\b/i', $msg)) {
         if (in_array($role, ['Admin', 'ASO', 'SDHOD'])) {
+            $actions = smartActionBar([
+                smartAction('Download Attendance', '📥', 'download_attendance/download_attendance.php'),
+                smartAction('Dashboard', '📊', 'dashboard.php'),
+            ]);
+
             return "📊 <b>Attendance Report</b><br><br>"
                  . "You can download attendance reports from:<br>"
                  . "• <b>Download Attendance</b> — Select site, year & month to export as Excel<br>"
                  . "• <b>Monthly Attendance</b> — View consolidated monthly reports<br><br>"
-                 . "Would you like to check today's attendance stats instead? Just ask \"<i>today's attendance</i>\"";
+                 . "Would you like to check today's attendance stats instead? Just ask \"<i>today's attendance</i>\""
+                 . $actions;
         } elseif ($role === 'user') {
-            return "📊 You can check your attendance in the <b>Dashboard</b>. 📋<br><br>Do you want a report download? Go to <b>Upload Attendance</b> or <b>Update Attendance</b> from the sidebar.";
+            $actions = smartActionBar([
+                smartAction('My Dashboard', '📊', 'user_dashboard.php'),
+                smartAction('Update Attendance', '✏️', 'user_update_attendance.php'),
+            ]);
+
+            return "📊 You can check your attendance in the <b>Dashboard</b>. 📋<br><br>Do you want a report download? Go to <b>Upload Attendance</b> or <b>Update Attendance</b> from the sidebar."
+                 . $actions;
         } else {
             return "📊 Attendance reports are available on your <b>Dashboard</b> and through the <b>Monthly Attendance</b> page.";
         }
@@ -301,12 +529,19 @@ function handleReportQueries(PDO $pdo, string $message, string $role, string $us
     // ── Download / Export any report ─────────────────────────
     if (preg_match('/\b(download|export|excel|pdf|print)\b.*\b(report|data|attendance|lpc|lpp|wage)\b/i', $msg)
         || preg_match('/\b(report|data|attendance|lpc|lpp|wage)\b.*\b(download|export|excel|pdf|print)\b/i', $msg)) {
+
+        $actions = smartActionBar([
+            smartAction('Download Attendance', '📥', 'download_attendance/download_attendance.php'),
+            smartAction('Wage Report', '💰', 'admin/wage_report.php'),
+        ]);
+
         return "📥 <b>Report Download</b><br><br>"
              . "To download reports, navigate to the relevant page:<br>"
              . "• <b>Download Attendance</b> — Export attendance as Excel<br>"
              . "• <b>Wage Report</b> — Export wage calculations<br>"
              . "• <b>Monthly LPP</b> — Export LPP/VV statements<br><br>"
-             . "Select the date range and click the download/export button. ✅";
+             . "Select the date range and click the download/export button. ✅"
+             . $actions;
     }
 
     return null;

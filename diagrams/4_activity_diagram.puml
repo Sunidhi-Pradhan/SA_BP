@@ -1,0 +1,78 @@
+@startuml SABP_Activity
+skinparam monochrome true
+skinparam shadowing false
+
+|Admin|
+start
+:Upload Attendance Excel File;
+:Import Employee Data to Database;
+
+|ASO|
+:Review Employee Attendance Data;
+:Mark Daily Attendance for Each Employee;
+:Submit Monthly Attendance Report;
+
+if (ASO Approves?) then (Yes)
+  :Update Workflow: ASO Approved;
+else (No)
+  :Hold - Continue Marking;
+  backward :Mark Daily Attendance for Each Employee;
+endif
+
+|APM|
+:Receive Monthly Report for Review;
+
+if (APM Approves?) then (Yes)
+  :Update Workflow: APM Approved;
+else (No)
+  :Reject - Send Back to ASO;
+  backward :Review Employee Attendance Data;
+endif
+
+|GM|
+:Receive Report for GM Review;
+
+if (GM Approves?) then (Yes)
+  :Update Workflow: GM Approved;
+else (No)
+  :Reject - Send Back to APM;
+  backward :Receive Monthly Report for Review;
+endif
+
+|HQSO|
+:Receive Report for HQSO Review;
+
+if (HQSO Approves?) then (Yes)
+  :Update Workflow: HQSO Approved;
+else (No)
+  :Reject - Send Back to GM;
+  backward :Receive Report for GM Review;
+endif
+
+|SDHOD|
+:Receive Report for Final Approval;
+
+if (SDHOD Approves?) then (Yes)
+  :Update Workflow: COMPLETE;
+  :Generate LPC Document;
+  :Generate VV Statement;
+  :Forward LPC to Finance;
+else (No)
+  :Reject - Send Back to HQSO;
+  backward :Receive Report for HQSO Review;
+endif
+
+|Finance|
+:Receive LPC for Review;
+
+if (Finance Approves LPC?) then (Yes)
+  :Update LPC Workflow: APPROVED;
+  :Billing Process Complete;
+  :LPC Approved - Payment Processed;
+else (No)
+  :Reject LPC - Send Back to SDHOD;
+  backward :Forward LPC to Finance;
+endif
+
+stop
+@enduml

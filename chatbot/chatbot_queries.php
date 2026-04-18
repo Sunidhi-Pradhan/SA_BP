@@ -3,6 +3,7 @@
  * SABP Chatbot — Live Data Queries
  * Executes safe, read-only DB queries based on user role.
  * Supports English + Hinglish query patterns.
+ * Enhanced with Smart Quick Action buttons in responses.
  */
 
 function handleDataQuery(PDO $pdo, string $message, string $role, string $userId): ?string
@@ -17,7 +18,12 @@ function handleDataQuery(PDO $pdo, string $message, string $role, string $userId
             return "Sorry, you don't have permission to view employee counts.";
         }
         $count = (int)$pdo->query("SELECT COUNT(*) FROM employee_master")->fetchColumn();
-        return "📊 There are currently <b>{$count}</b> employees registered in the system.";
+
+        $actions = smartActionBar([
+            smartAction('View Employees', '👥', 'employees.php'),
+        ]);
+
+        return "📊 There are currently <b>{$count}</b> employees registered in the system." . $actions;
     }
 
     // ── Total users ──────────────────────────────────────────
@@ -28,7 +34,12 @@ function handleDataQuery(PDO $pdo, string $message, string $role, string $userId
             return "Sorry, only Admins can view user account counts.";
         }
         $count = (int)$pdo->query("SELECT COUNT(*) FROM user")->fetchColumn();
-        return "👥 There are currently <b>{$count}</b> registered user accounts.";
+
+        $actions = smartActionBar([
+            smartAction('Manage Users', '👤', 'add_user.php'),
+        ]);
+
+        return "👥 There are currently <b>{$count}</b> registered user accounts." . $actions;
     }
 
     // ── Today's attendance ───────────────────────────────────
@@ -59,12 +70,24 @@ function handleDataQuery(PDO $pdo, string $message, string $role, string $userId
         }
         $total = $present + $absent + $leave;
         $date  = date('d M Y');
+
+        // Build smart actions based on role
+        $actionBtns = [];
+        if (in_array($role, ['Admin', 'ASO'])) {
+            $actionBtns[] = smartAction('Dashboard', '📊', $role === 'Admin' ? 'dashboard.php' : 'aso_dashboard.php');
+            $actionBtns[] = smartAction('Download Report', '📥', 'download_attendance/download_attendance.php');
+        } elseif ($role === 'user') {
+            $actionBtns[] = smartAction('My Dashboard', '📊', 'user_dashboard.php');
+        }
+        $actions = smartActionBar($actionBtns);
+
         return "📅 <b>Today's Attendance</b> ({$date}):<br>"
              . "✅ Present: <b>{$present}</b><br>"
              . "❌ Absent: <b>{$absent}</b><br>"
              . "📋 Leave: <b>{$leave}</b><br>"
              . "⏰ Overtime: <b>{$overtime}</b><br>"
-             . "📊 Total recorded: <b>{$total}</b>";
+             . "📊 Total recorded: <b>{$total}</b>"
+             . $actions;
     }
 
     // ── Pending approvals ────────────────────────────────────
@@ -82,7 +105,21 @@ function handleDataQuery(PDO $pdo, string $message, string $role, string $userId
             $stmt->execute([$year, $month]);
             $total = (int)$stmt->fetchColumn();
             $monthName = date('F Y');
-            return "📋 <b>Monthly Reports</b> ({$monthName}):<br>Total reports in system: <b>{$total}</b><br><br>Check the <b>Monthly Attendance</b> page for detailed approval status.";
+
+            // Smart action based on role
+            $pageMap = [
+                'APM'   => 'apm/monthly_attendance.php',
+                'GM'    => 'gm/monthly.php',
+                'HQSO'  => 'hqso/monthly.php',
+                'SDHOD' => 'sdhod/monthlyatt.php',
+                'Admin' => 'dashboard.php',
+            ];
+            $actions = smartActionBar([
+                smartAction('Review Approvals', '📋', $pageMap[$role] ?? 'dashboard.php'),
+            ]);
+
+            return "📋 <b>Monthly Reports</b> ({$monthName}):<br>Total reports in system: <b>{$total}</b><br><br>Check the <b>Monthly Attendance</b> page for detailed approval status."
+                 . $actions;
         } catch (Exception $e) {
             return "📋 Approval data is not available at this time.";
         }
@@ -132,7 +169,13 @@ function handleDataQuery(PDO $pdo, string $message, string $role, string $userId
         try {
             $count = (int)$pdo->query("SELECT COUNT(*) FROM lpp_records")->fetchColumn();
             $paid  = (float)$pdo->query("SELECT COALESCE(SUM(amount),0) FROM lpp_records WHERE status='paid'")->fetchColumn();
-            return "💰 <b>LPC/LPP Summary</b>:<br>Total records: <b>{$count}</b><br>Total paid amount: <b>₹" . number_format($paid, 2) . "</b>";
+
+            $actions = smartActionBar([
+                smartAction('Monthly LPP', '📄', 'sdhod/monthlylpp.php'),
+            ]);
+
+            return "💰 <b>LPC/LPP Summary</b>:<br>Total records: <b>{$count}</b><br>Total paid amount: <b>₹" . number_format($paid, 2) . "</b>"
+                 . $actions;
         } catch (Exception $e) {
             return "LPC/LPP data is not available yet. The LPP module may not be fully set up.";
         }
@@ -141,7 +184,24 @@ function handleDataQuery(PDO $pdo, string $message, string $role, string $userId
     // ── Dashboard navigation ─────────────────────────────────
     if (preg_match('/\b(dashboard|home|main page|mukhya|homepage)\b/i', $msg)
         && preg_match('/\b(go|open|navigate|take me|dikhao|khole|show)\b/i', $msg)) {
-        return "🏠 You are on the <b>Dashboard</b>! It shows key metrics like attendance stats, employee counts, charts, and approval status.<br><br>Use the <b>sidebar menu</b> on the left to navigate to different modules.";
+
+        $dashMap = [
+            'Admin' => 'dashboard.php',
+            'ASO'   => 'aso_dashboard.php',
+            'user'  => 'user_dashboard.php',
+            'APM'   => 'apm/dashboard.php',
+            'GM'    => 'gm/dashboard.php',
+            'HQSO'  => 'hqso/dashboard.php',
+            'SDHOD' => 'sdhod/dashboard.php',
+            'Finance'=> 'Finance/dashboard.php',
+        ];
+
+        $actions = smartActionBar([
+            smartAction('Go to Dashboard', '🏠', $dashMap[$role] ?? 'dashboard.php'),
+        ]);
+
+        return "🏠 You are on the <b>Dashboard</b>! It shows key metrics like attendance stats, employee counts, charts, and approval status.<br><br>Use the <b>sidebar menu</b> on the left to navigate to different modules."
+             . $actions;
     }
 
     // No matching data query

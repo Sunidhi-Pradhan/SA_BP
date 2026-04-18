@@ -37,6 +37,21 @@ try {
     ");
     echo "✅  Table 'chatbot_faqs' created successfully.<br>";
 
+    // 3. Feedback / rating table (for Bot Feedback Rating feature)
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS chatbot_feedback (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            message_id  INT          NOT NULL,
+            user_id     VARCHAR(50)  NOT NULL,
+            rating      ENUM('up','down') NOT NULL,
+            created_at  DATETIME     DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uk_msg_user (message_id, user_id),
+            INDEX idx_msg  (message_id),
+            INDEX idx_user (user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    echo "✅  Table 'chatbot_feedback' created successfully.<br>";
+
     echo "<br><strong>Migration complete!</strong> You can now run <a href='chatbot_knowledge.php'>chatbot_knowledge.php</a> to seed FAQ data.";
 
 } catch (PDOException $e) {

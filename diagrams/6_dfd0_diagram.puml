@@ -1,0 +1,46 @@
+@startuml SABP_DFD0
+skinparam monochrome true
+skinparam shadowing false
+
+actor "Security Guard" as Guard
+actor "Admin" as Admin
+actor "ASO" as ASO
+actor "APM" as APM
+actor "GM" as GM
+actor "HQSO" as HQSO
+actor "SDHOD" as SDHOD
+actor "Finance" as Finance
+actor "Email System" as Email
+
+rectangle "  0. Security Attendance\n  and Billing Portal\n  (SABP)  " as SABP
+
+database "SABP\nDatabase" as DB
+
+Guard --> SABP : "Login Credentials\nAttendance Edit Request"
+SABP --> Guard : "Attendance Data\nEdit Status\nChatbot Response"
+
+Admin --> SABP : "User Data\nEmployee Excel\nBasic Pay Config"
+SABP --> Admin : "Dashboard KPIs\nReports"
+
+ASO --> SABP : "Daily Attendance\nMonthly Report Submission"
+SABP --> ASO : "Employee List\nApproval Status"
+
+APM --> SABP : "Approval Decision"
+SABP --> APM : "Pending Reports\nDashboard Data"
+
+GM --> SABP : "Approval Decision"
+SABP --> GM : "Pending Reports\nDashboard Data"
+
+HQSO --> SABP : "Approval Decision"
+SABP --> HQSO : "Pending Reports\nDashboard Data"
+
+SDHOD --> SABP : "Final Approval\nLPC Generation Request"
+SABP --> SDHOD : "VV Statement\nLPC Document\nReports"
+
+Finance --> SABP : "LPC Approval"
+SABP --> Finance : "LPC Data\nBilling Reports"
+
+SABP --> Email : "OTP Lockout Alert\nPassword Reset Link"
+SABP <--> DB : "Read / Write\nAll Data"
+
+@enduml

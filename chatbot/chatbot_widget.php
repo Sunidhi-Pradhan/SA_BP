@@ -4,6 +4,9 @@
  * Include this file at the bottom of any page (before </body>)
  * to render the chatbot widget.
  *
+ * Features: Voice Input, Text-to-Speech, Smart Quick Actions,
+ *           Proactive Notifications, Export Chat as PDF, Bot Feedback Rating
+ *
  * Usage:
  *   Root pages:  <?php include 'chatbot/chatbot_widget.php'; ?>
  *   Sub-dir:     <?php include __DIR__ . '/../chatbot/chatbot_widget.php'; ?>
@@ -18,7 +21,7 @@ $depth      = substr_count(trim($relPath, '/'), '/') + (trim($relPath, '/') !== 
 $chatbotDir = str_repeat('../', $depth) . 'chatbot/';
 ?>
 <!-- ═══════════════════════════════════════════════════════════
-     SABP CHATBOT WIDGET
+     SABP CHATBOT WIDGET — Enhanced
      ═══════════════════════════════════════════════════════════ -->
 <link rel="stylesheet" href="<?= $chatbotDir ?>chatbot.css">
 
@@ -40,6 +43,9 @@ $chatbotDir = str_repeat('../', $depth) . 'chatbot/';
       <div class="chatbot-header-status">Always online</div>
     </div>
     <div class="chatbot-header-actions">
+      <button class="chatbot-header-btn" id="chatbotPdfBtn" title="Export chat as PDF">
+        <i class="fa-solid fa-file-pdf"></i>
+      </button>
       <button class="chatbot-header-btn" id="chatbotClearBtn" title="Clear chat">
         <i class="fa-solid fa-trash-can"></i>
       </button>
@@ -47,6 +53,11 @@ $chatbotDir = str_repeat('../', $depth) . 'chatbot/';
         <i class="fa-solid fa-minus"></i>
       </button>
     </div>
+  </div>
+
+  <!-- Proactive Notification Bar -->
+  <div class="chatbot-proactive" id="chatbotProactive" style="display:none;">
+    <!-- Filled by JS -->
   </div>
 
   <!-- Message Body -->
@@ -69,10 +80,13 @@ $chatbotDir = str_repeat('../', $depth) . 'chatbot/';
 
   <!-- Input Footer -->
   <div class="chatbot-footer">
+    <button class="chatbot-voice-btn" id="chatbotVoiceBtn" title="Voice input (Speech-to-Text)" aria-label="Voice input">
+      <i class="fa-solid fa-microphone"></i>
+    </button>
     <textarea
       class="chatbot-input"
       id="chatbotInput"
-      placeholder="Type your message..."
+      placeholder="Type or speak your message..."
       rows="1"
       maxlength="500"
     ></textarea>
@@ -82,6 +96,9 @@ $chatbotDir = str_repeat('../', $depth) . 'chatbot/';
   </div>
 
 </div>
+
+<!-- html2pdf.js CDN for PDF export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 
 <meta name="chatbot-api" content="<?= $chatbotDir ?>chatbot_api.php">
 <script src="<?= $chatbotDir ?>chatbot.js"></script>

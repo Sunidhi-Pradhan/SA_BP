@@ -1,0 +1,104 @@
+@startuml SABP_Flowchart
+skinparam monochrome true
+skinparam shadowing false
+
+start
+
+:User opens Login Page;
+:Enter Employee ID & Password;
+
+if (Valid Credentials?) then (Yes)
+  if (2FA Already Setup?) then (Yes)
+    :Redirect to OTP Page;
+  else (No)
+    :Setup Google Authenticator;
+    :Scan QR Code;
+  endif
+
+  :Enter 6-digit OTP;
+
+  if (OTP Valid?) then (Yes)
+    :Reset Failed Attempts;
+    :Redirect to Role-based Dashboard;
+
+    if (Role = Admin?) then (Yes)
+      :Admin Dashboard;
+      :Manage Users / Upload Attendance /\nManage Employees / Basic Pay-WDA /\nExtra Manpower / Edit Requests;
+      stop
+    else (No)
+    endif
+
+    if (Role = ASO?) then (Yes)
+      :ASO Dashboard;
+      :Mark Daily Attendance;
+      :Submit Monthly Report;
+      :ASO Approval;
+      stop
+    else (No)
+    endif
+
+    if (Role = APM?) then (Yes)
+      :APM Dashboard;
+      :Review & Approve Attendance;
+      stop
+    else (No)
+    endif
+
+    if (Role = GM?) then (Yes)
+      :GM Dashboard;
+      :Review & Approve Attendance;
+      stop
+    else (No)
+    endif
+
+    if (Role = HQSO?) then (Yes)
+      :HQSO Dashboard;
+      :Review & Approve Attendance;
+      stop
+    else (No)
+    endif
+
+    if (Role = SDHOD?) then (Yes)
+      :SDHOD Dashboard;
+      :Final Attendance Approval;
+      :Generate LPC / VV Statement;
+      :Forward LPC to Finance;
+      :Export PDF / Excel Report;
+      stop
+    else (No)
+    endif
+
+    if (Role = Finance?) then (Yes)
+      :Finance Dashboard;
+      :Review & Approve LPC;
+      stop
+    else (No)
+    endif
+
+    if (Role = AO?) then (Yes)
+      :AO Dashboard;
+      :Upload Attendance / View Attendance /\nRequest Edit;
+      stop
+    else (No)
+    endif
+
+  else (No)
+    if (Attempts >= 5?) then (Yes)
+      :Lock Account for 2 Hours;
+      :Send Lockout Email Alert;
+      stop
+    else (No)
+      :Show Error - Try Again;
+      :Go back to OTP Page;
+      stop
+    endif
+  endif
+
+else (No)
+  :Show Error - Invalid Credentials;
+  :Go back to Login Page;
+  stop
+endif
+
+stop
+@enduml

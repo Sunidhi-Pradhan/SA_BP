@@ -1,0 +1,179 @@
+@startuml SABP_Class
+skinparam monochrome true
+skinparam shadowing false
+
+class User {
+  - id : int <<PK>>
+  - name : string
+  - email : string <<unique>>
+  - role : string
+  - status : string
+  - password : string
+  - google_secret : string
+  - otp_failed_attempts : int
+  - otp_locked_until : datetime
+  - created_at : timestamp
+  --
+  + login(id, password) : bool
+  + setupTwoFactor() : string
+  + verifyOTP(code) : bool
+  + changePassword(old, new) : bool
+  + resetPassword(email) : void
+  + lockAccount() : void
+}
+
+class EmployeeMaster {
+  - id : int <<PK>>
+  - esic_no : string <<unique>>
+  - employee_name : string
+  - employee_json : JSON
+  - created_at : timestamp
+  --
+  + importFromExcel(file) : int
+  + getDetails(esic) : JSON
+  + updateEmployee(data) : bool
+}
+
+class SiteMaster {
+  - SiteCode : string <<PK>>
+  - SiteName : string
+  --
+  + getEmployees() : list
+  + getAttendanceReport(month, year) : JSON
+}
+
+class Attendance {
+  - esic_no : string <<PK>>
+  - attendance_date : date <<PK>>
+  - attendance_year : year
+  - attendance_month : int
+  - attendance_json : JSON
+  - backup_attendance_json : JSON
+  --
+  + uploadExcel(file) : bool
+  + markDaily(esic, date, data) : bool
+  + getMonthly(esic, month, year) : JSON
+  + editRequest(esic, details) : int
+}
+
+class AttendanceApproval {
+  - report_id : int <<PK>>
+  - area_code : string <<FK>>
+  - attendance_month : int
+  - attendance_year : year
+  - created_attendance_date : datetime
+  - attendance_workflow : JSON
+  - current_step : string
+  --
+  + submitReport(area, month, year) : int
+  + approveStep(role) : bool
+  + rejectStep(role) : bool
+  + getWorkflowStatus() : string
+}
+
+class AttendanceEditRequest {
+  - id : int <<PK>>
+  - esic_no : string <<FK>>
+  - request_by : string
+  - request_details : text
+  - status : string
+  - created_at : datetime
+  --
+  + submitRequest(esic, details) : int
+  + approveRequest(id) : bool
+  + rejectRequest(id) : bool
+}
+
+class LPCMaster {
+  - lpc_id : int <<PK>>
+  - lpc_area_code : string <<FK>>
+  - sec_no : string
+  - dak_no : string
+  - lpc_month : int
+  - lpc_year : year
+  - created_lpc_date : datetime
+  - lpc_summary : JSON
+  - lpc_workflow : JSON
+  --
+  + generateLPC(area, month, year) : int
+  + forwardToFinance() : bool
+  + approveLPC() : bool
+}
+
+class MonthlyLPPReport {
+  - site_name : string
+  - bes_no : string
+  - dar_no : string
+  - amount : decimal
+  - gst : decimal
+  - gross_total : decimal
+  - it_tds : decimal
+  - sgst : decimal
+  - cgst : decimal
+  - retention : decimal
+  - bonus : decimal
+  - net_payment : decimal
+  --
+  + generateReport() : JSON
+  + exportPDF() : file
+  + exportExcel() : file
+}
+
+class ExtraManpowerAssign {
+  - id : int <<PK>>
+  - site_code : string <<FK>>
+  - employee_details : text
+  - assigned_date : datetime
+  --
+  + assignManpower(site, details) : int
+  + removeAssignment(id) : bool
+}
+
+class ChatbotHistory {
+  - id : int <<PK>>
+  - user_id : string <<FK>>
+  - role : string
+  - sender : enum
+  - message : text
+  - created_at : datetime
+  --
+  + saveMessage(userId, msg) : int
+  + getHistory(userId) : list
+  + deleteMessage(id) : bool
+}
+
+class ChatbotFaqs {
+  - id : int <<PK>>
+  - role : string
+  - keywords : string
+  - question : string
+  - answer : text
+  - priority : int
+  - is_active : bool
+  --
+  + matchQuery(input) : list
+  + addFaq(data) : int
+}
+
+class ChatbotFeedback {
+  - id : int <<PK>>
+  - message_id : int <<FK>>
+  - user_id : string <<FK>>
+  - rating : enum
+  - created_at : datetime
+  --
+  + submitFeedback(msgId, rating) : bool
+}
+
+User "1" --> "0..*" ChatbotHistory : interacts
+User "1" --> "0..*" AttendanceEditRequest : submits
+EmployeeMaster "1" --> "0..*" Attendance : has
+SiteMaster "1" --> "0..*" AttendanceApproval : belongs to
+SiteMaster "1" --> "0..*" LPCMaster : generates
+SiteMaster "1" --> "0..*" ExtraManpowerAssign : assigned to
+AttendanceApproval "1" --> "0..1" LPCMaster : triggers
+LPCMaster "1" --> "1" MonthlyLPPReport : produces
+ChatbotHistory "1" --> "0..*" ChatbotFeedback : rated by
+ChatbotFaqs ..> ChatbotHistory : referenced by
+
+@enduml

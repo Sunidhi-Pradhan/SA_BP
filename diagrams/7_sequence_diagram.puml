@@ -1,0 +1,88 @@
+@startuml SABP_Sequence
+skinparam monochrome true
+skinparam shadowing false
+
+actor "User" as U
+participant "Login Page" as LP
+database "Database" as DB
+participant "Google\nAuthenticator" as GA
+participant "Email\nSystem" as EM
+participant "Admin\nModule" as AD
+participant "ASO\nModule" as ASO
+participant "APM\nModule" as APM
+participant "GM\nModule" as GMM
+participant "HQSO\nModule" as HQSO
+participant "SDHOD\nModule" as SD
+participant "Finance\nModule" as FN
+
+== Authentication Flow ==
+
+U -> LP : Enter Employee ID & Password
+LP -> DB : SELECT * FROM user WHERE id = ?
+DB --> LP : User Record
+
+alt Invalid Credentials
+  LP --> U : Error: Invalid ID or Password
+else Valid Credentials & No 2FA
+  LP -> GA : Generate Secret Key & QR
+  GA --> U : Display QR Code
+  U -> GA : Scan QR & Enter OTP
+else Valid Credentials & 2FA Setup
+  LP --> U : Redirect to OTP Page
+  U -> LP : Enter 6-digit OTP
+end
+
+LP -> GA : verifyCode(secret, otp)
+
+alt OTP Invalid
+  GA --> LP : Verification Failed
+  LP -> DB : UPDATE otp_failed_attempts + 1
+  alt Attempts >= 5
+    DB -> EM : Send Lockout Email
+    EM --> U : Account Locked Notification
+    LP --> U : Account Locked for 2 Hours
+  else Attempts < 5
+    LP --> U : Invalid Code - X attempts left
+  end
+else OTP Valid
+  GA --> LP : Verification Success
+  LP -> DB : Reset otp_failed_attempts = 0
+  LP --> U : Redirect to Role-based Dashboard
+end
+
+== Attendance Upload & Approval Workflow ==
+
+AD -> DB : Upload Attendance Excel
+DB --> AD : Employees & Attendance Imported
+
+ASO -> DB : Mark Daily Attendance (attendance_json)
+ASO -> DB : INSERT INTO attendance_approval
+note right : Report submitted with\nworkflow status
+
+ASO -> DB : ASO Approves (update workflow)
+DB --> APM : Report forwarded to APM
+
+APM -> DB : APM Approves (update workflow)
+DB --> GMM : Report forwarded to GM
+
+GMM -> DB : GM Approves (update workflow)
+DB --> HQSO : Report forwarded to HQSO
+
+HQSO -> DB : HQSO Approves (update workflow)
+DB --> SD : Report forwarded to SDHOD
+
+SD -> DB : SDHOD Final Approval (COMPLETE)
+note right : current_step = 'COMPLETE'
+
+== LPC Generation & Billing ==
+
+SD -> DB : Generate LPC (INSERT INTO lpc_master)
+SD -> DB : Update lpc_workflow: forwarded
+DB --> FN : LPC forwarded to Finance
+
+FN -> DB : Approve LPC (update lpc_workflow)
+note right : LPC Approved\nBilling Complete
+
+DB --> FN : Confirmation
+
+@enduml

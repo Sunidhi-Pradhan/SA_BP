@@ -1,0 +1,802 @@
+================================================================================
+  SABP – Security Attendance and Billing Portal
+  PlantUML Code for All Diagrams
+  Paste each diagram at https://www.plantuml.com/plantuml/uml
+================================================================================
+
+
+================================================================================
+1. FLOWCHART DIAGRAM (System Login & Navigation Flow)
+================================================================================
+
+@startuml SABP_Flowchart
+skinparam backgroundColor #FEFEFE
+skinparam ActivityBackgroundColor #E8F5E9
+skinparam ActivityBorderColor #0f766e
+skinparam DiamondBackgroundColor #FFF9C4
+skinparam DiamondBorderColor #F57F17
+skinparam ArrowColor #0f766e
+
+start
+
+:User opens Login Page;
+
+:Enter Employee ID & Password;
+
+if (Valid Credentials?) then (Yes)
+  if (2FA Already Setup?) then (Yes)
+    :Redirect to OTP Page;
+  else (No)
+    :Setup Google Authenticator;
+    :Scan QR Code;
+  endif
+
+  :Enter 6-digit OTP;
+
+  if (OTP Valid?) then (Yes)
+    :Reset Failed Attempts;
+
+    switch (User Role?)
+    case (Admin)
+      :Admin Dashboard;
+      fork
+        :Manage Users;
+      fork again
+        :Upload Attendance;
+      fork again
+        :Manage Employees;
+      fork again
+        :Basic Pay / WDA;
+      fork again
+        :Extra Manpower;
+      fork again
+        :Attendance Edit Requests;
+      end fork
+
+    case (ASO)
+      :ASO Dashboard;
+      :Mark Daily Attendance;
+      :Submit Monthly Report;
+      :ASO Approval;
+
+    case (APM)
+      :APM Dashboard;
+      :Review & Approve Attendance;
+
+    case (GM)
+      :GM Dashboard;
+      :Review & Approve Attendance;
+
+    case (HQSO)
+      :HQSO Dashboard;
+      :Review & Approve Attendance;
+
+    case (SDHOD)
+      :SDHOD Dashboard;
+      fork
+        :Final Attendance Approval;
+      fork again
+        :Generate LPC;
+        :Forward LPC to Finance;
+      fork again
+        :VV Statement;
+      fork again
+        :Export PDF/Excel;
+      end fork
+
+    case (Finance)
+      :Finance Dashboard;
+      :Review & Approve LPC;
+
+    case (User/Guard)
+      :User Dashboard;
+      fork
+        :View Attendance;
+      fork again
+        :Request Edit;
+      fork again
+        :Use Chatbot;
+      end fork
+
+    endswitch
+
+  else (No)
+    if (Attempts >= 5?) then (Yes)
+      :Lock Account for 2 Hours;
+      :Send Lockout Email Alert;
+      stop
+    else (No)
+      :Show Error - Try Again;
+      backward :Enter 6-digit OTP;
+    endif
+  endif
+
+else (No)
+  :Show Error - Invalid Credentials;
+  backward :Enter Employee ID & Password;
+endif
+
+stop
+@enduml
+
+
+================================================================================
+2. ER DIAGRAM (Entity Relationship Diagram)
+================================================================================
+
+@startuml SABP_ER_Diagram
+skinparam backgroundColor #FEFEFE
+skinparam linetype ortho
+
+entity "user" as USER {
+  * **id** : INT <<PK>> <<AUTO_INCREMENT>>
+  --
+  * name : VARCHAR(100)
+  * email : VARCHAR(150) <<UNIQUE>>
+  * role : VARCHAR(50)
+  status : VARCHAR(20) = 'Active'
+  * password : VARCHAR(255)
+  google_secret : VARCHAR(255)
+  otp_failed_attempts : INT = 0
+  otp_locked_until : DATETIME
+  created_at : TIMESTAMP
+}
+
+entity "employee_master" as EMP {
+  * **id** : INT <<PK>> <<AUTO_INCREMENT>>
+  --
+  * esic_no : VARCHAR(30) <<UNIQUE>>
+  employee_name : VARCHAR(150)
+  * employee_json : JSON
+  created_at : TIMESTAMP
+}
+
+entity "site_master" as SITE {
+  * **SiteCode** : VARCHAR <<PK>>
+  --
+  SiteName : VARCHAR
+}
+
+entity "attendance" as ATT {
+  * **esic_no** : VARCHAR(20) <<PK>>
+  * **attendance_date** : DATE <<PK>>
+  --
+  * attendance_year : YEAR
+  * attendance_month : TINYINT
+  * attendance_json : JSON
+  backup_attendance_json : JSON
+}
+
+entity "attendance_approval" as AA {
+  * **report_id** : INT <<PK>>
+  --
+  * area_code : VARCHAR <<FK>>
+  * attendance_month : TINYINT
+  * attendance_year : YEAR
+  created_attendance_date : DATETIME
+  attendance_workflow : JSON
+  current_step : VARCHAR
+}
+
+entity "attendance_edit_request" as AER {
+  * **id** : INT <<PK>> <<AUTO_INCREMENT>>
+  --
+  * esic_no : VARCHAR <<FK>>
+  * request_by : VARCHAR
+  request_details : TEXT
+  status : VARCHAR = 'pending'
+  created_at : DATETIME
+}
+
+entity "lpc_master" as LPC {
+  * **lpc_id** : INT <<PK>> <<AUTO_INCREMENT>>
+  --
+  * lpc_area_code : VARCHAR <<FK>>
+  sec_no : VARCHAR
+  dak_no : VARCHAR
+  * lpc_month : TINYINT
+  * lpc_year : YEAR
+  created_lpc_date : DATETIME
+  lpc_summary : JSON
+  lpc_workflow : JSON
+}
+
+entity "monthly_lpp_report" as LPP {
+  site_name : VARCHAR
+  --
+  bes_no : VARCHAR
+  dar_no : VARCHAR
+  amount : DECIMAL
+  gst : DECIMAL
+  gross_total : DECIMAL
+  it_tds : DECIMAL
+  sgst : DECIMAL
+  cgst : DECIMAL
+  retention : DECIMAL
+  bonus : DECIMAL
+  net_payment : DECIMAL
+}
+
+entity "extra_manpower_assign" as EMA {
+  * **id** : INT <<PK>>
+  --
+  * site_code : VARCHAR <<FK>>
+  employee_details : TEXT
+  assigned_date : DATETIME
+}
+
+entity "chatbot_history" as CH {
+  * **id** : INT <<PK>> <<AUTO_INCREMENT>>
+  --
+  * user_id : VARCHAR(50) <<FK>>
+  * role : VARCHAR(20)
+  * sender : ENUM('user','bot')
+  * message : TEXT
+  created_at : DATETIME
+}
+
+entity "chatbot_faqs" as CF {
+  * **id** : INT <<PK>> <<AUTO_INCREMENT>>
+  --
+  role : VARCHAR(20) = 'all'
+  * keywords : VARCHAR(500)
+  * question : VARCHAR(500)
+  * answer : TEXT
+  priority : INT = 0
+  is_active : TINYINT(1) = 1
+}
+
+entity "chatbot_feedback" as CFB {
+  * **id** : INT <<PK>> <<AUTO_INCREMENT>>
+  --
+  * message_id : INT <<FK>>
+  * user_id : VARCHAR(50) <<FK>>
+  * rating : ENUM('up','down')
+  created_at : DATETIME
+}
+
+USER ||--o{ CH : "interacts"
+USER ||--o{ AER : "submits"
+EMP ||--o{ ATT : "has"
+SITE ||--o{ AA : "belongs_to"
+SITE ||--o{ LPC : "generates"
+SITE ||--o{ EMA : "assigned_to"
+AA ||--o| LPC : "triggers"
+CH ||--o{ CFB : "rated_by"
+
+@enduml
+
+
+================================================================================
+3. USE CASE DIAGRAM (Actors on Both Sides)
+================================================================================
+
+@startuml SABP_UseCase
+skinparam backgroundColor #FEFEFE
+skinparam ActorBorderColor #0f766e
+skinparam ActorBackgroundColor #E8F5E9
+skinparam UseCaseBackgroundColor #F0FDF4
+skinparam UseCaseBorderColor #0f766e
+skinparam PackageBorderColor #0f766e
+skinparam PackageBackgroundColor #FAFFFE
+skinparam ArrowColor #374151
+
+' ── LEFT SIDE ACTORS ──
+left to right direction
+
+actor "Admin" as Admin
+actor "ASO\n(Area Security\nOfficer)" as ASO
+actor "APM\n(Area Personnel\nManager)" as APM
+actor "Security\nGuard" as Guard
+
+' ── RIGHT SIDE ACTORS ──
+actor "GM\n(General\nManager)" as GM
+actor "HQSO\n(HQ Security\nOfficer)" as HQSO
+actor "SDHOD\n(SD Head of\nDepartment)" as SDHOD
+actor "Finance" as Finance
+
+rectangle "Security Attendance and Billing Portal (SABP)" {
+
+  usecase "Login with 2FA" as UC1
+  usecase "Manage Users\n(Add/Edit/Delete)" as UC2
+  usecase "Upload Attendance\nExcel" as UC3
+  usecase "Mark Daily\nAttendance" as UC4
+  usecase "Submit Monthly\nAttendance Report" as UC5
+  usecase "Approve Monthly\nAttendance" as UC6
+  usecase "Generate LPC\nDocument" as UC7
+  usecase "Forward LPC\nto Finance" as UC8
+  usecase "Approve LPC\n& Billing" as UC9
+  usecase "View Own\nAttendance" as UC10
+  usecase "Request Attendance\nEdit" as UC11
+  usecase "Process Edit\nRequest" as UC12
+  usecase "Manage Employees\n(Import/Edit)" as UC13
+  usecase "Update Basic\nPay / WDA" as UC14
+  usecase "Assign Extra\nManpower" as UC15
+  usecase "View Dashboard\n& KPIs" as UC16
+  usecase "Generate VV\nStatement" as UC17
+  usecase "Export PDF /\nExcel Report" as UC18
+  usecase "Use Chatbot" as UC19
+  usecase "Forgot / Reset\nPassword" as UC20
+}
+
+' ── LEFT SIDE CONNECTIONS ──
+Admin --> UC1
+Admin --> UC2
+Admin --> UC3
+Admin --> UC12
+Admin --> UC13
+Admin --> UC14
+Admin --> UC15
+Admin --> UC16
+
+ASO --> UC1
+ASO --> UC4
+ASO --> UC5
+ASO --> UC6
+ASO --> UC16
+
+APM --> UC1
+APM --> UC6
+APM --> UC16
+
+Guard --> UC1
+Guard --> UC10
+Guard --> UC11
+Guard --> UC19
+Guard --> UC20
+
+' ── RIGHT SIDE CONNECTIONS ──
+UC1 <-- GM
+UC6 <-- GM
+UC16 <-- GM
+
+UC1 <-- HQSO
+UC6 <-- HQSO
+UC16 <-- HQSO
+
+UC1 <-- SDHOD
+UC6 <-- SDHOD
+UC7 <-- SDHOD
+UC8 <-- SDHOD
+UC17 <-- SDHOD
+UC18 <-- SDHOD
+UC16 <-- SDHOD
+
+UC1 <-- Finance
+UC9 <-- Finance
+UC16 <-- Finance
+
+@enduml
+
+
+================================================================================
+4. ACTIVITY DIAGRAM (Monthly Attendance Approval Workflow)
+================================================================================
+
+@startuml SABP_Activity
+skinparam backgroundColor #FEFEFE
+skinparam ActivityBackgroundColor #E8F5E9
+skinparam ActivityBorderColor #0f766e
+skinparam DiamondBackgroundColor #FFF9C4
+skinparam DiamondBorderColor #F57F17
+skinparam ArrowColor #0f766e
+
+|Admin|
+start
+:Upload Attendance Excel File;
+:Import Employee Data to Database;
+
+|ASO|
+:Review Employee Attendance Data;
+:Mark Daily Attendance for Each Employee;
+:Submit Monthly Attendance Report;
+
+if (ASO Approves?) then (Yes)
+  :Update Workflow: ASO Approved;
+else (No)
+  :Hold - Continue Marking;
+  backward :Mark Daily Attendance for Each Employee;
+endif
+
+|APM|
+:Receive Monthly Report for Review;
+
+if (APM Approves?) then (Yes)
+  :Update Workflow: APM Approved;
+else (No)
+  :Reject - Send Back to ASO;
+  backward :Review Employee Attendance Data;
+endif
+
+|GM|
+:Receive Report for GM Review;
+
+if (GM Approves?) then (Yes)
+  :Update Workflow: GM Approved;
+else (No)
+  :Reject - Send Back to APM;
+  backward :Receive Monthly Report for Review;
+endif
+
+|HQSO|
+:Receive Report for HQSO Review;
+
+if (HQSO Approves?) then (Yes)
+  :Update Workflow: HQSO Approved;
+else (No)
+  :Reject - Send Back to GM;
+  backward :Receive Report for GM Review;
+endif
+
+|SDHOD|
+:Receive Report for Final Approval;
+
+if (SDHOD Approves?) then (Yes)
+  :Update Workflow: COMPLETE;
+  :Generate LPC Document;
+  :Generate VV Statement;
+  :Forward LPC to Finance;
+else (No)
+  :Reject - Send Back to HQSO;
+  backward :Receive Report for HQSO Review;
+endif
+
+|Finance|
+:Receive LPC for Review;
+
+if (Finance Approves LPC?) then (Yes)
+  :Update LPC Workflow: APPROVED;
+  :Billing Process Complete;
+  #palegreen:LPC Approved - Payment Processed;
+else (No)
+  :Reject LPC - Send Back to SDHOD;
+  backward :Forward LPC to Finance;
+endif
+
+stop
+@enduml
+
+
+================================================================================
+5. CLASS DIAGRAM
+================================================================================
+
+@startuml SABP_Class
+skinparam backgroundColor #FEFEFE
+skinparam ClassBackgroundColor #F0FDF4
+skinparam ClassBorderColor #0f766e
+skinparam ClassHeaderBackgroundColor #0f766e
+skinparam ClassFontColor #1f2937
+skinparam ArrowColor #374151
+
+class User {
+  - id : int <<PK>>
+  - name : string
+  - email : string <<unique>>
+  - role : string
+  - status : string
+  - password : string
+  - google_secret : string
+  - otp_failed_attempts : int
+  - otp_locked_until : datetime
+  - created_at : timestamp
+  --
+  + login(id, password) : bool
+  + setupTwoFactor() : string
+  + verifyOTP(code) : bool
+  + changePassword(old, new) : bool
+  + resetPassword(email) : void
+  + lockAccount() : void
+}
+
+class EmployeeMaster {
+  - id : int <<PK>>
+  - esic_no : string <<unique>>
+  - employee_name : string
+  - employee_json : JSON
+  - created_at : timestamp
+  --
+  + importFromExcel(file) : int
+  + getDetails(esic) : JSON
+  + updateEmployee(data) : bool
+}
+
+class SiteMaster {
+  - SiteCode : string <<PK>>
+  - SiteName : string
+  --
+  + getEmployees() : list
+  + getAttendanceReport(month, year) : JSON
+}
+
+class Attendance {
+  - esic_no : string <<PK>>
+  - attendance_date : date <<PK>>
+  - attendance_year : year
+  - attendance_month : int
+  - attendance_json : JSON
+  - backup_attendance_json : JSON
+  --
+  + uploadExcel(file) : bool
+  + markDaily(esic, date, data) : bool
+  + getMonthly(esic, month, year) : JSON
+  + editRequest(esic, details) : int
+}
+
+class AttendanceApproval {
+  - report_id : int <<PK>>
+  - area_code : string <<FK>>
+  - attendance_month : int
+  - attendance_year : year
+  - created_attendance_date : datetime
+  - attendance_workflow : JSON
+  - current_step : string
+  --
+  + submitReport(area, month, year) : int
+  + approveStep(role) : bool
+  + rejectStep(role) : bool
+  + getWorkflowStatus() : string
+}
+
+class AttendanceEditRequest {
+  - id : int <<PK>>
+  - esic_no : string <<FK>>
+  - request_by : string
+  - request_details : text
+  - status : string
+  - created_at : datetime
+  --
+  + submitRequest(esic, details) : int
+  + approveRequest(id) : bool
+  + rejectRequest(id) : bool
+}
+
+class LPCMaster {
+  - lpc_id : int <<PK>>
+  - lpc_area_code : string <<FK>>
+  - sec_no : string
+  - dak_no : string
+  - lpc_month : int
+  - lpc_year : year
+  - created_lpc_date : datetime
+  - lpc_summary : JSON
+  - lpc_workflow : JSON
+  --
+  + generateLPC(area, month, year) : int
+  + forwardToFinance() : bool
+  + approveLPC() : bool
+}
+
+class MonthlyLPPReport {
+  - site_name : string
+  - bes_no : string
+  - dar_no : string
+  - amount : decimal
+  - gst : decimal
+  - gross_total : decimal
+  - it_tds : decimal
+  - sgst : decimal
+  - cgst : decimal
+  - retention : decimal
+  - bonus : decimal
+  - net_payment : decimal
+  --
+  + generateReport() : JSON
+  + exportPDF() : file
+  + exportExcel() : file
+}
+
+class ExtraManpowerAssign {
+  - id : int <<PK>>
+  - site_code : string <<FK>>
+  - employee_details : text
+  - assigned_date : datetime
+  --
+  + assignManpower(site, details) : int
+  + removeAssignment(id) : bool
+}
+
+class ChatbotHistory {
+  - id : int <<PK>>
+  - user_id : string <<FK>>
+  - role : string
+  - sender : enum
+  - message : text
+  - created_at : datetime
+  --
+  + saveMessage(userId, msg) : int
+  + getHistory(userId) : list
+  + deleteMessage(id) : bool
+}
+
+class ChatbotFaqs {
+  - id : int <<PK>>
+  - role : string
+  - keywords : string
+  - question : string
+  - answer : text
+  - priority : int
+  - is_active : bool
+  --
+  + matchQuery(input) : list
+  + addFaq(data) : int
+}
+
+class ChatbotFeedback {
+  - id : int <<PK>>
+  - message_id : int <<FK>>
+  - user_id : string <<FK>>
+  - rating : enum
+  - created_at : datetime
+  --
+  + submitFeedback(msgId, rating) : bool
+}
+
+User "1" --> "0..*" ChatbotHistory : interacts
+User "1" --> "0..*" AttendanceEditRequest : submits
+EmployeeMaster "1" --> "0..*" Attendance : has
+SiteMaster "1" --> "0..*" AttendanceApproval : belongs_to
+SiteMaster "1" --> "0..*" LPCMaster : generates
+SiteMaster "1" --> "0..*" ExtraManpowerAssign : assigned_to
+AttendanceApproval "1" --> "0..1" LPCMaster : triggers
+LPCMaster "1" --> "1" MonthlyLPPReport : produces
+ChatbotHistory "1" --> "0..*" ChatbotFeedback : rated_by
+ChatbotFaqs ..> ChatbotHistory : referenced_by
+
+@enduml
+
+
+================================================================================
+6. DFD LEVEL 0 (Context Diagram)
+================================================================================
+
+@startuml SABP_DFD0
+skinparam backgroundColor #FEFEFE
+skinparam RectangleBackgroundColor #F0FDF4
+skinparam RectangleBorderColor #0f766e
+skinparam ActorBorderColor #0f766e
+skinparam DatabaseBackgroundColor #FFF9C4
+skinparam DatabaseBorderColor #F57F17
+skinparam ArrowColor #374151
+
+actor "Security Guard" as Guard
+actor "Admin" as Admin
+actor "ASO" as ASO
+actor "APM" as APM
+actor "GM" as GM
+actor "HQSO" as HQSO
+actor "SDHOD" as SDHOD
+actor "Finance" as Finance
+actor "Email System" as Email
+
+rectangle "  0. Security Attendance\n  and Billing Portal\n  (SABP)  " as SABP
+
+database "SABP\nDatabase" as DB
+
+Guard --> SABP : "Login Credentials\nAttendance Edit Request"
+SABP --> Guard : "Attendance Data\nEdit Status\nChatbot Response"
+
+Admin --> SABP : "User Data\nEmployee Excel\nBasic Pay Config"
+SABP --> Admin : "Dashboard KPIs\nReports"
+
+ASO --> SABP : "Daily Attendance\nMonthly Report Submission"
+SABP --> ASO : "Employee List\nApproval Status"
+
+APM --> SABP : "Approval Decision"
+SABP --> APM : "Pending Reports\nDashboard Data"
+
+GM --> SABP : "Approval Decision"
+SABP --> GM : "Pending Reports\nDashboard Data"
+
+HQSO --> SABP : "Approval Decision"
+SABP --> HQSO : "Pending Reports\nDashboard Data"
+
+SDHOD --> SABP : "Final Approval\nLPC Generation Request"
+SABP --> SDHOD : "VV Statement\nLPC Document\nReports"
+
+Finance --> SABP : "LPC Approval"
+SABP --> Finance : "LPC Data\nBilling Reports"
+
+SABP --> Email : "OTP Lockout Alert\nPassword Reset Link"
+SABP <--> DB : "Read / Write\nAll Data"
+
+@enduml
+
+
+================================================================================
+7. SEQUENCE DIAGRAM (Login + Attendance Approval Flow)
+================================================================================
+
+@startuml SABP_Sequence
+skinparam backgroundColor #FEFEFE
+skinparam SequenceParticipantBackgroundColor #F0FDF4
+skinparam SequenceParticipantBorderColor #0f766e
+skinparam SequenceLifeLineBorderColor #0f766e
+skinparam SequenceArrowColor #374151
+skinparam SequenceGroupBackgroundColor #F0FDF4
+skinparam SequenceGroupBorderColor #0f766e
+
+actor "User" as U
+participant "Login Page" as LP
+database "Database" as DB
+participant "Google\nAuthenticator" as GA
+participant "Email\nSystem" as EM
+participant "Admin\nModule" as AD
+participant "ASO\nModule" as ASO
+participant "APM\nModule" as APM
+participant "GM\nModule" as GMM
+participant "HQSO\nModule" as HQSO
+participant "SDHOD\nModule" as SD
+participant "Finance\nModule" as FN
+
+== Authentication Flow ==
+
+U -> LP : Enter Employee ID & Password
+LP -> DB : SELECT * FROM user WHERE id = ?
+DB --> LP : User Record
+
+alt Invalid Credentials
+  LP --> U : Error: Invalid ID or Password
+else Valid Credentials & No 2FA
+  LP -> GA : Generate Secret Key & QR
+  GA --> U : Display QR Code
+  U -> GA : Scan QR & Enter OTP
+else Valid Credentials & 2FA Setup
+  LP --> U : Redirect to OTP Page
+  U -> LP : Enter 6-digit OTP
+end
+
+LP -> GA : verifyCode(secret, otp)
+
+alt OTP Invalid
+  GA --> LP : Verification Failed
+  LP -> DB : UPDATE otp_failed_attempts + 1
+  alt Attempts >= 5
+    DB -> EM : Send Lockout Email
+    EM --> U : Account Locked Notification
+    LP --> U : Account Locked for 2 Hours
+  else Attempts < 5
+    LP --> U : Invalid Code - X attempts left
+  end
+else OTP Valid
+  GA --> LP : Verification Success
+  LP -> DB : Reset otp_failed_attempts = 0
+  LP --> U : Redirect to Role-based Dashboard
+end
+
+== Attendance Upload & Approval Workflow ==
+
+AD -> DB : Upload Attendance Excel
+DB --> AD : Employees & Attendance Imported
+
+ASO -> DB : Mark Daily Attendance (attendance_json)
+ASO -> DB : INSERT INTO attendance_approval
+note right : Report submitted with\nworkflow status
+
+ASO -> DB : ASO Approves (update workflow)
+DB --> APM : Report forwarded to APM
+
+APM -> DB : APM Approves (update workflow)
+DB --> GMM : Report forwarded to GM
+
+GMM -> DB : GM Approves (update workflow)
+DB --> HQSO : Report forwarded to HQSO
+
+HQSO -> DB : HQSO Approves (update workflow)
+DB --> SD : Report forwarded to SDHOD
+
+SD -> DB : SDHOD Final Approval (COMPLETE)
+note right : current_step = 'COMPLETE'
+
+== LPC Generation & Billing ==
+
+SD -> DB : Generate LPC (INSERT INTO lpc_master)
+SD -> DB : Update lpc_workflow: forwarded
+DB --> FN : LPC forwarded to Finance
+
+FN -> DB : Approve LPC (update lpc_workflow)
+note right : LPC Approved\nBilling Complete
+
+DB --> FN : Confirmation
+
+@enduml

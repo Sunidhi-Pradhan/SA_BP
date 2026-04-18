@@ -1,6 +1,6 @@
 <?php
 $host = "localhost";
-$dbname = "demo";        // Your database name
+$dbname = "SABP";        // Your database name
 $username = "root";     // Change if needed
 $password = "";         // Change if needed
 

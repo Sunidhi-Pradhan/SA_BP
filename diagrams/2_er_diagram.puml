@@ -1,0 +1,142 @@
+@startuml SABP_ER_Diagram
+skinparam monochrome true
+skinparam shadowing false
+skinparam linetype ortho
+
+entity "user" as USER {
+  * **id** : INT <<PK>> <<AUTO_INCREMENT>>
+  --
+  * name : VARCHAR(100)
+  * email : VARCHAR(150) <<UNIQUE>>
+  * role : VARCHAR(50)
+  status : VARCHAR(20) = 'Active'
+  * password : VARCHAR(255)
+  google_secret : VARCHAR(255)
+  otp_failed_attempts : INT = 0
+  otp_locked_until : DATETIME
+  created_at : TIMESTAMP
+}
+
+entity "employee_master" as EMP {
+  * **id** : INT <<PK>> <<AUTO_INCREMENT>>
+  --
+  * esic_no : VARCHAR(30) <<UNIQUE>>
+  employee_name : VARCHAR(150)
+  * employee_json : JSON
+  created_at : TIMESTAMP
+}
+
+entity "site_master" as SITE {
+  * **SiteCode** : VARCHAR <<PK>>
+  --
+  SiteName : VARCHAR
+}
+
+entity "attendance" as ATT {
+  * **esic_no** : VARCHAR(20) <<PK>>
+  * **attendance_date** : DATE <<PK>>
+  --
+  * attendance_year : YEAR
+  * attendance_month : TINYINT
+  * attendance_json : JSON
+  backup_attendance_json : JSON
+}
+
+entity "attendance_approval" as AA {
+  * **report_id** : INT <<PK>>
+  --
+  * area_code : VARCHAR <<FK>>
+  * attendance_month : TINYINT
+  * attendance_year : YEAR
+  created_attendance_date : DATETIME
+  attendance_workflow : JSON
+  current_step : VARCHAR
+}
+
+entity "attendance_edit_request" as AER {
+  * **id** : INT <<PK>> <<AUTO_INCREMENT>>
+  --
+  * esic_no : VARCHAR <<FK>>
+  * request_by : VARCHAR
+  request_details : TEXT
+  status : VARCHAR = 'pending'
+  created_at : DATETIME
+}
+
+entity "lpc_master" as LPC {
+  * **lpc_id** : INT <<PK>> <<AUTO_INCREMENT>>
+  --
+  * lpc_area_code : VARCHAR <<FK>>
+  sec_no : VARCHAR
+  dak_no : VARCHAR
+  * lpc_month : TINYINT
+  * lpc_year : YEAR
+  created_lpc_date : DATETIME
+  lpc_summary : JSON
+  lpc_workflow : JSON
+}
+
+entity "monthly_lpp_report" as LPP {
+  site_name : VARCHAR
+  --
+  bes_no : VARCHAR
+  dar_no : VARCHAR
+  amount : DECIMAL
+  gst : DECIMAL
+  gross_total : DECIMAL
+  it_tds : DECIMAL
+  sgst : DECIMAL
+  cgst : DECIMAL
+  retention : DECIMAL
+  bonus : DECIMAL
+  net_payment : DECIMAL
+}
+
+entity "extra_manpower_assign" as EMA {
+  * **id** : INT <<PK>>
+  --
+  * site_code : VARCHAR <<FK>>
+  employee_details : TEXT
+  assigned_date : DATETIME
+}
+
+entity "chatbot_history" as CH {
+  * **id** : INT <<PK>> <<AUTO_INCREMENT>>
+  --
+  * user_id : VARCHAR(50) <<FK>>
+  * role : VARCHAR(20)
+  * sender : ENUM('user','bot')
+  * message : TEXT
+  created_at : DATETIME
+}
+
+entity "chatbot_faqs" as CF {
+  * **id** : INT <<PK>> <<AUTO_INCREMENT>>
+  --
+  role : VARCHAR(20) = 'all'
+  * keywords : VARCHAR(500)
+  * question : VARCHAR(500)
+  * answer : TEXT
+  priority : INT = 0
+  is_active : TINYINT(1) = 1
+}
+
+entity "chatbot_feedback" as CFB {
+  * **id** : INT <<PK>> <<AUTO_INCREMENT>>
+  --
+  * message_id : INT <<FK>>
+  * user_id : VARCHAR(50) <<FK>>
+  * rating : ENUM('up','down')
+  created_at : DATETIME
+}
+
+USER ||--o{ CH : "interacts"
+USER ||--o{ AER : "submits"
+EMP ||--o{ ATT : "has"
+SITE ||--o{ AA : "belongs_to"
+SITE ||--o{ LPC : "generates"
+SITE ||--o{ EMA : "assigned_to"
+AA ||--o| LPC : "triggers"
+CH ||--o{ CFB : "rated_by"
+
+@enduml

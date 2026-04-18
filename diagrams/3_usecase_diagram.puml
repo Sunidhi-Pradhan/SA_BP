@@ -1,0 +1,88 @@
+@startuml SABP_UseCase
+skinparam monochrome true
+skinparam shadowing false
+
+left to right direction
+
+actor "Admin" as Admin
+actor "ASO\n(Area Security\nOfficer)" as ASO
+actor "APM\n(Area Personnel\nManager)" as APM
+actor "Security\nGuard" as Guard
+
+actor "GM\n(General\nManager)" as GM
+actor "HQSO\n(HQ Security\nOfficer)" as HQSO
+actor "SDHOD\n(SD Head of\nDepartment)" as SDHOD
+actor "Finance" as Finance
+
+rectangle "Security Attendance and Billing Portal (SABP)" {
+
+  usecase "Login with 2FA" as UC1
+  usecase "Manage Users\n(Add/Edit/Delete)" as UC2
+  usecase "Upload Attendance\nExcel" as UC3
+  usecase "Mark Daily\nAttendance" as UC4
+  usecase "Submit Monthly\nAttendance Report" as UC5
+  usecase "Approve Monthly\nAttendance" as UC6
+  usecase "Generate LPC\nDocument" as UC7
+  usecase "Forward LPC\nto Finance" as UC8
+  usecase "Approve LPC\n& Billing" as UC9
+  usecase "View Own\nAttendance" as UC10
+  usecase "Request Attendance\nEdit" as UC11
+  usecase "Process Edit\nRequest" as UC12
+  usecase "Manage Employees\n(Import/Edit)" as UC13
+  usecase "Update Basic\nPay / WDA" as UC14
+  usecase "Assign Extra\nManpower" as UC15
+  usecase "View Dashboard\n& KPIs" as UC16
+  usecase "Generate VV\nStatement" as UC17
+  usecase "Export PDF /\nExcel Report" as UC18
+  usecase "Use Chatbot" as UC19
+  usecase "Forgot / Reset\nPassword" as UC20
+}
+
+' ── LEFT SIDE ACTORS ──
+Admin --> UC1
+Admin --> UC2
+Admin --> UC3
+Admin --> UC12
+Admin --> UC13
+Admin --> UC14
+Admin --> UC15
+Admin --> UC16
+
+ASO --> UC1
+ASO --> UC4
+ASO --> UC5
+ASO --> UC6
+ASO --> UC16
+
+APM --> UC1
+APM --> UC6
+APM --> UC16
+
+Guard --> UC1
+Guard --> UC10
+Guard --> UC11
+Guard --> UC19
+Guard --> UC20
+
+' ── RIGHT SIDE ACTORS ──
+UC1 <-- GM
+UC6 <-- GM
+UC16 <-- GM
+
+UC1 <-- HQSO
+UC6 <-- HQSO
+UC16 <-- HQSO
+
+UC1 <-- SDHOD
+UC6 <-- SDHOD
+UC7 <-- SDHOD
+UC8 <-- SDHOD
+UC17 <-- SDHOD
+UC18 <-- SDHOD
+UC16 <-- SDHOD
+
+UC1 <-- Finance
+UC9 <-- Finance
+UC16 <-- Finance
+
+@enduml
